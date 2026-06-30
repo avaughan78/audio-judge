@@ -1,3 +1,5 @@
+// Next.js 16 renamed the middleware export from `middleware` to `proxy`.
+// The file must also be named proxy.ts, not middleware.ts.
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'

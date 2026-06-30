@@ -14,7 +14,8 @@ export async function GET() {
     return NextResponse.json({ error: 'DEEPGRAM_API_KEY not configured' }, { status: 500 })
   }
 
-  // Create a short-lived scoped key so the raw API key is never exposed to the browser
+  // Preferred path: exchange the stored key for a short-lived (5 min) scoped key.
+  // The raw key never reaches the browser. Requires DEEPGRAM_PROJECT_ID to be set.
   if (projectId) {
     try {
       const res = await fetch(`https://api.deepgram.com/v1/projects/${projectId}/keys`, {
@@ -31,10 +32,12 @@ export async function GET() {
         return NextResponse.json({ key: data.key })
       }
     } catch {
-      // fall through to returning the main key
+      // fall through to the raw-key fallback
     }
   }
 
-  // Fallback: return the main key (less secure, but works without a project ID)
+  // Fallback when no project ID is configured: send the raw API key to the browser.
+  // This works but means the key is visible in browser devtools. Set DEEPGRAM_PROJECT_ID
+  // in .env.local to use scoped keys instead.
   return NextResponse.json({ key: apiKey })
 }

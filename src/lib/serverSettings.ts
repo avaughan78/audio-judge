@@ -7,8 +7,9 @@ function serviceClient() {
   )
 }
 
-// Looks up a key for a specific user first, then falls back to the env var.
-// Pass userId whenever a user context is available (all authed routes).
+// Looks up a per-user API key from the database. The envFallback parameter exists
+// for flexibility but is intentionally never passed from authed routes — each user
+// must supply their own keys; the host's env vars must not silently substitute.
 export async function getSetting(key: string, envFallback?: string, userId?: string): Promise<string | undefined> {
   if (userId) {
     try {

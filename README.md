@@ -1,36 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AudioJudge
 
-## Getting Started
+Real-time AI scoring for hackathons, pitch competitions, and structured interviews. Transcribes live speech with Deepgram, scores each presenter against your criteria with Claude, and displays results on a live projection screen — all updating in real time without human intervention.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## What it does
+
+- **Live transcription** — streams audio from your microphone to Deepgram's Nova-2 model, producing word-accurate results within ~300ms
+- **AI scoring** — every ~40 words (or every 12 seconds), Claude Haiku evaluates the transcript against your criteria and writes back scores + reasoning to the database
+- **Realtime display** — a separate projection-optimised page updates live via Supabase Realtime: animated score bars, an overall circular gauge, and a live transcript ticker
+- **Per-user isolation** — each account has its own events, participants, criteria, and API keys; nothing is shared between users
+- **Manual or automatic mode** — in manual mode you tap to select each presenter; in automatic mode the AI detects applause/introductions and switches presenters on its own
+
+---
+
+## Tech stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Auth | Supabase Auth — GitHub OAuth |
+| Database + Realtime | Supabase (Postgres + Realtime channels) |
+| Transcription | Deepgram Nova-2 (WebSocket streaming) |
+| AI scoring | Anthropic Claude Haiku |
+| State | Zustand |
+| Animations | Framer Motion |
+| Styles | Tailwind CSS v4 |
+| Deployment | Railway |
+
+---
+
+## Pages
+
+| Route | Purpose |
+|---|---|
+| `/` | Judge view — transcription controls, live score bars, AI summary |
+| `/display` | Projector view — full-screen scores, team name, live ticker |
+| `/admin` | Setup — events, participants, criteria, API keys |
+| `/login` | GitHub OAuth sign-in |
+
+---
+
+## Setup
+
+### 1. Supabase
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Run `supabase/schema.sql` in the SQL editor to create all tables and RLS policies
+3. Enable **GitHub** as an OAuth provider under Authentication → Providers
+4. Set the redirect URL to `https://your-domain.com/auth/callback`
+
+### 2. Environment variables
+
+Create `.env.local` (never commit this file):
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The Deepgram and Anthropic API keys are stored **per user in the database** — add them in Admin → API Keys after signing in.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Optionally set `DEEPGRAM_PROJECT_ID` in `.env.local` to enable short-lived scoped Deepgram keys (more secure — the raw key is never sent to the browser).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Local development
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000](http://localhost:3000). Sign in with GitHub, create an event in Admin, add criteria, and start evaluating.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## How scoring works
 
-## Deploy on Vercel
+1. Audio is captured from the browser microphone and streamed to Deepgram via WebSocket
+2. Final transcript chunks are appended to an in-memory buffer and written to `transcript_chunks` for the display ticker
+3. After every ~40 new words (or 12-second fallback), the full buffer is sent to `/api/judge`
+4. Claude Haiku scores each criterion 0–100 with one-sentence reasoning
+5. Scores are only written if they are **higher** than the existing score — early, incomplete transcripts don't drag down a presenter who later delivers well
+6. Claude Haiku also generates a 2–3 sentence running summary, persisted to `teams.summary`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment (Railway)
+
+The app ships with `railway.toml` and `nixpacks.toml`. Set the same environment variables in Railway's Variables panel. The middleware in `src/proxy.ts` handles Railway's reverse proxy by reading `x-forwarded-host` and `x-forwarded-proto` headers.
+
+---
+
+## Database schema (key tables)
+
+```
+sessions           id, user_id, name, brief, is_active, active_team_id, theme_id, detection_mode
+teams              id, session_id, name, description, order_index, summary
+criteria           id, session_id, name, description, weight, order_index
+scores             id, session_id, team_id, criteria_id, score, reasoning, updated_at
+transcript_chunks  id, session_id, team_id, content, created_at
+settings           id, user_id, key, value, updated_at
+```
+
+RLS policies ensure every row is scoped to the creating user.
+
+---
+
+## Themes
+
+Four built-in themes selectable from the top bar: **Midnight** (default), **Neon**, **Aurora**, **Ember**. Theme choice persists in `localStorage` and syncs to the active session so the display page matches.

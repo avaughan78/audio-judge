@@ -33,7 +33,8 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Verify the session belongs to the authenticated user
+    // Double-check ownership via service-role client. The anon client's RLS would normally
+    // enforce this, but we're using the service role here so the check must be explicit.
     const { data: sessionRow } = await supabase
       .from('sessions')
       .select('id')
@@ -108,7 +109,9 @@ Return ONLY valid JSON in this exact format — no markdown, no code fences, no 
       return NextResponse.json({ error: 'AI response missing scores array' }, { status: 500 })
     }
 
-    // Fetch existing scores so we only write if the new score is higher
+    // Only write a score if it is strictly higher than what's already stored.
+    // This prevents a short, ambiguous transcript early in a presentation from
+    // overwriting a strong score produced once the presenter hit their stride.
     const { data: existing } = await supabase
       .from('scores')
       .select('criteria_id, score')

@@ -32,6 +32,8 @@ export default function DisplayClient() {
   const [scores, setScores] = useState<Record<string, Score>>({})
   const [latestTranscript, setLatestTranscript] = useState('')
   const [clock, setClock] = useState(new Date())
+  // Ref rather than state because it's read inside the Supabase Realtime callback,
+  // which is a closure that would always see the stale initial value if it used state.
   const activeTeamIdRef = useRef<string | null>(null)
 
   useEffect(() => {

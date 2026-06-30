@@ -14,16 +14,25 @@ export function useAudioCapture() {
   const connectionRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  // All mutable values are refs rather than state because they are read inside
+  // WebSocket event handlers (closures). State updates are async and the handler
+  // would always see the stale initial value.
   const bufferRef = useRef('')
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isJudgingRef = useRef(false)
   const wordCountAtLastJudgeRef = useRef(0)
   const wordCountAtLastTransitionCheckRef = useRef(0)
-  const stoppedRef = useRef(false)  // guards against SDK reconnect firing open/close after stop()
+  // Set to true in stop() before closing the connection. The Deepgram SDK may
+  // fire 'close' or 'open' events after we call disconnect — this flag prevents
+  // those late events from flipping isRecording back on.
+  const stoppedRef = useRef(false)
   const isDetectingRef = useRef(false)
 
+  // Sends the current transcript buffer to /api/judge and /api/summarise in parallel.
+  // Called both on a word-count trigger and a periodic timer; the isJudgingRef guard
+  // ensures only one cycle runs at a time regardless of which trigger fires.
   const runCycle = useCallback(async () => {
-    if (isJudgingRef.current) return  // skip if a cycle is already running
+    if (isJudgingRef.current) return
     const state = useAppStore.getState()
     const { activeTeam, session, setSummarising, setSummary, setLastJudgedAt } = state
     const transcript = bufferRef.current.trim()
