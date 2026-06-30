@@ -150,9 +150,28 @@ export function useAudioCapture() {
   }, [runCycle])
 
   const start = useCallback(async () => {
-    const { activeTeam, setConnecting, setRecording, appendTranscript, setInterimTranscript, setRecordingStartedAt } =
+    const { setConnecting, setRecording, appendTranscript, setInterimTranscript, setRecordingStartedAt } =
       useAppStore.getState()
-    if (!activeTeam) return
+    let { activeTeam, session } = useAppStore.getState()
+
+    if (!activeTeam) {
+      if (session?.detection_mode !== 'automatic') return
+      // Auto mode with no team yet — create "Presenter 1" so scoring works immediately
+      const supabase = createSupabaseClient()
+      const { data: newTeam, error } = await supabase
+        .from('teams')
+        .insert({ session_id: session.id, name: 'Presenter 1', order_index: 1 })
+        .select()
+        .single()
+      if (error || !newTeam) {
+        console.error('[auto] Failed to create initial team:', error)
+        return
+      }
+      await supabase.from('sessions').update({ active_team_id: newTeam.id }).eq('id', session.id)
+      useAppStore.getState().incrementAutoTeamCounter()
+      useAppStore.getState().setActiveTeam(newTeam)
+      useAppStore.setState((s: any) => ({ teams: [...s.teams, newTeam] }))
+    }
 
     stoppedRef.current = false
     setConnecting(true)

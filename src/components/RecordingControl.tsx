@@ -32,12 +32,14 @@ export function RecordingControl({ compact = false }: RecordingControlProps) {
   const isConnecting = useAppStore((s) => s.isConnecting)
   const isSummarising = useAppStore((s) => s.isSummarising)
   const activeTeam = useAppStore((s) => s.activeTeam)
+  const session = useAppStore((s) => s.session)
   const lastJudgedAt = useAppStore((s) => s.lastJudgedAt)
   const recordingStartedAt = useAppStore((s) => s.recordingStartedAt)
   const elapsed = useElapsedTime(recordingStartedAt)
   const { start, stop } = useAudioCapture()
 
-  const canRecord = !!activeTeam && !isConnecting
+  const isAutoMode = session?.detection_mode === 'automatic'
+  const canRecord = (!!activeTeam || isAutoMode) && !isConnecting
 
   if (compact) {
     return (
