@@ -9,6 +9,38 @@ import { ThemeProvider } from '@/components/ThemeSelector'
 import { themes } from '@/lib/themes'
 import { useAppStore } from '@/lib/store'
 
+// ── Default content ─────────────────────────────────────────────────────────
+
+const BRIEF_PLACEHOLDER = `e.g. This is a 24-hour open innovation hackathon. Teams should build a working prototype that solves a real problem. We're looking for ideas that are genuinely novel — not just a thin layer on top of an existing product. The demo should show the product working, not a slide deck about what it might do. Technical ambition matters, but so does clarity: if you can't explain the problem and solution in 60 seconds, that's a gap.`
+
+const DEFAULT_CRITERIA = [
+  {
+    name: 'Innovation',
+    description: 'How original is the idea? Does it approach the problem in a genuinely new way, or is it incremental? Look for unexpected angles, novel combinations, or ideas that challenge assumptions. Penalise ideas that are obvious extensions of existing products.',
+    weight: 1.5,
+  },
+  {
+    name: 'Technical Execution',
+    description: 'Is there a working prototype? How solid is the implementation — does it actually function, or is it held together with string? Award higher scores for real working code over mocked-up demos. Consider technical complexity relative to the time available.',
+    weight: 1.5,
+  },
+  {
+    name: 'Problem Clarity',
+    description: 'Has the team clearly defined the problem they\'re solving and who has it? Do they have evidence the problem is real? Vague or assumed problems should score lower even if the solution is impressive.',
+    weight: 1,
+  },
+  {
+    name: 'Impact Potential',
+    description: 'If this succeeded at scale, how much would it matter? Consider the size of the problem, the realism of the solution\'s reach, and whether the team has thought through what success actually looks like.',
+    weight: 1,
+  },
+  {
+    name: 'Presentation',
+    description: 'Is the pitch clear, confident, and well-structured? Does the team communicate the idea quickly and make the demo easy to follow? Penalise pitches that spend too long on background and not enough on the product itself.',
+    weight: 0.5,
+  },
+]
+
 // ── Primitives ──────────────────────────────────────────────────────────────
 
 function Input({ value, onChange, placeholder, className = '' }: {
@@ -233,6 +265,19 @@ export default function AdminClient() {
     setCriteria((p) => p.filter((c) => c.id !== id))
   }
 
+  const addDefaultCriteria = async () => {
+    if (!activeSession) return
+    const rows = DEFAULT_CRITERIA.map((c, i) => ({
+      session_id: activeSession.id,
+      name: c.name,
+      description: c.description,
+      weight: c.weight,
+      order_index: criteria.length + i,
+    }))
+    const { data } = await supabase.from('criteria').insert(rows).select()
+    if (data) setCriteria((p) => [...p, ...data])
+  }
+
   const inactiveSessions = sessions.filter((s) => !s.is_active)
 
   return (
@@ -359,7 +404,7 @@ export default function AdminClient() {
                     subtitle="Describe the theme and goals. The AI uses this to judge more accurately." />
                   <div className="glass rounded-xl p-4 space-y-3">
                     <Textarea value={brief} onChange={setBrief} rows={5}
-                      placeholder="e.g. 24-hour hackathon focused on sustainability. Teams should demonstrate a working prototype addressing real environmental challenges. We value innovation, technical depth, and real-world viability." />
+                      placeholder={BRIEF_PLACEHOLDER} />
                     <div className="flex justify-end">
                       <Btn onClick={saveBrief} disabled={savingBrief}>
                         {savingBrief ? 'Saving…' : 'Save Brief'}
@@ -405,8 +450,30 @@ export default function AdminClient() {
 
                 {/* ── Step 4: Criteria ─────────────────────────────────── */}
                 <section>
-                  <SectionHeading step={4} title={`Judging Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
-                    subtitle="What the AI scores on. Good descriptions lead to better scores." />
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[11px] font-black"
+                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                        4
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                          {`Judging Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
+                        </h2>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>What the AI scores on. Good descriptions lead to better scores.</p>
+                      </div>
+                    </div>
+                    {criteria.length === 0 && (
+                      <button onClick={addDefaultCriteria}
+                        className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg shrink-0 font-medium transition-all"
+                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add defaults
+                      </button>
+                    )}
+                  </div>
                   <div className="space-y-2">
                     <div className="glass rounded-xl p-4 space-y-2">
                       <Input value={newCritName} onChange={setNewCritName} placeholder="Criterion name — e.g. Innovation" />
