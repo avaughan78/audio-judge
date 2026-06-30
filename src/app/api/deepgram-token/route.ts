@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
+import { getSetting } from '@/lib/serverSettings'
+import { getServerUser } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const apiKey = process.env.DEEPGRAM_API_KEY
-  const projectId = process.env.DEEPGRAM_PROJECT_ID
+  const user = await getServerUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const apiKey = await getSetting('DEEPGRAM_API_KEY', process.env.DEEPGRAM_API_KEY, user.id)
+  const projectId = await getSetting('DEEPGRAM_PROJECT_ID', process.env.DEEPGRAM_PROJECT_ID, user.id)
 
   if (!apiKey) {
     return NextResponse.json({ error: 'DEEPGRAM_API_KEY not configured' }, { status: 500 })

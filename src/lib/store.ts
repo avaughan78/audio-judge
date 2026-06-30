@@ -17,6 +17,7 @@ interface AppState {
   lastJudgedAt: number
   recordingStartedAt: number | null
   themeId: ThemeId
+  autoTeamCounter: number
 
   setSession: (s: Session | null) => void
   setTeams: (t: Team[]) => void
@@ -34,6 +35,8 @@ interface AppState {
   setLastJudgedAt: (t: number) => void
   setRecordingStartedAt: (t: number | null) => void
   setThemeId: (id: ThemeId) => void
+  incrementAutoTeamCounter: () => void
+  resetAutoTeamCounter: () => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -53,6 +56,7 @@ export const useAppStore = create<AppState>()(
       lastJudgedAt: 0,
       recordingStartedAt: null,
       themeId: 'midnight',
+      autoTeamCounter: 0,
 
       setSession: (session) => set({ session }),
       setTeams: (teams) => set({ teams }),
@@ -77,6 +81,8 @@ export const useAppStore = create<AppState>()(
       setLastJudgedAt: (lastJudgedAt) => set({ lastJudgedAt }),
       setRecordingStartedAt: (recordingStartedAt) => set({ recordingStartedAt }),
       setThemeId: (themeId) => set({ themeId }),
+      incrementAutoTeamCounter: () => set((s) => ({ autoTeamCounter: s.autoTeamCounter + 1 })),
+      resetAutoTeamCounter: () => set({ autoTeamCounter: 0 }),
     }),
     {
       name: 'audiojudge-store',

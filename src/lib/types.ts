@@ -8,6 +8,7 @@ export interface Session {
   is_active: boolean
   active_team_id: string | null
   theme_id: ThemeId
+  detection_mode: 'manual' | 'automatic'
   created_at: string
 }
 

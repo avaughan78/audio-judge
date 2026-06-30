@@ -144,12 +144,28 @@ export default function JudgePage() {
             {/* Participant + recording strip */}
             <div className="relative shrink-0 flex items-center gap-3 px-5 py-2.5"
               style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
-              <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
-                Evaluating
-              </span>
-              <div className="flex-1 overflow-hidden">
-                <TeamSelector />
-              </div>
+              {session?.detection_mode === 'automatic' ? (
+                <>
+                  <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
+                    Auto
+                  </span>
+                  <div className="flex-1 flex items-center gap-2 overflow-hidden">
+                    <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
+                    <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                      {activeTeam?.name ?? 'Waiting for presenter…'}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
+                    Evaluating
+                  </span>
+                  <div className="flex-1 overflow-hidden">
+                    <TeamSelector />
+                  </div>
+                </>
+              )}
               <RecordingControl compact />
             </div>
 

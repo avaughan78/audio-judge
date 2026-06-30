@@ -6,6 +6,9 @@ import { createClient as createSupabaseClient } from '@/lib/supabase'
 
 const WORDS_PER_CYCLE = 40   // trigger a score after every 40 new words
 const CYCLE_INTERVAL_MS = 12_000  // also trigger on a 12s timer as fallback
+// In auto mode, check for presenter transition after every N new words (but not too frequently)
+const TRANSITION_CHECK_WORDS = 30
+const MIN_WORDS_BEFORE_TRANSITION = 60  // don't detect transitions in the first ~60 words
 
 export function useAudioCapture() {
   const connectionRef = useRef<any>(null)
@@ -15,7 +18,9 @@ export function useAudioCapture() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isJudgingRef = useRef(false)
   const wordCountAtLastJudgeRef = useRef(0)
+  const wordCountAtLastTransitionCheckRef = useRef(0)
   const stoppedRef = useRef(false)  // guards against SDK reconnect firing open/close after stop()
+  const isDetectingRef = useRef(false)
 
   const runCycle = useCallback(async () => {
     if (isJudgingRef.current) return  // skip if a cycle is already running
@@ -72,6 +77,77 @@ export function useAudioCapture() {
       isJudgingRef.current = false
     }
   }, [])
+
+  // Called in automatic mode after enough new words have accumulated.
+  // If a transition is detected, creates a new team, switches to it, and resets the buffer.
+  const checkTransition = useCallback(async () => {
+    if (isDetectingRef.current) return
+    const state = useAppStore.getState()
+    const { session, setActiveTeam, incrementAutoTeamCounter, autoTeamCounter } = state
+
+    const totalWords = bufferRef.current.split(/\s+/).filter(Boolean).length
+    if (totalWords < MIN_WORDS_BEFORE_TRANSITION) return
+
+    wordCountAtLastTransitionCheckRef.current = totalWords
+    isDetectingRef.current = true
+
+    try {
+      // Send the last ~60 seconds of speech for transition detection
+      const recentTranscript = bufferRef.current.split(/\s+/).filter(Boolean).slice(-120).join(' ')
+      const res = await fetch('/api/detect-transition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recentTranscript }),
+      })
+      const data = await res.json()
+      console.log('[auto] Transition check result:', data)
+
+      if (!data.transition || !session) return
+
+      // Run a final scoring cycle for the current team before switching
+      await runCycle()
+
+      // Create a new team in the DB
+      const supabase = createSupabaseClient()
+      const newTeamNumber = autoTeamCounter + 1
+      const newName = data.name?.trim() || `Presenter ${newTeamNumber}`
+
+      const { data: newTeam, error } = await supabase
+        .from('teams')
+        .insert({
+          session_id: session.id,
+          name: newName,
+          order_index: newTeamNumber,
+        })
+        .select()
+        .single()
+
+      if (error || !newTeam) {
+        console.error('[auto] Failed to create team:', error)
+        return
+      }
+
+      // Update sessions.active_team_id so the display page switches
+      await supabase.from('sessions').update({ active_team_id: newTeam.id }).eq('id', session.id)
+
+      // Switch locally
+      incrementAutoTeamCounter()
+      setActiveTeam(newTeam)
+      bufferRef.current = ''
+      wordCountAtLastJudgeRef.current = 0
+      wordCountAtLastTransitionCheckRef.current = 0
+
+      // Also add the new team to the local teams list
+      const { teams } = useAppStore.getState()
+      useAppStore.setState({ teams: [...teams, newTeam] })
+
+      console.log('[auto] Switched to new team:', newName)
+    } catch (e) {
+      console.error('[auto] Transition check error:', e)
+    } finally {
+      isDetectingRef.current = false
+    }
+  }, [runCycle])
 
   const start = useCallback(async () => {
     const { activeTeam, setConnecting, setRecording, appendTranscript, setInterimTranscript, setRecordingStartedAt } =
@@ -153,11 +229,21 @@ export function useAudioCapture() {
               .then(() => {})
           }
 
-          // Trigger a scoring cycle after every WORDS_PER_CYCLE new words
           const wordCount = bufferRef.current.split(/\s+/).filter(Boolean).length
-          const newWords = wordCount - wordCountAtLastJudgeRef.current
-          if (newWords >= WORDS_PER_CYCLE) {
+
+          // Trigger a scoring cycle after every WORDS_PER_CYCLE new words
+          const newWordsSinceJudge = wordCount - wordCountAtLastJudgeRef.current
+          if (newWordsSinceJudge >= WORDS_PER_CYCLE) {
             runCycle()
+          }
+
+          // In automatic mode, check for presenter transitions periodically
+          const { session: currentSession } = useAppStore.getState()
+          if (currentSession?.detection_mode === 'automatic') {
+            const newWordsSinceCheck = wordCount - wordCountAtLastTransitionCheckRef.current
+            if (newWordsSinceCheck >= TRANSITION_CHECK_WORDS) {
+              checkTransition()
+            }
           }
         }
       })
@@ -180,7 +266,7 @@ export function useAudioCapture() {
       console.error('Start recording error:', e)
       useAppStore.getState().setConnecting(false)
     }
-  }, [runCycle])
+  }, [runCycle, checkTransition])
 
   const stop = useCallback(async () => {
     stoppedRef.current = true  // block any SDK reconnect events from this point on
@@ -192,6 +278,7 @@ export function useAudioCapture() {
     connectionRef.current = null
     streamRef.current = null
     wordCountAtLastJudgeRef.current = 0
+    wordCountAtLastTransitionCheckRef.current = 0
     useAppStore.getState().setInterimTranscript('')
     useAppStore.getState().setRecordingStartedAt(null)
     await runCycle()

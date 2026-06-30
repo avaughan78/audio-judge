@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
+import { getSetting } from '@/lib/serverSettings'
+import { getServerUser } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
+    const user = await getServerUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { transcript, teamId, sessionId, brief } = await request.json()
 
     if (!transcript?.trim()) {
@@ -14,17 +19,30 @@ export async function POST(request: Request) {
     if (!teamId || !sessionId) {
       return NextResponse.json({ error: 'Missing teamId or sessionId' }, { status: 400 })
     }
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
-    }
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' }, { status: 500 })
+    }
+
+    const anthropicKey = await getSetting('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY, user.id)
+    if (!anthropicKey) {
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
     }
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
+
+    // Verify the session belongs to the authenticated user
+    const { data: sessionRow } = await supabase
+      .from('sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('user_id', user.id)
+      .single()
+    if (!sessionRow) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
 
     const { data: criteria, error: criteriaErr } = await supabase
       .from('criteria')
@@ -44,7 +62,7 @@ export async function POST(request: Request) {
       .map((c) => `- ${c.name} (ID: ${c.id}, weight: ${c.weight}): ${c.description || 'No description'}`)
       .join('\n')
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const anthropic = new Anthropic({ apiKey: anthropicKey })
 
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',

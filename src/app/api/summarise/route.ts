@@ -1,16 +1,24 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { getSetting } from '@/lib/serverSettings'
+import { getServerUser } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
+  const user = await getServerUser()
+  if (!user) return NextResponse.json({ summary: '' })
+
   const { transcript, brief } = await request.json()
 
   if (!transcript?.trim()) return NextResponse.json({ summary: '' })
 
   const briefContext = brief ? `\n\nEvaluation context: ${brief}` : ''
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const anthropicKey = await getSetting('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY, user.id)
+  if (!anthropicKey) return NextResponse.json({ summary: '' })
+
+  const anthropic = new Anthropic({ apiKey: anthropicKey })
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
