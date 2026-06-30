@@ -54,10 +54,12 @@ export function useAudioCapture() {
 
     setConnecting(true)
     try {
-      const [{ key }, stream] = await Promise.all([
+      const [tokenData, stream] = await Promise.all([
         fetch('/api/deepgram-token').then((r) => r.json()),
         navigator.mediaDevices.getUserMedia({ audio: true, video: false }),
       ])
+      if (tokenData.error) throw new Error(`Deepgram token error: ${tokenData.error}`)
+      const { key } = tokenData
       streamRef.current = stream
 
       const { DeepgramClient } = await import('@deepgram/sdk')
