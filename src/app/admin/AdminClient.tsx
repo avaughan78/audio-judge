@@ -520,16 +520,24 @@ export default function AdminClient() {
                         border: `1px solid ${isViewed ? 'var(--border-hover)' : 'transparent'}`,
                       }}
                       onClick={() => selectEvent(sess)}>
-                      <div className="flex items-center gap-2.5 px-3 py-2.5">
-                        <span className="h-2 w-2 rounded-full shrink-0 mt-0.5"
+                      <div className="flex items-center gap-2 px-3 py-2.5">
+                        <span className="h-2 w-2 rounded-full shrink-0"
                           style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
                         <span className="text-sm font-medium flex-1 truncate"
                           style={{ color: isViewed ? 'var(--accent)' : 'var(--text-secondary)' }}>
                           {sess.name}
                         </span>
-                        {isLive && (
+                        {isLive ? (
                           <span className="text-[10px] font-bold tracking-wide shrink-0"
                             style={{ color: '#4ade80' }}>LIVE</span>
+                        ) : (
+                          <button
+                            onClick={e => { e.stopPropagation(); activateSession(sess) }}
+                            className="shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}
+                            title="Set live">
+                            Set live
+                          </button>
                         )}
                       </div>
                     </div>
