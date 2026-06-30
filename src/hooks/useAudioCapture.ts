@@ -31,7 +31,7 @@ export function useAudioCapture() {
     wordCountAtLastJudgeRef.current = transcript.split(/\s+/).filter(Boolean).length
     setSummarising(true)
     try {
-      const [, summaryRes] = await Promise.allSettled([
+      const [judgeRes, summaryRes] = await Promise.allSettled([
         fetch('/api/judge', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -41,6 +41,10 @@ export function useAudioCapture() {
             sessionId: session.id,
             brief: session.brief,
           }),
+        }).then(async (r) => {
+          const data = await r.json()
+          if (!r.ok) throw new Error(`/api/judge ${r.status}: ${JSON.stringify(data)}`)
+          return data
         }),
         fetch('/api/summarise', {
           method: 'POST',
@@ -48,6 +52,12 @@ export function useAudioCapture() {
           body: JSON.stringify({ transcript, brief: session.brief }),
         }).then((r) => r.json()),
       ])
+
+      if (judgeRes.status === 'fulfilled') {
+        console.log('[judge] API success:', judgeRes.value)
+      } else {
+        console.error('[judge] API failed:', judgeRes.reason)
+      }
 
       if (summaryRes.status === 'fulfilled' && summaryRes.value?.summary) {
         setSummary(summaryRes.value.summary)
