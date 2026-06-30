@@ -1,8 +1,27 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 import { useAudioCapture } from '@/hooks/useAudioCapture'
+
+function useElapsedTime(startedAt: number | null) {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    if (!startedAt) { setElapsed(0); return }
+    const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [startedAt])
+  return elapsed
+}
+
+function formatTime(s: number) {
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${sec.toString().padStart(2, '0')}`
+}
 
 export function RecordingControl() {
   const isRecording = useAppStore((s) => s.isRecording)
@@ -10,6 +29,8 @@ export function RecordingControl() {
   const isSummarising = useAppStore((s) => s.isSummarising)
   const activeTeam = useAppStore((s) => s.activeTeam)
   const lastJudgedAt = useAppStore((s) => s.lastJudgedAt)
+  const recordingStartedAt = useAppStore((s) => s.recordingStartedAt)
+  const elapsed = useElapsedTime(recordingStartedAt)
   const { start, stop } = useAudioCapture()
 
   const canRecord = !!activeTeam && !isConnecting
@@ -31,13 +52,17 @@ export function RecordingControl() {
               </motion.div>
             ) : isRecording ? (
               <motion.div key="recording" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="flex items-center gap-2">
+                className="flex items-center gap-3">
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--score-low)' }} />
                   <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: 'var(--score-low)' }} />
                 </span>
                 <span className="text-xs font-medium" style={{ color: 'var(--score-low)' }}>
-                  Recording{activeTeam ? ` · ${activeTeam.name}` : ''}
+                  {activeTeam ? activeTeam.name : 'Recording'}
+                </span>
+                <span className="text-xs font-mono tabular-nums px-2 py-0.5 rounded"
+                  style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
+                  {formatTime(elapsed)}
                 </span>
                 {isSummarising && (
                   <span className="text-xs" style={{ color: 'var(--text-muted)' }}>· Scoring...</span>

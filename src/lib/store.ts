@@ -9,11 +9,13 @@ interface AppState {
   activeTeam: Team | null
   scores: Record<string, Score>
   transcript: string
+  interimTranscript: string
   summary: string
   isRecording: boolean
   isConnecting: boolean
   isSummarising: boolean
   lastJudgedAt: number
+  recordingStartedAt: number | null
   themeId: ThemeId
 
   setSession: (s: Session | null) => void
@@ -23,12 +25,14 @@ interface AppState {
   setScores: (scores: Record<string, Score>) => void
   updateScore: (score: Score) => void
   appendTranscript: (text: string) => void
+  setInterimTranscript: (text: string) => void
   setSummary: (s: string) => void
   clearTeamState: () => void
   setRecording: (v: boolean) => void
   setConnecting: (v: boolean) => void
   setSummarising: (v: boolean) => void
   setLastJudgedAt: (t: number) => void
+  setRecordingStartedAt: (t: number | null) => void
   setThemeId: (id: ThemeId) => void
 }
 
@@ -41,18 +45,20 @@ export const useAppStore = create<AppState>()(
       activeTeam: null,
       scores: {},
       transcript: '',
+      interimTranscript: '',
       summary: '',
       isRecording: false,
       isConnecting: false,
       isSummarising: false,
       lastJudgedAt: 0,
+      recordingStartedAt: null,
       themeId: 'midnight',
 
       setSession: (session) => set({ session }),
       setTeams: (teams) => set({ teams }),
       setCriteria: (criteria) => set({ criteria }),
       setActiveTeam: (activeTeam) =>
-        set({ activeTeam, scores: {}, transcript: '', summary: '' }),
+        set({ activeTeam, scores: {}, transcript: '', interimTranscript: '', summary: '' }),
       setScores: (scores) => set({ scores }),
       updateScore: (score) =>
         set((state) => ({
@@ -62,12 +68,14 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           transcript: state.transcript ? state.transcript + ' ' + text : text,
         })),
+      setInterimTranscript: (interimTranscript) => set({ interimTranscript }),
       setSummary: (summary) => set({ summary }),
-      clearTeamState: () => set({ scores: {}, transcript: '', summary: '' }),
+      clearTeamState: () => set({ scores: {}, transcript: '', interimTranscript: '', summary: '' }),
       setRecording: (isRecording) => set({ isRecording }),
       setConnecting: (isConnecting) => set({ isConnecting }),
       setSummarising: (isSummarising) => set({ isSummarising }),
       setLastJudgedAt: (lastJudgedAt) => set({ lastJudgedAt }),
+      setRecordingStartedAt: (recordingStartedAt) => set({ recordingStartedAt }),
       setThemeId: (themeId) => set({ themeId }),
     }),
     {

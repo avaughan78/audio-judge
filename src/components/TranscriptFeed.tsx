@@ -6,6 +6,7 @@ import { useAppStore } from '@/lib/store'
 
 export function TranscriptFeed() {
   const transcript = useAppStore((s) => s.transcript)
+  const interimTranscript = useAppStore((s) => s.interimTranscript)
   const isRecording = useAppStore((s) => s.isRecording)
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevWordCountRef = useRef(0)
@@ -39,7 +40,7 @@ export function TranscriptFeed() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 min-h-0">
-        {words.length === 0 ? (
+        {words.length === 0 && !interimTranscript ? (
           <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: 'var(--text-muted)' }}>
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
@@ -48,6 +49,10 @@ export function TranscriptFeed() {
             </svg>
             <p className="text-sm text-center">Transcript will appear here once recording begins</p>
           </div>
+        ) : words.length === 0 ? (
+          <p className="text-sm leading-7 break-words font-mono italic" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
+            {interimTranscript}
+          </p>
         ) : (
           <p className="text-sm leading-7 break-words font-mono" style={{ color: 'var(--text-secondary)' }}>
             {words.map((word, i) => (
@@ -61,6 +66,11 @@ export function TranscriptFeed() {
                 {word}
               </motion.span>
             ))}
+            {interimTranscript && (
+              <span className="italic mr-1" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
+                {' '}{interimTranscript}
+              </span>
+            )}
           </p>
         )}
         <div ref={bottomRef} />

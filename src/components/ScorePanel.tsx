@@ -32,7 +32,7 @@ export function ScorePanel() {
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
-          Judging Criteria
+          Scoring Criteria
         </span>
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase'
 import { TeamSelector } from '@/components/TeamSelector'
@@ -13,6 +14,8 @@ import { ThemeSelector, ThemeProvider } from '@/components/ThemeSelector'
 
 export default function JudgePage() {
   const { session, setSession, setTeams, setCriteria, updateScore, setThemeId } = useAppStore()
+  const activeTeam = useAppStore((s) => s.activeTeam)
+  const isRecording = useAppStore((s) => s.isRecording)
 
   useEffect(() => {
     const supabase = createClient()
@@ -105,6 +108,30 @@ export default function JudgePage() {
             <NavLink href="/admin" label="Admin" icon="settings" />
           </div>
         </header>
+
+        {/* Active presenter banner */}
+        <AnimatePresence>
+          {isRecording && activeTeam && (
+            <motion.div
+              key="presenter-banner"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="relative z-10 overflow-hidden shrink-0"
+              style={{ background: 'linear-gradient(90deg, var(--accent-dim) 0%, transparent 100%)', borderBottom: '1px solid var(--border-hover)' }}
+            >
+              <div className="flex items-center gap-3 px-5 py-2">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--accent)' }} />
+                  <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: 'var(--accent)' }} />
+                </span>
+                <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Now evaluating</span>
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{activeTeam.name}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {!session ? (
           <div className="relative z-10 flex-1 flex items-center justify-center">

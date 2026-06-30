@@ -21,8 +21,12 @@ export function useAudioCapture() {
     const state = useAppStore.getState()
     const { activeTeam, session, setSummarising, setSummary, setLastJudgedAt } = state
     const transcript = bufferRef.current.trim()
-    if (!transcript || !activeTeam || !session) return
+    if (!transcript || !activeTeam || !session) {
+      console.log('[judge] runCycle skipped — missing:', { hasTranscript: !!transcript, hasTeam: !!activeTeam, hasSession: !!session })
+      return
+    }
 
+    console.log('[judge] Starting cycle — words:', transcript.split(/\s+/).filter(Boolean).length)
     isJudgingRef.current = true
     wordCountAtLastJudgeRef.current = transcript.split(/\s+/).filter(Boolean).length
     setSummarising(true)
@@ -49,8 +53,9 @@ export function useAudioCapture() {
         setSummary(summaryRes.value.summary)
       }
       setLastJudgedAt(Date.now())
+      console.log('[judge] Cycle complete')
     } catch (e) {
-      console.error('Judging cycle error:', e)
+      console.error('[judge] Cycle error:', e)
     } finally {
       setSummarising(false)
       isJudgingRef.current = false
@@ -58,7 +63,7 @@ export function useAudioCapture() {
   }, [])
 
   const start = useCallback(async () => {
-    const { activeTeam, setConnecting, setRecording, appendTranscript } =
+    const { activeTeam, setConnecting, setRecording, appendTranscript, setInterimTranscript, setRecordingStartedAt } =
       useAppStore.getState()
     if (!activeTeam) return
 
@@ -89,8 +94,10 @@ export function useAudioCapture() {
       connectionRef.current = conn
 
       conn.on('open', () => {
+        console.log('[deepgram] Connected')
         setConnecting(false)
         setRecording(true)
+        setRecordingStartedAt(Date.now())
 
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? 'audio/webm;codecs=opus'
@@ -113,9 +120,15 @@ export function useAudioCapture() {
         if (message?.type !== 'Results') return
         const alt = message?.channel?.alternatives?.[0]
         if (!alt?.transcript?.trim()) return
+        if (!message.is_final) {
+          useAppStore.getState().setInterimTranscript(alt.transcript)
+          return
+        }
         if (message.is_final) {
+          useAppStore.getState().setInterimTranscript('')
           appendTranscript(alt.transcript)
           bufferRef.current += ' ' + alt.transcript
+          console.log('[deepgram] Final transcript chunk, total words:', bufferRef.current.split(/\s+/).filter(Boolean).length)
 
           // Write to transcript_chunks so the display page ticker updates
           const { activeTeam: team, session: sess } = useAppStore.getState()
@@ -136,12 +149,15 @@ export function useAudioCapture() {
       })
 
       conn.on('error', (e: any) => {
-        console.error('Deepgram error:', e)
+        console.error('[deepgram] Error:', e)
         useAppStore.getState().setConnecting(false)
         useAppStore.getState().setRecording(false)
       })
 
-      conn.on('close', () => useAppStore.getState().setRecording(false))
+      conn.on('close', () => {
+        console.log('[deepgram] Connection closed')
+        useAppStore.getState().setRecording(false)
+      })
 
       conn.connect()
     } catch (e) {
@@ -159,6 +175,8 @@ export function useAudioCapture() {
     connectionRef.current = null
     streamRef.current = null
     wordCountAtLastJudgeRef.current = 0
+    useAppStore.getState().setInterimTranscript('')
+    useAppStore.getState().setRecordingStartedAt(null)
     await runCycle()
     useAppStore.getState().setRecording(false)
     bufferRef.current = ''

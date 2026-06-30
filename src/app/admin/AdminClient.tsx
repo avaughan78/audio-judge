@@ -11,7 +11,7 @@ import { useAppStore } from '@/lib/store'
 
 // ── Default content ─────────────────────────────────────────────────────────
 
-const BRIEF_PLACEHOLDER = `e.g. This is a 24-hour open innovation hackathon. Teams should build a working prototype that solves a real problem. We're looking for ideas that are genuinely novel — not just a thin layer on top of an existing product. The demo should show the product working, not a slide deck about what it might do. Technical ambition matters, but so does clarity: if you can't explain the problem and solution in 60 seconds, that's a gap.`
+const BRIEF_PLACEHOLDER = `e.g. This is a 24-hour open innovation hackathon. Teams present a working prototype that solves a real problem — ideally something novel, not a thin layer on an existing product. We want to see the product working, not slides about what it might do. Technical ambition matters, but so does clarity: if you can't explain the problem and solution in 60 seconds, that's a gap.\n\nThis context helps the AI understand what good looks like and score accordingly.`
 
 const DEFAULT_CRITERIA = [
   {
@@ -398,29 +398,29 @@ export default function AdminClient() {
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }} className="space-y-8">
 
-                {/* ── Step 2: Brief ────────────────────────────────────── */}
+                {/* ── Step 2: Context ──────────────────────────────────── */}
                 <section>
-                  <SectionHeading step={2} title="Hackathon Brief"
-                    subtitle="Describe the theme and goals. The AI uses this to judge more accurately." />
+                  <SectionHeading step={2} title="Context"
+                    subtitle="What are you evaluating, and what does success look like? The AI uses this to score more accurately." />
                   <div className="glass rounded-xl p-4 space-y-3">
                     <Textarea value={brief} onChange={setBrief} rows={5}
                       placeholder={BRIEF_PLACEHOLDER} />
                     <div className="flex justify-end">
                       <Btn onClick={saveBrief} disabled={savingBrief}>
-                        {savingBrief ? 'Saving…' : 'Save Brief'}
+                        {savingBrief ? 'Saving…' : 'Save Context'}
                       </Btn>
                     </div>
                   </div>
                 </section>
 
-                {/* ── Step 3: Teams ────────────────────────────────────── */}
+                {/* ── Step 3: Participants ─────────────────────────────── */}
                 <section>
-                  <SectionHeading step={3} title={`Teams${teams.length ? ` (${teams.length})` : ''}`}
-                    subtitle="Add each competing team." />
+                  <SectionHeading step={3} title={`Participants${teams.length ? ` (${teams.length})` : ''}`}
+                    subtitle="Add each team, candidate, or presenter being evaluated." />
                   <div className="space-y-2">
                     <div className="glass rounded-xl p-4 space-y-2">
                       <div className="flex gap-2">
-                        <Input value={newTeamName} onChange={setNewTeamName} placeholder="Team name" className="flex-1" />
+                        <Input value={newTeamName} onChange={setNewTeamName} placeholder="Name — e.g. Team Alpha, Candidate A" className="flex-1" />
                         <Btn onClick={createTeam} disabled={!newTeamName.trim()}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -443,7 +443,7 @@ export default function AdminClient() {
                     ))}
 
                     {teams.length === 0 && (
-                      <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>No teams yet</p>
+                      <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>No participants yet</p>
                     )}
                   </div>
                 </section>
@@ -458,9 +458,9 @@ export default function AdminClient() {
                       </div>
                       <div>
                         <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                          {`Judging Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
+                          {`Scoring Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
                         </h2>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>What the AI scores on. Good descriptions lead to better scores.</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>What the AI scores on. Specific descriptions lead to better, more reliable scores.</p>
                       </div>
                     </div>
                     {criteria.length === 0 && (
@@ -476,9 +476,9 @@ export default function AdminClient() {
                   </div>
                   <div className="space-y-2">
                     <div className="glass rounded-xl p-4 space-y-2">
-                      <Input value={newCritName} onChange={setNewCritName} placeholder="Criterion name — e.g. Innovation" />
+                      <Input value={newCritName} onChange={setNewCritName} placeholder="Criterion name — e.g. Clarity, Technical Depth" />
                       <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={2}
-                        placeholder="AI scoring guide — e.g. How novel is the idea? Does it solve a problem in a new way?" />
+                        placeholder="Scoring guide for the AI — the more specific, the better. e.g. Does the presenter clearly identify the problem and who has it? Do they show evidence rather than assertion?" />
                       <div className="flex items-end gap-2">
                         <div className="w-28">
                           <label className="text-xs mb-1 block" style={{ color: 'var(--text-muted)' }}>Weight</label>
@@ -513,7 +513,7 @@ export default function AdminClient() {
                     ))}
 
                     {criteria.length === 0 && (
-                      <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>No criteria yet</p>
+                      <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>No criteria yet — use "Add defaults" for a ready-made set</p>
                     )}
                   </div>
                 </section>
@@ -558,15 +558,15 @@ export default function AdminClient() {
                     className="rounded-xl p-4 flex items-center justify-between gap-4"
                     style={{ background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.2)' }}>
                     <div>
-                      <p className="text-sm font-semibold" style={{ color: '#4ade80' }}>Ready to judge</p>
+                      <p className="text-sm font-semibold" style={{ color: '#4ade80' }}>Ready to evaluate</p>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        {teams.length} team{teams.length !== 1 ? 's' : ''} · {criteria.length} criteri{criteria.length !== 1 ? 'a' : 'on'}
+                        {teams.length} participant{teams.length !== 1 ? 's' : ''} · {criteria.length} criteri{criteria.length !== 1 ? 'a' : 'on'}
                       </p>
                     </div>
                     <Link href="/"
                       className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
                       style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
-                      Start judging
+                      Start evaluating
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <polyline points="9 18 15 12 9 6" />
                       </svg>
