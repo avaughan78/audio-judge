@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { maskValue } from '@/lib/serverSettings'
+import { maskValue, decrypt } from '@/lib/serverSettings'
+import { encrypt } from '@/lib/encryption'
 import { getServerUser } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
@@ -33,14 +34,19 @@ export async function GET() {
 
   const result = MANAGED_KEYS.map(({ key, label, hint }) => {
     const dbRow = dbMap[key]
-    const value = dbRow?.value || ''
+    const rawValue = dbRow?.value || ''
+    // Decrypt before masking so the preview shows the correct prefix characters
+    let plainValue = ''
+    if (rawValue) {
+      try { plainValue = decrypt(rawValue) } catch { plainValue = rawValue }
+    }
     return {
       key,
       label,
       hint,
-      isSet: !!value,
+      isSet: !!plainValue,
       source: dbRow ? 'db' : 'unset',
-      preview: value ? maskValue(value) : '',
+      preview: plainValue ? maskValue(plainValue) : '',
       updatedAt: dbRow?.updated_at ?? null,
     }
   })
@@ -67,7 +73,7 @@ export async function POST(request: Request) {
   }
 
   const { error } = await supabase.from('settings').upsert(
-    { key, value: value.trim(), user_id: user.id, updated_at: new Date().toISOString() },
+    { key, value: encrypt(value.trim()), user_id: user.id, updated_at: new Date().toISOString() },
     { onConflict: 'key,user_id' }
   )
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

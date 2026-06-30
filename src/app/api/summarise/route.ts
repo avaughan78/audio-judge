@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import { getSetting } from '@/lib/serverSettings'
 import { getServerUser } from '@/lib/supabase-server'
+import { rateLimit } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,9 +11,23 @@ export async function POST(request: Request) {
   const user = await getServerUser()
   if (!user) return NextResponse.json({ summary: '' })
 
+  if (!rateLimit(user.id, 'summarise', 3000)) {
+    return NextResponse.json({ summary: '' })
+  }
+
   const { transcript, brief, teamId } = await request.json()
 
   if (!transcript?.trim()) return NextResponse.json({ summary: '' })
+
+  // Verify the team belongs to a session owned by this user
+  if (teamId && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const { data: team } = await supabase.from('teams').select('session_id').eq('id', teamId).single()
+    if (team) {
+      const { data: sess } = await supabase.from('sessions').select('id').eq('id', team.session_id).eq('user_id', user.id).single()
+      if (!sess) return NextResponse.json({ summary: '' })
+    }
+  }
 
   const briefContext = brief ? `\n\nEvaluation context: ${brief}` : ''
 

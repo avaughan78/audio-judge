@@ -19,11 +19,16 @@ export default function JudgePage() {
   const teams = useAppStore((s) => s.teams)
   const isRecording = useAppStore((s) => s.isRecording)
   const isSummarising = useAppStore((s) => s.isSummarising)
+  const judgeError = useAppStore((s) => s.judgeError)
   const [prevTeamName, setPrevTeamName] = useState<string | null>(null)
   const [showTransition, setShowTransition] = useState(false)
   const [missingKeys, setMissingKeys] = useState<string[]>([])
   const [confirmNext, setConfirmNext] = useState(false)
-  const { advanceToNextTeam } = useAudioCapture()
+  const [confirmAutoAdvance, setConfirmAutoAdvance] = useState(false)
+  const [showAddTeamInline, setShowAddTeamInline] = useState(false)
+  const [newTeamNameInline, setNewTeamNameInline] = useState('')
+  const [addingTeamInline, setAddingTeamInline] = useState(false)
+  const { advanceToNextTeam, manualAdvanceAutoMode } = useAudioCapture()
 
   // Flash transition banner when team changes
   useEffect(() => {
@@ -102,6 +107,21 @@ export default function JudgePage() {
     }
   }, [])
 
+  const addTeamInline = async () => {
+    if (!newTeamNameInline.trim() || !session) return
+    setAddingTeamInline(true)
+    const supabase = createClient()
+    const { data } = await supabase.from('teams').insert({
+      session_id: session.id, name: newTeamNameInline.trim(), order_index: teams.length,
+    }).select().single()
+    if (data) {
+      setTeams([...teams, data])
+      setNewTeamNameInline('')
+      setShowAddTeamInline(false)
+    }
+    setAddingTeamInline(false)
+  }
+
   return (
     <ThemeProvider>
       <div className="flex flex-col h-full" style={{ background: 'var(--bg)' }}>
@@ -157,6 +177,19 @@ export default function JudgePage() {
           </div>
         )}
 
+        {/* Judge error banner */}
+        {judgeError && (
+          <div className="relative z-10 flex items-center justify-between gap-3 px-5 py-2"
+            style={{ background: 'rgba(239,68,68,0.08)', borderBottom: '1px solid rgba(239,68,68,0.2)' }}>
+            <div className="flex items-center gap-2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p className="text-xs" style={{ color: '#f87171' }}>Scoring error: {judgeError}</p>
+            </div>
+          </div>
+        )}
+
         {!session ? (
           <div className="relative z-10 flex-1 flex items-center justify-center">
             <div className="text-center space-y-4">
@@ -186,6 +219,39 @@ export default function JudgePage() {
                       {activeTeam?.name ?? 'Waiting for presenter…'}
                     </span>
                   </div>
+                  {/* Manual fallback advance — auto mode only, visible when recording */}
+                  {isRecording && activeTeam && (
+                    confirmAutoAdvance ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Score &amp; next?</span>
+                        <button
+                          onClick={async () => { setConfirmAutoAdvance(false); await manualAdvanceAutoMode() }}
+                          disabled={isSummarising}
+                          className="text-xs px-2.5 py-1 rounded-lg font-medium disabled:opacity-50"
+                          style={{ background: 'var(--accent)', color: 'white' }}>
+                          Yes
+                        </button>
+                        <button
+                          onClick={() => setConfirmAutoAdvance(false)}
+                          className="text-xs px-2.5 py-1 rounded-lg"
+                          style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmAutoAdvance(true)}
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                        Next presenter
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                    )
+                  )}
                 </>
               ) : (
                 <>
@@ -195,6 +261,42 @@ export default function JudgePage() {
                   <div className="flex-1 overflow-hidden">
                     <TeamSelector />
                   </div>
+                  {/* Inline add participant */}
+                  {showAddTeamInline ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <input
+                        autoFocus
+                        value={newTeamNameInline}
+                        onChange={e => setNewTeamNameInline(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') addTeamInline(); if (e.key === 'Escape') { setShowAddTeamInline(false); setNewTeamNameInline('') } }}
+                        placeholder="Participant name…"
+                        className="w-36 px-2.5 py-1 rounded-lg text-xs focus:outline-none"
+                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-hover)', color: 'var(--text-primary)' }}
+                      />
+                      <button onClick={addTeamInline} disabled={addingTeamInline || !newTeamNameInline.trim()}
+                        className="text-xs px-2.5 py-1 rounded-lg font-medium disabled:opacity-50"
+                        style={{ background: 'var(--accent)', color: 'white' }}>
+                        {addingTeamInline ? '…' : 'Add'}
+                      </button>
+                      <button onClick={() => { setShowAddTeamInline(false); setNewTeamNameInline('') }}
+                        className="text-xs px-2 py-1 rounded-lg"
+                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowAddTeamInline(true)}
+                      className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full transition-all"
+                      style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}
+                      title="Add participant"
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </button>
+                  )}
                   {/* Next presenter button — manual mode only */}
                   {activeTeam && teams.findIndex(t => t.id === activeTeam.id) < teams.length - 1 && (
                     confirmNext ? (

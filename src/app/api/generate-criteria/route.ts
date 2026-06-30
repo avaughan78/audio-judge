@@ -2,12 +2,17 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getSetting } from '@/lib/serverSettings'
 import { getServerUser } from '@/lib/supabase-server'
+import { rateLimit } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   const user = await getServerUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (!rateLimit(user.id, 'generate-criteria', 2000)) {
+    return NextResponse.json({ error: 'Rate limited' }, { status: 429 })
+  }
 
   const { name, brief } = await request.json()
   if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 })

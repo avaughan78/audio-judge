@@ -53,9 +53,10 @@ interface ScoreBarProps {
   large?: boolean
   xl?: boolean
   isScanning?: boolean
+  onScoreClick?: () => void
 }
 
-export function ScoreBar({ name, description, score, reasoning, weight = 1, index = 0, large = false, xl = false, isScanning = false }: ScoreBarProps) {
+export function ScoreBar({ name, description, score, reasoning, weight = 1, index = 0, large = false, xl = false, isScanning = false, onScoreClick }: ScoreBarProps) {
   const style = getScoreStyle(score)
   const hasScore = score > 0
 
@@ -86,7 +87,11 @@ export function ScoreBar({ name, description, score, reasoning, weight = 1, inde
           )}
         </div>
 
-        <div className="flex items-baseline gap-1 shrink-0">
+        <div
+          className={`flex items-baseline gap-1 shrink-0 ${onScoreClick ? 'cursor-pointer rounded-lg px-1 -mx-1 transition-colors hover:bg-white/5' : ''}`}
+          onClick={onScoreClick}
+          title={onScoreClick ? 'Click to override score' : undefined}
+        >
           <motion.span
             className={`font-black tabular-nums transition-colors duration-500 ${numSize}`}
             style={{ color: hasScore ? style.color : 'var(--text-muted)' }}

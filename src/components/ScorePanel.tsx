@@ -1,12 +1,57 @@
 'use client'
 
-import { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 import { ScoreBar } from './ScoreBar'
 
 interface ScorePanelProps {
   fullscreen?: boolean
+}
+
+function ScoreOverrideInput({ criteriaId, current, onClose }: { criteriaId: string; current: number; onClose: () => void }) {
+  const [value, setValue] = useState(String(current || ''))
+  const [saving, setSaving] = useState(false)
+  const { session, activeTeam, updateScore } = useAppStore.getState()
+
+  const save = async () => {
+    const num = parseInt(value, 10)
+    if (isNaN(num) || num < 0 || num > 100) return
+    if (!session || !activeTeam) return
+    setSaving(true)
+    const res = await fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: session.id, teamId: activeTeam.id, criteriaId, score: num, reasoning: 'Manual override' }),
+    })
+    if (res.ok) {
+      updateScore({ criteria_id: criteriaId, score: num, reasoning: 'Manual override', team_id: activeTeam.id, session_id: session.id, id: '', updated_at: '' })
+    }
+    setSaving(false)
+    onClose()
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+      className="flex items-center gap-2 mt-1">
+      <input
+        type="number" min={0} max={100} value={value} onChange={e => setValue(e.target.value)}
+        autoFocus
+        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') onClose() }}
+        className="w-16 px-2 py-1 rounded-lg text-sm text-center font-bold tabular-nums focus:outline-none"
+        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-hover)', color: 'var(--text-primary)' }}
+      />
+      <button onClick={save} disabled={saving}
+        className="text-xs px-2 py-1 rounded-lg font-medium disabled:opacity-40"
+        style={{ background: 'var(--accent)', color: 'white' }}>
+        {saving ? '…' : 'Set'}
+      </button>
+      <button onClick={onClose} className="text-xs px-2 py-1 rounded-lg"
+        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+        Cancel
+      </button>
+    </motion.div>
+  )
 }
 
 export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
@@ -15,6 +60,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
   const activeTeam = useAppStore((s) => s.activeTeam)
   const isSummarising = useAppStore((s) => s.isSummarising)
   const isRecording = useAppStore((s) => s.isRecording)
+  const [editingCriteriaId, setEditingCriteriaId] = useState<string | null>(null)
 
   const overall = useMemo(() => {
     const scored = criteria.filter((c) => (scores[c.id]?.score ?? 0) > 0)
@@ -47,20 +93,30 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
           <div className="flex-1 overflow-y-auto">
             <div className="p-6 space-y-8">
               {criteria.map((c, i) => (
-                <ScoreBar
-                  key={c.id}
-                  name={c.name}
-                  description={c.description}
-                  score={scores[c.id]?.score ?? 0}
-                  reasoning={scores[c.id]?.reasoning}
-                  weight={c.weight}
-                  index={i}
-                  xl
-                  isScanning={isRecording && isSummarising}
-                />
+                <div key={c.id}>
+                  <ScoreBar
+                    name={c.name}
+                    description={c.description}
+                    score={scores[c.id]?.score ?? 0}
+                    reasoning={scores[c.id]?.reasoning}
+                    weight={c.weight}
+                    index={i}
+                    xl
+                    isScanning={isRecording && isSummarising}
+                    onScoreClick={() => setEditingCriteriaId(editingCriteriaId === c.id ? null : c.id)}
+                  />
+                  <AnimatePresence>
+                    {editingCriteriaId === c.id && (
+                      <ScoreOverrideInput
+                        criteriaId={c.id}
+                        current={scores[c.id]?.score ?? 0}
+                        onClose={() => setEditingCriteriaId(null)}
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
               ))}
 
-              {/* Overall score */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -68,15 +124,11 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
                 className="pt-6 flex items-center gap-6"
                 style={{ borderTop: '1px solid var(--border)' }}
               >
-                {/* Gauge */}
                 <div className="relative w-24 h-24 shrink-0">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="40" fill="none" strokeWidth="7" style={{ stroke: 'rgba(255,255,255,0.05)' }} />
                     <motion.circle
-                      cx="50" cy="50" r="40"
-                      fill="none"
-                      strokeWidth="7"
-                      strokeLinecap="round"
+                      cx="50" cy="50" r="40" fill="none" strokeWidth="7" strokeLinecap="round"
                       strokeDasharray={circumference}
                       initial={{ strokeDashoffset: circumference }}
                       animate={{ strokeDashoffset: circumference * (1 - overall / 100) }}
@@ -102,7 +154,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
                 </div>
                 <div>
                   <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Overall Score</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Weighted average across {criteria.length} criteri{criteria.length !== 1 ? 'a' : 'on'}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Weighted average · click a score to override</p>
                 </div>
               </motion.div>
             </div>
@@ -112,7 +164,6 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
     )
   }
 
-  // Legacy compact panel (used by display page etc.)
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -120,7 +171,6 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
           Scoring Criteria
         </span>
       </div>
-
       <div className="flex-1 overflow-y-auto p-4 space-y-5 min-h-0">
         {!activeTeam ? (
           <div className="flex items-center justify-center h-full text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -133,18 +183,28 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
         ) : (
           <>
             {criteria.map((c, i) => (
-              <ScoreBar
-                key={c.id}
-                name={c.name}
-                description={c.description}
-                score={scores[c.id]?.score ?? 0}
-                reasoning={scores[c.id]?.reasoning}
-                weight={c.weight}
-                index={i}
-                isScanning={isRecording && isSummarising}
-              />
+              <div key={c.id}>
+                <ScoreBar
+                  name={c.name}
+                  description={c.description}
+                  score={scores[c.id]?.score ?? 0}
+                  reasoning={scores[c.id]?.reasoning}
+                  weight={c.weight}
+                  index={i}
+                  isScanning={isRecording && isSummarising}
+                  onScoreClick={() => setEditingCriteriaId(editingCriteriaId === c.id ? null : c.id)}
+                />
+                <AnimatePresence>
+                  {editingCriteriaId === c.id && (
+                    <ScoreOverrideInput
+                      criteriaId={c.id}
+                      current={scores[c.id]?.score ?? 0}
+                      onClose={() => setEditingCriteriaId(null)}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
             ))}
-
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -154,20 +214,14 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>
-                    Overall Score
-                  </p>
+                  <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Overall Score</p>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Weighted average</p>
                 </div>
-
                 <div className="relative w-20 h-20">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="40" fill="none" strokeWidth="7" style={{ stroke: 'rgba(255,255,255,0.05)' }} />
                     <motion.circle
-                      cx="50" cy="50" r="40"
-                      fill="none"
-                      strokeWidth="7"
-                      strokeLinecap="round"
+                      cx="50" cy="50" r="40" fill="none" strokeWidth="7" strokeLinecap="round"
                       strokeDasharray={circumference}
                       initial={{ strokeDashoffset: circumference }}
                       animate={{ strokeDashoffset: circumference * (1 - overall / 100) }}
@@ -176,19 +230,11 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <motion.span
-                      className="text-2xl font-black tabular-nums leading-none"
-                      style={{ color: overallColor }}
-                      key={overall}
-                      initial={{ scale: 0.8 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', stiffness: 200 }}
-                    >
+                    <motion.span className="text-2xl font-black tabular-nums leading-none" style={{ color: overallColor }}
+                      key={overall} initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
                       {overall || '—'}
                     </motion.span>
-                    {overall > 0 && (
-                      <span className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>/100</span>
-                    )}
+                    {overall > 0 && <span className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>/100</span>}
                   </div>
                 </div>
               </div>

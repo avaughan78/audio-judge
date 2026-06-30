@@ -4,11 +4,11 @@ import { useRef, useCallback } from 'react'
 import { useAppStore } from '@/lib/store'
 import { createClient as createSupabaseClient } from '@/lib/supabase'
 
-const WORDS_PER_CYCLE = 40   // trigger a score after every 40 new words
-const CYCLE_INTERVAL_MS = 12_000  // also trigger on a 12s timer as fallback
-// In auto mode, check for presenter transition after every N new words (but not too frequently)
+const WORDS_PER_CYCLE = 40
+const CYCLE_INTERVAL_MS = 12_000
 const TRANSITION_CHECK_WORDS = 30
-const MIN_WORDS_BEFORE_TRANSITION = 60  // don't detect transitions in the first ~60 words
+const MIN_WORDS_BEFORE_TRANSITION = 60
+const MAX_BUFFER_WORDS = 8_000  // prevent unbounded memory growth on long events
 
 export function useAudioCapture() {
   const connectionRef = useRef<any>(null)
@@ -31,17 +31,13 @@ export function useAudioCapture() {
   // Sends the current transcript buffer to /api/judge and /api/summarise in parallel.
   // Called both on a word-count trigger and a periodic timer; the isJudgingRef guard
   // ensures only one cycle runs at a time regardless of which trigger fires.
-  const runCycle = useCallback(async () => {
+  const runCycle = useCallback(async (options?: { final?: boolean }) => {
     if (isJudgingRef.current) return
     const state = useAppStore.getState()
-    const { activeTeam, session, setSummarising, setSummary, setLastJudgedAt } = state
+    const { activeTeam, session, setSummarising, setSummary, setLastJudgedAt, setJudgeError } = state
     const transcript = bufferRef.current.trim()
-    if (!transcript || !activeTeam || !session) {
-      console.log('[judge] runCycle skipped — missing:', { hasTranscript: !!transcript, hasTeam: !!activeTeam, hasSession: !!session })
-      return
-    }
+    if (!transcript || !activeTeam || !session) return
 
-    console.log('[judge] Starting cycle — words:', transcript.split(/\s+/).filter(Boolean).length)
     isJudgingRef.current = true
     wordCountAtLastJudgeRef.current = transcript.split(/\s+/).filter(Boolean).length
     setSummarising(true)
@@ -55,10 +51,11 @@ export function useAudioCapture() {
             teamId: activeTeam.id,
             sessionId: session.id,
             brief: session.brief,
+            final: options?.final ?? false,
           }),
         }).then(async (r) => {
           const data = await r.json()
-          if (!r.ok) throw new Error(`/api/judge ${r.status}: ${JSON.stringify(data)}`)
+          if (!r.ok) throw new Error(data.error ?? `HTTP ${r.status}`)
           return data
         }),
         fetch('/api/summarise', {
@@ -69,30 +66,32 @@ export function useAudioCapture() {
       ])
 
       if (judgeRes.status === 'fulfilled') {
-        console.log('[judge] API success:', judgeRes.value)
+        setJudgeError(null)
       } else {
         console.error('[judge] API failed:', judgeRes.reason)
+        setJudgeError(String(judgeRes.reason?.message ?? 'Scoring failed — check your API key'))
       }
 
       if (summaryRes.status === 'fulfilled' && summaryRes.value?.summary) {
         setSummary(summaryRes.value.summary)
       }
       setLastJudgedAt(Date.now())
-      console.log('[judge] Cycle complete')
-    } catch (e) {
+    } catch (e: any) {
       console.error('[judge] Cycle error:', e)
+      setJudgeError(e?.message ?? 'Scoring error')
     } finally {
       setSummarising(false)
       isJudgingRef.current = false
     }
   }, [])
 
-  // Called in automatic mode after enough new words have accumulated.
-  // If a transition is detected, creates a new team, switches to it, and resets the buffer.
+  // Calls the server-side /api/auto-transition endpoint which atomically detects
+  // a presenter change (or triggers one manually) and creates the new team row.
+  // Server-side to prevent race conditions when multiple clients are open.
   const checkTransition = useCallback(async () => {
     if (isDetectingRef.current) return
     const state = useAppStore.getState()
-    const { session, setActiveTeam, incrementAutoTeamCounter, autoTeamCounter } = state
+    const { session, setActiveTeam } = state
 
     const totalWords = bufferRef.current.split(/\s+/).filter(Boolean).length
     if (totalWords < MIN_WORDS_BEFORE_TRANSITION) return
@@ -101,56 +100,32 @@ export function useAudioCapture() {
     isDetectingRef.current = true
 
     try {
-      // Send the last ~60 seconds of speech for transition detection
       const recentTranscript = bufferRef.current.split(/\s+/).filter(Boolean).slice(-120).join(' ')
-      const res = await fetch('/api/detect-transition', {
+      const res = await fetch('/api/auto-transition', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recentTranscript }),
+        body: JSON.stringify({ sessionId: session?.id, recentTranscript, manual: false }),
       })
       const data = await res.json()
-      console.log('[auto] Transition check result:', data)
 
-      if (!data.transition || !session) return
+      if (!data.transition || !data.team) return
 
-      // Run a final scoring cycle for the current team before switching
-      await runCycle()
+      // Score the outgoing presenter before switching
+      await runCycle({ final: true })
 
-      // Create a new team in the DB
-      const supabase = createSupabaseClient()
-      const newTeamNumber = autoTeamCounter + 1
-      const newName = data.name?.trim() || `Presenter ${newTeamNumber}`
-
-      const { data: newTeam, error } = await supabase
-        .from('teams')
-        .insert({
-          session_id: session.id,
-          name: newName,
-          order_index: newTeamNumber,
-        })
-        .select()
-        .single()
-
-      if (error || !newTeam) {
-        console.error('[auto] Failed to create team:', error)
-        return
-      }
-
-      // Update sessions.active_team_id so the display page switches
-      await supabase.from('sessions').update({ active_team_id: newTeam.id }).eq('id', session.id)
-
-      // Switch locally
-      incrementAutoTeamCounter()
-      setActiveTeam(newTeam)
+      setActiveTeam(data.team)
+      useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
       bufferRef.current = ''
       wordCountAtLastJudgeRef.current = 0
       wordCountAtLastTransitionCheckRef.current = 0
 
-      // Also add the new team to the local teams list
-      const { teams } = useAppStore.getState()
-      useAppStore.setState({ teams: [...teams, newTeam] })
+      // Persist buffer reset to sessionStorage
+      try {
+        sessionStorage.removeItem('aj_transcript_buffer')
+        sessionStorage.removeItem('aj_transcript_team_id')
+      } catch (_) {}
 
-      console.log('[auto] Switched to new team:', newName)
+      console.log('[auto] Switched to:', data.team.name)
     } catch (e) {
       console.error('[auto] Transition check error:', e)
     } finally {
@@ -159,28 +134,38 @@ export function useAudioCapture() {
   }, [runCycle])
 
   const start = useCallback(async () => {
-    const { setConnecting, setRecording, appendTranscript, setInterimTranscript, setRecordingStartedAt } =
+    const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt } =
       useAppStore.getState()
     let { activeTeam, session } = useAppStore.getState()
 
     if (!activeTeam) {
       if (session?.detection_mode !== 'automatic') return
-      // Auto mode with no team yet — create "Presenter 1" so scoring works immediately
-      const supabase = createSupabaseClient()
-      const { data: newTeam, error } = await supabase
-        .from('teams')
-        .insert({ session_id: session.id, name: 'Presenter 1', order_index: 1 })
-        .select()
-        .single()
-      if (error || !newTeam) {
-        console.error('[auto] Failed to create initial team:', error)
+      // Auto mode with no team yet — create "Presenter 1" via server
+      const res = await fetch('/api/auto-transition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id, manual: true }),
+      })
+      const data = await res.json()
+      if (!data.transition || !data.team) {
+        console.error('[auto] Failed to create initial presenter')
         return
       }
-      await supabase.from('sessions').update({ active_team_id: newTeam.id }).eq('id', session.id)
-      useAppStore.getState().incrementAutoTeamCounter()
-      useAppStore.getState().setActiveTeam(newTeam)
-      useAppStore.setState((s: any) => ({ teams: [...s.teams, newTeam] }))
+      useAppStore.getState().setActiveTeam(data.team)
+      useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
+      activeTeam = data.team
     }
+
+    // Restore transcript buffer from sessionStorage in case of page refresh mid-session
+    try {
+      const savedBuffer = sessionStorage.getItem('aj_transcript_buffer')
+      const savedTeamId = sessionStorage.getItem('aj_transcript_team_id')
+      if (savedBuffer && savedTeamId === activeTeam?.id) {
+        bufferRef.current = savedBuffer
+        wordCountAtLastJudgeRef.current = savedBuffer.split(/\s+/).filter(Boolean).length
+        console.log('[audio] Restored transcript buffer from sessionStorage:', wordCountAtLastJudgeRef.current, 'words')
+      }
+    } catch (_) {}
 
     stoppedRef.current = false
     setConnecting(true)
@@ -199,6 +184,9 @@ export function useAudioCapture() {
       const { DeepgramClient } = await import('@deepgram/sdk')
       const dg = new DeepgramClient({ apiKey: key })
 
+      // Create one Supabase client per session to avoid creating a new one on every transcript chunk
+      const supabase = createSupabaseClient()
+
       const conn = await dg.listen.v1.connect({
         model: 'nova-2' as any,
         language: 'en-US' as any,
@@ -211,7 +199,6 @@ export function useAudioCapture() {
 
       conn.on('open', () => {
         if (stoppedRef.current) return
-        console.log('[deepgram] Connected')
         setConnecting(false)
         setRecording(true)
         setRecordingStartedAt(Date.now())
@@ -229,7 +216,6 @@ export function useAudioCapture() {
         mr.start(250)
         mediaRecorderRef.current = mr
 
-        // Fallback timer: score every 12s even if word count hasn't been hit
         timerRef.current = setInterval(runCycle, CYCLE_INTERVAL_MS)
       })
 
@@ -246,26 +232,35 @@ export function useAudioCapture() {
           useAppStore.getState().setInterimTranscript('')
           appendTranscript(alt.transcript)
           bufferRef.current += ' ' + alt.transcript
-          console.log('[deepgram] Final transcript chunk, total words:', bufferRef.current.split(/\s+/).filter(Boolean).length)
 
-          // Write to transcript_chunks so the display page ticker updates
+          // Cap buffer to prevent unbounded memory growth on long events
+          const words = bufferRef.current.split(/\s+/).filter(Boolean)
+          if (words.length > MAX_BUFFER_WORDS) {
+            bufferRef.current = words.slice(-MAX_BUFFER_WORDS).join(' ')
+          }
+
+          // Persist to sessionStorage so a page refresh can recover the buffer
           const { activeTeam: team, session: sess } = useAppStore.getState()
+          try {
+            if (team) {
+              sessionStorage.setItem('aj_transcript_buffer', bufferRef.current)
+              sessionStorage.setItem('aj_transcript_team_id', team.id)
+            }
+          } catch (_) {}
+
           if (team && sess) {
-            createSupabaseClient()
-              .from('transcript_chunks')
+            supabase.from('transcript_chunks')
               .insert({ session_id: sess.id, team_id: team.id, content: alt.transcript })
               .then(() => {})
           }
 
           const wordCount = bufferRef.current.split(/\s+/).filter(Boolean).length
 
-          // Trigger a scoring cycle after every WORDS_PER_CYCLE new words
           const newWordsSinceJudge = wordCount - wordCountAtLastJudgeRef.current
           if (newWordsSinceJudge >= WORDS_PER_CYCLE) {
             runCycle()
           }
 
-          // In automatic mode, check for presenter transitions periodically
           const { session: currentSession } = useAppStore.getState()
           if (currentSession?.detection_mode === 'automatic') {
             const newWordsSinceCheck = wordCount - wordCountAtLastTransitionCheckRef.current
@@ -285,7 +280,6 @@ export function useAudioCapture() {
 
       conn.on('close', () => {
         if (stoppedRef.current) return
-        console.log('[deepgram] Connection closed')
         useAppStore.getState().setRecording(false)
       })
 
@@ -297,7 +291,7 @@ export function useAudioCapture() {
   }, [runCycle, checkTransition])
 
   const stop = useCallback(async () => {
-    stoppedRef.current = true  // block any SDK reconnect events from this point on
+    stoppedRef.current = true
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
     mediaRecorderRef.current?.stop()
     try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
@@ -309,12 +303,16 @@ export function useAudioCapture() {
     wordCountAtLastTransitionCheckRef.current = 0
     useAppStore.getState().setInterimTranscript('')
     useAppStore.getState().setRecordingStartedAt(null)
-    await runCycle()
+    await runCycle({ final: true })
     useAppStore.getState().setRecording(false)
     bufferRef.current = ''
+    try {
+      sessionStorage.removeItem('aj_transcript_buffer')
+      sessionStorage.removeItem('aj_transcript_team_id')
+    } catch (_) {}
   }, [runCycle])
 
-  // Advance to the next team in manual mode: score the current buffer, then switch.
+  // Manual mode: score the current presenter, then switch to the next team in the list.
   const advanceToNextTeam = useCallback(async () => {
     const state = useAppStore.getState()
     const { teams, activeTeam, session, setActiveTeam, setScores } = state
@@ -324,7 +322,7 @@ export function useAudioCapture() {
     const nextTeam = teams[currentIndex + 1]
     if (!nextTeam) return
 
-    await runCycle()
+    await runCycle({ final: true })
 
     const supabase = createSupabaseClient()
     await supabase.from('sessions').update({ active_team_id: nextTeam.id }).eq('id', session.id)
@@ -342,7 +340,38 @@ export function useAudioCapture() {
     bufferRef.current = ''
     wordCountAtLastJudgeRef.current = 0
     wordCountAtLastTransitionCheckRef.current = 0
+    try {
+      sessionStorage.removeItem('aj_transcript_buffer')
+      sessionStorage.removeItem('aj_transcript_team_id')
+    } catch (_) {}
   }, [runCycle])
 
-  return { start, stop, advanceToNextTeam }
+  // Auto mode: manually trigger a presenter switch without waiting for AI detection.
+  // Useful when automatic detection misses an intro — judge presses the button as a fallback.
+  const manualAdvanceAutoMode = useCallback(async () => {
+    const { session } = useAppStore.getState()
+    if (!session) return
+
+    await runCycle({ final: true })
+
+    const res = await fetch('/api/auto-transition', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: session.id, manual: true }),
+    })
+    const data = await res.json()
+    if (!data.transition || !data.team) return
+
+    useAppStore.getState().setActiveTeam(data.team)
+    useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
+    bufferRef.current = ''
+    wordCountAtLastJudgeRef.current = 0
+    wordCountAtLastTransitionCheckRef.current = 0
+    try {
+      sessionStorage.removeItem('aj_transcript_buffer')
+      sessionStorage.removeItem('aj_transcript_team_id')
+    } catch (_) {}
+  }, [runCycle])
+
+  return { start, stop, advanceToNextTeam, manualAdvanceAutoMode }
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 
@@ -7,16 +8,16 @@ export function TranscriptSummary() {
   const summary = useAppStore((s) => s.summary)
   const isSummarising = useAppStore((s) => s.isSummarising)
   const lastJudgedAt = useAppStore((s) => s.lastJudgedAt)
+  const [expanded, setExpanded] = useState(false)
 
   const timeStr = lastJudgedAt
     ? new Date(lastJudgedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : null
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col" style={{ height: expanded ? 'auto' : '130px', minHeight: '130px', transition: 'height 0.2s ease' }}>
       <div className="flex items-center justify-between px-4 py-2.5 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2">
-          {/* Sparkle icon */}
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-secondary)" strokeWidth="2">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
@@ -39,9 +40,17 @@ export function TranscriptSummary() {
             </div>
           )}
           {timeStr && (
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              Updated {timeStr}
-            </span>
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Updated {timeStr}</span>
+          )}
+          {summary && (
+            <button
+              onClick={() => setExpanded(e => !e)}
+              className="text-[10px] px-1.5 py-0.5 rounded transition-colors"
+              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+              {expanded ? 'Collapse' : 'Expand'}
+            </button>
           )}
         </div>
       </div>

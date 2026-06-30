@@ -180,6 +180,7 @@ export default function AdminClient() {
 
   const [generatingNewDesc, setGeneratingNewDesc] = useState(false)
   const [generatingEditDesc, setGeneratingEditDesc] = useState(false)
+  const [confirmReset, setConfirmReset] = useState<string | null>(null)
 
   // ── Auto-save brief ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -454,6 +455,38 @@ export default function AdminClient() {
     setGeneratingEditDesc(false)
   }
 
+  const exportCsv = async () => {
+    if (!viewedSession) return
+    const { data: scores } = await supabase.from('scores').select('*').eq('session_id', viewedSession.id)
+    if (!scores?.length) return
+    const headers = ['Team', 'Criterion', 'Score', 'Reasoning', 'Updated At']
+    const rows = scores.map((s: any) => {
+      const team = teams.find(t => t.id === s.team_id)
+      const crit = criteria.find(c => c.id === s.criteria_id)
+      return [
+        `"${(team?.name ?? s.team_id).replace(/"/g, '""')}"`,
+        `"${(crit?.name ?? s.criteria_id).replace(/"/g, '""')}"`,
+        s.score,
+        `"${(s.reasoning ?? '').replace(/"/g, '""')}"`,
+        s.updated_at,
+      ].join(',')
+    })
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${viewedSession.name.replace(/[^a-z0-9]/gi, '-')}-scores.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const resetTeamScores = async (teamId: string) => {
+    if (!viewedSession) return
+    await supabase.from('scores').delete().eq('team_id', teamId).eq('session_id', viewedSession.id)
+    setConfirmReset(null)
+  }
+
   const liveSession = sessions.find(s => s.is_active) ?? null
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -640,6 +673,18 @@ export default function AdminClient() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0 pt-1">
+                    <button onClick={exportCsv}
+                      className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl transition-colors"
+                      style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                      title="Export scores as CSV"
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      CSV
+                    </button>
                     {viewedSession.is_active ? (
                       <>
                         <span className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-xl"
@@ -763,10 +808,10 @@ export default function AdminClient() {
                 </div>
 
                 {/* ── Two-column layout ────────────────────────────────── */}
-                <div className="grid grid-cols-5 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
                   {/* Left column: Context + Scoring Criteria */}
-                  <div className="col-span-3 space-y-6">
+                  <div className="col-span-1 lg:col-span-3 space-y-6">
 
                     {/* ── Step 1: Context ────────────────────────────── */}
                     <StepCard
@@ -899,7 +944,7 @@ export default function AdminClient() {
                   </div>
 
                   {/* Right column: Detection Mode + Participants + API Keys */}
-                  <div className="col-span-2 space-y-6">
+                  <div className="col-span-1 lg:col-span-2 space-y-6">
 
                     {/* ── Step 3: Detection Mode ─────────────────────── */}
                     <StepCard number={3} title="Detection Mode"
@@ -989,6 +1034,31 @@ export default function AdminClient() {
                                     <p className="text-sm font-medium hover:underline underline-offset-2">{team.name}</p>
                                     {team.description && <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{team.description}</p>}
                                   </div>
+                                  {confirmReset === team.id ? (
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Reset scores?</span>
+                                      <button onClick={() => resetTeamScores(team.id)} className="text-sm px-2 py-1 rounded-lg font-medium"
+                                        style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
+                                        Yes
+                                      </button>
+                                      <button onClick={() => setConfirmReset(null)} className="text-sm px-2 py-1 rounded-lg"
+                                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                                        No
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button onClick={() => setConfirmReset(team.id)}
+                                      className="p-1.5 rounded-lg transition-all shrink-0"
+                                      title="Reset scores for this participant"
+                                      style={{ color: 'var(--text-muted)' }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fbbf24'; (e.currentTarget as HTMLElement).style.background = 'rgba(251,191,36,0.1)' }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                        <path d="M3 3v5h5" />
+                                      </svg>
+                                    </button>
+                                  )}
                                   <InlineDeleteBtn
                                     isConfirming={confirmDelete?.id === team.id && confirmDelete.type === 'team'}
                                     onRequest={() => setConfirmDelete({ type: 'team', id: team.id })}

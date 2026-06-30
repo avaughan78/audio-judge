@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getSetting } from '@/lib/serverSettings'
 import { getServerUser } from '@/lib/supabase-server'
+import { rateLimit } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +10,10 @@ export async function POST(request: Request) {
   try {
     const user = await getServerUser()
     if (!user) return NextResponse.json({ transition: false })
+
+    if (!rateLimit(user.id, 'detect-transition', 3000)) {
+      return NextResponse.json({ transition: false })
+    }
 
     const { recentTranscript } = await request.json()
 

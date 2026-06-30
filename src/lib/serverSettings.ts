@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { decrypt } from './encryption'
 
 function serviceClient() {
   return createClient(
@@ -19,13 +20,16 @@ export async function getSetting(key: string, envFallback?: string, userId?: str
         .eq('key', key)
         .eq('user_id', userId)
         .single()
-      if (data?.value) return data.value
+      if (data?.value) return decrypt(data.value)
     } catch {
       // fall through
     }
   }
   return envFallback || undefined
 }
+
+// Re-export decrypt so settings/route.ts can use it for the GET preview
+export { decrypt } from './encryption'
 
 export function maskValue(value: string): string {
   if (value.length <= 8) return '••••••••'

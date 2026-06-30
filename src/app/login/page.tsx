@@ -53,7 +53,7 @@ function LoginForm() {
         <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '28px 24px' }}>
           <h1 style={{ fontSize: '15px', fontWeight: 600, color: '#e2e8f0', marginBottom: '4px' }}>Sign in</h1>
           <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '24px' }}>
-            Sign in with your Google account to continue
+            Sign in with your GitHub account to continue
           </p>
 
           <button
