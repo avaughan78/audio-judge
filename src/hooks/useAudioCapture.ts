@@ -69,8 +69,8 @@ export function useAudioCapture() {
 
       streamRef.current = stream
 
-      const { createClient: createDgClient, LiveTranscriptionEvents } = await import('@deepgram/sdk')
-      const dg = createDgClient(key)
+      const { DeepgramClient, LiveTranscriptionEvents } = await import('@deepgram/sdk')
+      const dg = new DeepgramClient(key)
 
       const conn = dg.listen.live({
         model: 'nova-2',
