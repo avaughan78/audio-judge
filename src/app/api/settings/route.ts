@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { maskValue } from '@/lib/serverSettings'
-import { getServerUser } from '@/lib/supabase'
+import { getServerUser } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 
