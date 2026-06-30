@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 
 const PUBLIC_PREFIXES = ['/login', '/auth/']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -22,7 +22,6 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refreshes session and rotates token if needed
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
