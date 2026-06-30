@@ -9,37 +9,89 @@ import { ThemeProvider } from '@/components/ThemeSelector'
 import { themes } from '@/lib/themes'
 import { useAppStore } from '@/lib/store'
 
-// ── Default content ─────────────────────────────────────────────────────────
+// ── Templates ────────────────────────────────────────────────────────────────
 
-const BRIEF_PLACEHOLDER = `e.g. This is a 24-hour open innovation hackathon. Teams present a working prototype that solves a real problem — ideally something novel, not a thin layer on an existing product. We want to see the product working, not slides about what it might do. Technical ambition matters, but so does clarity: if you can't explain the problem and solution in 60 seconds, that's a gap.\n\nThis context helps the AI understand what good looks like and score accordingly.`
+interface Template {
+  id: string
+  name: string
+  icon: string
+  tagline: string
+  brief: string
+  criteria: { name: string; description: string; weight: number }[]
+}
 
-const DEFAULT_CRITERIA = [
+const TEMPLATES: Template[] = [
   {
-    name: 'Innovation',
-    description: 'How original is the idea? Does it approach the problem in a genuinely new way, or is it incremental? Look for unexpected angles, novel combinations, or ideas that challenge assumptions. Penalise ideas that are obvious extensions of existing products.',
-    weight: 1.5,
+    id: 'hackathon',
+    name: 'Hackathon Pitch',
+    icon: '⚡',
+    tagline: 'Score teams on innovation, execution, and clarity',
+    brief: `This is a time-boxed hackathon. Teams present a working prototype that solves a real problem — we want to see the product working, not slides about what it might do. Ideas should be genuinely novel, not a thin wrapper on an existing tool. Technical ambition matters, but so does clarity: if you can't explain the problem and solution in 60 seconds, that's a gap. Presentations are 5 minutes followed by Q&A.`,
+    criteria: [
+      {
+        name: 'Innovation',
+        description: 'How original is the idea? Does it approach the problem in a genuinely novel way, or is it incremental? Look for unexpected angles and ideas that challenge assumptions. Penalise obvious extensions of existing products.',
+        weight: 1.5,
+      },
+      {
+        name: 'Technical Execution',
+        description: 'Is there a working prototype? Does it actually function, or is it held together with string? Real working code beats mocked demos. Consider complexity relative to the time available.',
+        weight: 1.5,
+      },
+      {
+        name: 'Problem Clarity',
+        description: 'Has the team clearly defined the problem and who has it? Do they have evidence the problem is real? Vague or assumed problems should score lower even if the solution is impressive.',
+        weight: 1,
+      },
+      {
+        name: 'Impact Potential',
+        description: 'If this succeeded at scale, how much would it matter? Consider problem size, realism of reach, and whether the team has thought about what success actually looks like.',
+        weight: 1,
+      },
+      {
+        name: 'Presentation',
+        description: 'Is the pitch clear, confident, and well-structured? Does the team get to the point quickly and make the demo easy to follow? Penalise pitches that spend too long on background.',
+        weight: 0.5,
+      },
+    ],
   },
   {
-    name: 'Technical Execution',
-    description: 'Is there a working prototype? How solid is the implementation — does it actually function, or is it held together with string? Award higher scores for real working code over mocked-up demos. Consider technical complexity relative to the time available.',
-    weight: 1.5,
-  },
-  {
-    name: 'Problem Clarity',
-    description: 'Has the team clearly defined the problem they\'re solving and who has it? Do they have evidence the problem is real? Vague or assumed problems should score lower even if the solution is impressive.',
-    weight: 1,
-  },
-  {
-    name: 'Impact Potential',
-    description: 'If this succeeded at scale, how much would it matter? Consider the size of the problem, the realism of the solution\'s reach, and whether the team has thought through what success actually looks like.',
-    weight: 1,
-  },
-  {
-    name: 'Presentation',
-    description: 'Is the pitch clear, confident, and well-structured? Does the team communicate the idea quickly and make the demo easy to follow? Penalise pitches that spend too long on background and not enough on the product itself.',
-    weight: 0.5,
+    id: 'interview',
+    name: 'Job Interview',
+    icon: '🎯',
+    tagline: 'Evaluate candidates against role competencies',
+    brief: `This is a structured interview. We're evaluating candidates against specific competencies for the role. Listen for concrete examples (STAR format: Situation, Task, Action, Result) rather than abstract claims about skills. Strong candidates show self-awareness, speak about failure honestly, and adapt their communication style to the audience. Generic answers without specifics should score lower even if they sound polished.`,
+    criteria: [
+      {
+        name: 'Relevant Experience',
+        description: 'Have they done genuinely similar work before? Do they give specific, concrete examples rather than speaking in generalities? Look for detail and specificity — vague claims about "leading teams" or "driving impact" without substance score low.',
+        weight: 1.5,
+      },
+      {
+        name: 'Problem Solving',
+        description: 'Does the candidate break down complex problems clearly? Do they show their thinking process, not just the conclusion? Look for structured reasoning, and the ability to handle ambiguity rather than freezing.',
+        weight: 1.5,
+      },
+      {
+        name: 'Communication',
+        description: 'Are they clear and concise? Do they adapt their explanation to the audience? Can they explain complex things simply without losing nuance? Penalise jargon-heavy answers that obscure rather than clarify.',
+        weight: 1,
+      },
+      {
+        name: 'Self-Awareness',
+        description: "Do they acknowledge mistakes, growth areas, or things they'd do differently? Are they honest about the limits of their experience? Over-confidence with no acknowledgement of failure is a red flag.",
+        weight: 1,
+      },
+      {
+        name: 'Team & Culture Fit',
+        description: 'How do they talk about collaboration, disagreement, and working with difficult people? Do they show respect for different perspectives? Look for humility alongside confidence.',
+        weight: 0.5,
+      },
+    ],
   },
 ]
+
+const BRIEF_PLACEHOLDER = `Describe the context for this evaluation — what are you assessing, what does good look like, and what constraints apply? The more specific you are, the more accurately the AI can score.\n\nOr pick a template above to get started quickly.`
 
 // ── Primitives ──────────────────────────────────────────────────────────────
 
@@ -140,6 +192,7 @@ export default function AdminClient() {
   const [newCritDesc, setNewCritDesc] = useState('')
   const [newCritWeight, setNewCritWeight] = useState('1')
 
+  const [appliedTemplate, setAppliedTemplate] = useState<string | null>(null)
   const [showEnvVars, setShowEnvVars] = useState(false)
 
   useEffect(() => {
@@ -267,7 +320,7 @@ export default function AdminClient() {
 
   const addDefaultCriteria = async () => {
     if (!activeSession) return
-    const rows = DEFAULT_CRITERIA.map((c, i) => ({
+    const rows = TEMPLATES[0].criteria.map((c, i) => ({
       session_id: activeSession.id,
       name: c.name,
       description: c.description,
@@ -276,6 +329,29 @@ export default function AdminClient() {
     }))
     const { data } = await supabase.from('criteria').insert(rows).select()
     if (data) setCriteria((p) => [...p, ...data])
+  }
+
+  const applyTemplate = async (template: Template) => {
+    if (!activeSession) return
+    // Save context
+    setBrief(template.brief)
+    await supabase.from('sessions').update({ brief: template.brief }).eq('id', activeSession.id)
+    setActiveSession((p) => p ? { ...p, brief: template.brief } : null)
+    // Insert criteria (clear existing first if any)
+    if (criteria.length > 0) {
+      await supabase.from('criteria').delete().eq('session_id', activeSession.id)
+      setCriteria([])
+    }
+    const rows = template.criteria.map((c, i) => ({
+      session_id: activeSession.id,
+      name: c.name,
+      description: c.description,
+      weight: c.weight,
+      order_index: i,
+    }))
+    const { data } = await supabase.from('criteria').insert(rows).select()
+    if (data) setCriteria(data)
+    setAppliedTemplate(template.id)
   }
 
   const inactiveSessions = sessions.filter((s) => !s.is_active)
@@ -397,6 +473,54 @@ export default function AdminClient() {
             {activeSession && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }} className="space-y-8">
+
+                {/* ── Quick-start templates ─────────────────────────── */}
+                <AnimatePresence>
+                  {!appliedTemplate && (
+                    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, height: 0 }}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+                          Quick start
+                        </span>
+                        <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>or set up manually below</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {TEMPLATES.map((t) => (
+                          <button key={t.id} onClick={() => applyTemplate(t)}
+                            className="text-left p-4 rounded-xl transition-all group"
+                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLElement).style.background = 'var(--accent-dim)' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)' }}>
+                            <div className="text-2xl mb-2">{t.icon}</div>
+                            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{t.name}</p>
+                            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{t.tagline}</p>
+                            <p className="text-xs mt-2 font-medium" style={{ color: 'var(--accent)' }}>
+                              {t.criteria.length} criteria pre-loaded →
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </motion.section>
+                  )}
+                </AnimatePresence>
+
+                {appliedTemplate && (
+                  <div className="flex items-center gap-3 p-3 rounded-xl"
+                    style={{ background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.2)' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <span className="text-xs flex-1" style={{ color: '#4ade80' }}>
+                      Template applied — context and criteria pre-filled. Edit anything below.
+                    </span>
+                    <button onClick={() => setAppliedTemplate(null)}
+                      className="text-xs underline underline-offset-2"
+                      style={{ color: 'var(--text-muted)' }}>
+                      Switch template
+                    </button>
+                  </div>
+                )}
 
                 {/* ── Step 2: Context ──────────────────────────────────── */}
                 <section>
