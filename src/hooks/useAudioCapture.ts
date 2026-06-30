@@ -126,6 +126,9 @@ export function useAudioCapture() {
       })
 
       conn.on('close', () => useAppStore.getState().setRecording(false))
+
+      // Must call connect() to actually open the WebSocket and bind the event handlers
+      conn.connect()
     } catch (e) {
       console.error('Start recording error:', e)
       useAppStore.getState().setConnecting(false)
