@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase'
 import { TeamSelector } from '@/components/TeamSelector'
-import { TranscriptFeed } from '@/components/TranscriptFeed'
 import { TranscriptSummary } from '@/components/TranscriptSummary'
+import { TranscriptTicker } from '@/components/TranscriptTicker'
 import { ScorePanel } from '@/components/ScorePanel'
 import { RecordingControl } from '@/components/RecordingControl'
 import { ThemeSelector, ThemeProvider } from '@/components/ThemeSelector'
@@ -16,6 +16,23 @@ export default function JudgePage() {
   const { session, setSession, setTeams, setCriteria, updateScore, setThemeId } = useAppStore()
   const activeTeam = useAppStore((s) => s.activeTeam)
   const isRecording = useAppStore((s) => s.isRecording)
+  const [prevTeamName, setPrevTeamName] = useState<string | null>(null)
+  const [showTransition, setShowTransition] = useState(false)
+
+  // Flash transition banner when team changes
+  useEffect(() => {
+    if (!activeTeam) return
+    if (prevTeamName && prevTeamName !== activeTeam.name) {
+      setShowTransition(true)
+      const t = setTimeout(() => setShowTransition(false), 1800)
+      return () => clearTimeout(t)
+    }
+    setPrevTeamName(activeTeam.name)
+  }, [activeTeam?.id])
+
+  useEffect(() => {
+    if (activeTeam) setPrevTeamName(activeTeam.name)
+  }, [activeTeam?.name])
 
   useEffect(() => {
     const supabase = createClient()
@@ -85,12 +102,12 @@ export default function JudgePage() {
         </div>
 
         {/* Header */}
-        <header className="relative z-10 flex items-center justify-between px-5 h-14 shrink-0"
+        <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
           style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
               style={{ background: 'linear-gradient(135deg, var(--gradient-from), var(--gradient-to))' }}>
-              <span className="text-[10px] font-black text-white">AJ</span>
+              <span className="text-[9px] font-black text-white">AJ</span>
             </div>
             <span className="text-sm font-bold gradient-text">AudioJudge</span>
             {session && (
@@ -109,30 +126,6 @@ export default function JudgePage() {
           </div>
         </header>
 
-        {/* Active presenter banner */}
-        <AnimatePresence>
-          {isRecording && activeTeam && (
-            <motion.div
-              key="presenter-banner"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="relative z-10 overflow-hidden shrink-0"
-              style={{ background: 'linear-gradient(90deg, var(--accent-dim) 0%, transparent 100%)', borderBottom: '1px solid var(--border-hover)' }}
-            >
-              <div className="flex items-center gap-3 px-5 py-2">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--accent)' }} />
-                  <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: 'var(--accent)' }} />
-                </span>
-                <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Now evaluating</span>
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{activeTeam.name}</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {!session ? (
           <div className="relative z-10 flex-1 flex items-center justify-center">
             <div className="text-center space-y-4">
@@ -146,25 +139,59 @@ export default function JudgePage() {
             </div>
           </div>
         ) : (
-          <div className="relative z-10 flex flex-1 overflow-hidden min-h-0">
-            <div className="w-48 shrink-0 flex flex-col overflow-hidden" style={{ borderRight: '1px solid var(--border)' }}>
-              <TeamSelector />
-            </div>
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden" style={{ borderRight: '1px solid var(--border)' }}>
-              <div className="flex-1 min-h-0 overflow-hidden" style={{ borderBottom: '1px solid var(--border)' }}>
-                <TranscriptFeed />
+          <div className="relative z-10 flex flex-col flex-1 overflow-hidden min-h-0">
+
+            {/* Participant + recording strip */}
+            <div className="relative shrink-0 flex items-center gap-3 px-5 py-2.5"
+              style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
+              <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
+                Evaluating
+              </span>
+              <div className="flex-1 overflow-hidden">
+                <TeamSelector />
               </div>
-              <div className="h-44 shrink-0 overflow-hidden">
-                <TranscriptSummary />
-              </div>
+              <RecordingControl compact />
             </div>
-            <div className="w-96 shrink-0 flex flex-col overflow-hidden">
-              <ScorePanel />
+
+            {/* Presenter transition flash */}
+            <AnimatePresence>
+              {showTransition && activeTeam && (
+                <motion.div
+                  key="transition"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                  className="absolute left-0 right-0 z-30 flex items-center justify-center py-3 pointer-events-none"
+                  style={{
+                    top: '88px',
+                    background: 'linear-gradient(180deg, var(--bg) 0%, transparent 100%)',
+                  }}
+                >
+                  <div className="flex items-center gap-3 px-6 py-3 rounded-2xl"
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border-hover)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+                    <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Now evaluating</span>
+                    <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{activeTeam.name}</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Score bars — hero element */}
+            <div className="flex-1 overflow-hidden min-h-0">
+              <ScorePanel fullscreen />
             </div>
+
+            {/* AI summary strip */}
+            <div className="shrink-0 overflow-hidden" style={{ borderTop: '1px solid var(--border)', height: '130px' }}>
+              <TranscriptSummary />
+            </div>
+
+            {/* Live ticker */}
+            <TranscriptTicker />
+
           </div>
         )}
-
-        {session && <RecordingControl />}
       </div>
     </ThemeProvider>
   )

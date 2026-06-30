@@ -23,7 +23,11 @@ function formatTime(s: number) {
   return `${m}:${sec.toString().padStart(2, '0')}`
 }
 
-export function RecordingControl() {
+interface RecordingControlProps {
+  compact?: boolean
+}
+
+export function RecordingControl({ compact = false }: RecordingControlProps) {
   const isRecording = useAppStore((s) => s.isRecording)
   const isConnecting = useAppStore((s) => s.isConnecting)
   const isSummarising = useAppStore((s) => s.isSummarising)
@@ -35,11 +39,91 @@ export function RecordingControl() {
 
   const canRecord = !!activeTeam && !isConnecting
 
+  if (compact) {
+    return (
+      <div className="flex items-center gap-3">
+        {/* Timer — shown while recording */}
+        <AnimatePresence>
+          {isRecording && (
+            <motion.span
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: 'auto' }}
+              exit={{ opacity: 0, width: 0 }}
+              className="text-xs font-mono tabular-nums px-2 py-1 rounded overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}
+            >
+              {formatTime(elapsed)}
+            </motion.span>
+          )}
+          {isSummarising && (
+            <motion.div
+              key="scoring-dots"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex items-center gap-1"
+            >
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-1 h-1 rounded-full"
+                  style={{ background: 'var(--accent)' }}
+                  animate={{ scale: [1, 1.5, 1], opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 0.9, delay: i * 0.18, repeat: Infinity }}
+                />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.button
+          onClick={isRecording ? stop : start}
+          disabled={!canRecord}
+          whileTap={{ scale: 0.95 }}
+          className="relative flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            background: isRecording ? 'rgba(239,68,68,0.12)' : 'var(--accent-dim)',
+            color: isRecording ? 'var(--score-low)' : 'var(--accent)',
+            border: `1px solid ${isRecording ? 'var(--score-low)' : 'var(--border-hover)'}`,
+          }}
+        >
+          {isRecording && (
+            <motion.span
+              className="absolute inset-0 rounded-full"
+              animate={{ scale: 1.2, opacity: 0 }}
+              transition={{ duration: 1.4, repeat: Infinity }}
+              style={{ border: '1px solid var(--score-low)' }}
+            />
+          )}
+          {isConnecting ? (
+            <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          ) : isRecording ? (
+            <>
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'currentColor' }} />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
+              </span>
+              Stop
+            </>
+          ) : (
+            <>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+              </svg>
+              Record
+            </>
+          )}
+        </motion.button>
+      </div>
+    )
+  }
+
+  // Full bar mode (legacy, kept for compatibility)
   return (
     <div className="relative z-20 shrink-0 px-5 py-3" style={{ borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)' }}>
       <div className="flex items-center justify-between">
-
-        {/* Left status */}
         <div className="flex items-center gap-4 min-w-0">
           <AnimatePresence mode="wait">
             {isConnecting ? (
@@ -71,7 +155,7 @@ export function RecordingControl() {
             ) : (
               <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {activeTeam ? `Ready · ${activeTeam.name}` : 'Select a team to begin'}
+                  {activeTeam ? `Ready · ${activeTeam.name}` : 'Select a participant to begin'}
                 </span>
               </motion.div>
             )}
@@ -84,7 +168,6 @@ export function RecordingControl() {
           )}
         </div>
 
-        {/* Record button */}
         <motion.button
           onClick={isRecording ? stop : start}
           disabled={!canRecord}
@@ -96,7 +179,6 @@ export function RecordingControl() {
             border: `1px solid ${isRecording ? 'var(--score-low)' : 'var(--border-hover)'}`,
           }}
         >
-          {/* Pulse ring */}
           {isRecording && (
             <motion.span
               className="absolute inset-0 rounded-full"

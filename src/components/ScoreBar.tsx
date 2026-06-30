@@ -51,24 +51,30 @@ interface ScoreBarProps {
   weight?: number
   index?: number
   large?: boolean
+  xl?: boolean
   isScanning?: boolean
 }
 
-export function ScoreBar({ name, description, score, reasoning, weight = 1, index = 0, large = false, isScanning = false }: ScoreBarProps) {
+export function ScoreBar({ name, description, score, reasoning, weight = 1, index = 0, large = false, xl = false, isScanning = false }: ScoreBarProps) {
   const style = getScoreStyle(score)
   const hasScore = score > 0
+
+  const nameSize = xl ? 'text-sm' : large ? 'text-sm' : 'text-xs'
+  const numSize = xl ? 'text-5xl' : large ? 'text-3xl' : 'text-xl'
+  const unitSize = xl ? 'text-base' : large ? 'text-sm' : 'text-xs'
+  const barHeight = xl ? 'h-6' : large ? 'h-4' : 'h-2.5'
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07, duration: 0.35, ease: 'easeOut' }}
-      className="space-y-2"
+      className={xl ? 'space-y-3' : 'space-y-2'}
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className={`font-bold tracking-widest uppercase truncate ${large ? 'text-sm' : 'text-xs'}`}
+          <span className={`font-bold tracking-widest uppercase truncate ${nameSize}`}
             style={{ color: 'var(--text-secondary)' }}>
             {name}
           </span>
@@ -82,7 +88,7 @@ export function ScoreBar({ name, description, score, reasoning, weight = 1, inde
 
         <div className="flex items-baseline gap-1 shrink-0">
           <motion.span
-            className={`font-black tabular-nums transition-colors duration-500 ${large ? 'text-3xl' : 'text-xl'}`}
+            className={`font-black tabular-nums transition-colors duration-500 ${numSize}`}
             style={{ color: hasScore ? style.color : 'var(--text-muted)' }}
             key={score}
             initial={{ scale: 0.85, opacity: 0.6 }}
@@ -92,7 +98,7 @@ export function ScoreBar({ name, description, score, reasoning, weight = 1, inde
             {hasScore ? <AnimatedNumber target={score} /> : '—'}
           </motion.span>
           {hasScore && (
-            <span className={`${large ? 'text-sm' : 'text-xs'}`} style={{ color: 'var(--text-muted)' }}>
+            <span className={unitSize} style={{ color: 'var(--text-muted)' }}>
               /100
             </span>
           )}
@@ -100,7 +106,7 @@ export function ScoreBar({ name, description, score, reasoning, weight = 1, inde
       </div>
 
       {/* Bar track */}
-      <div className={`relative ${large ? 'h-4' : 'h-2.5'} rounded-full overflow-hidden`}
+      <div className={`relative ${barHeight} rounded-full overflow-hidden`}
         style={{ background: 'rgba(255,255,255,0.04)' }}>
 
         {/* Segment markers */}
