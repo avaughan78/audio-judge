@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       temperature: 0.2,
       system: `You are an expert evaluator scoring a live presentation in real time.${briefContext}
 
-Score the presenter on EACH criterion from 0 to 100 based solely on what has been said in the transcript so far. Be specific — reference actual things mentioned in the presentation to justify scores. Only score what has been demonstrated; do not speculate about things not yet said.
+Score the presenter on EACH criterion from 0 to 100 based solely on what has been said in the transcript so far. Be specific — reference actual things mentioned to justify scores. Only score what has been demonstrated; do not speculate. If the transcript is short or unclear, give low but non-zero scores and note what is missing. Never refuse — always return valid JSON scores for every criterion.
 
 Criteria:
 ${criteriaBlock}

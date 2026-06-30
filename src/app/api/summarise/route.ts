@@ -8,7 +8,7 @@ export async function POST(request: Request) {
 
   if (!transcript?.trim()) return NextResponse.json({ summary: '' })
 
-  const briefContext = brief ? `\n\nHackathon context: ${brief}` : ''
+  const briefContext = brief ? `\n\nEvaluation context: ${brief}` : ''
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -16,9 +16,9 @@ export async function POST(request: Request) {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 200,
     temperature: 0.3,
-    system: `You are summarising a hackathon pitch in real-time for the judging panel.${briefContext}
+    system: `You are a real-time assistant summarising a live spoken presentation for an evaluation panel.${briefContext}
 
-Write 2–3 tight sentences covering: what the product does, who it's for, and the core technical approach. Be specific and factual — only reference what has actually been said.`,
+Write 2–3 tight sentences capturing the key points from what has been said so far. Be specific and factual — only reference what has actually been said in the transcript, even if it is brief or incomplete. Never refuse or ask for clarification — always produce a summary of whatever content is present.`,
     messages: [
       {
         role: 'user',
