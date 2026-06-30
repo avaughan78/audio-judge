@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSpring } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
@@ -32,6 +32,7 @@ export default function DisplayClient() {
   const [scores, setScores] = useState<Record<string, Score>>({})
   const [latestTranscript, setLatestTranscript] = useState('')
   const [clock, setClock] = useState(new Date())
+  const activeTeamIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000)
@@ -53,6 +54,7 @@ export default function DisplayClient() {
       if (crit) setCriteria(crit)
 
       if (sess.active_team_id) {
+        activeTeamIdRef.current = sess.active_team_id
         const { data: team } = await supabase.from('teams').select('*').eq('id', sess.active_team_id).single()
         if (team) setActiveTeam(team)
 
@@ -78,11 +80,17 @@ export default function DisplayClient() {
             const updated = payload.new as Session
             setSession(updated)
             applySessionTheme(updated.theme_id)
-            if (updated.active_team_id !== sess.active_team_id) {
+            // Use ref to compare against current active team (avoids stale closure)
+            if (updated.active_team_id !== activeTeamIdRef.current) {
+              activeTeamIdRef.current = updated.active_team_id
               setScores({})
               setLatestTranscript('')
-              const { data: t } = await supabase.from('teams').select('*').eq('id', updated.active_team_id).single()
-              if (t) setActiveTeam(t)
+              if (updated.active_team_id) {
+                const { data: t } = await supabase.from('teams').select('*').eq('id', updated.active_team_id).single()
+                if (t) setActiveTeam(t)
+              } else {
+                setActiveTeam(null)
+              }
             }
           })
         .subscribe()

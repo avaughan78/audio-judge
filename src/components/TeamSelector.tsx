@@ -11,13 +11,26 @@ export function TeamSelector() {
   const activeTeam = useAppStore((s) => s.activeTeam)
   const isRecording = useAppStore((s) => s.isRecording)
   const setActiveTeam = useAppStore((s) => s.setActiveTeam)
+  const setScores = useAppStore((s) => s.setScores)
 
   const handleSelect = async (team: Team) => {
     if (isRecording || activeTeam?.id === team.id) return
     setActiveTeam(team)
+
     if (session) {
       const supabase = createClient()
-      await supabase.from('sessions').update({ active_team_id: team.id }).eq('id', session.id)
+
+      // Load existing scores for this team in parallel with updating active team
+      const [, { data: existingScores }] = await Promise.all([
+        supabase.from('sessions').update({ active_team_id: team.id }).eq('id', session.id),
+        supabase.from('scores').select('*').eq('session_id', session.id).eq('team_id', team.id),
+      ])
+
+      if (existingScores?.length) {
+        const map: Record<string, import('@/lib/types').Score> = {}
+        existingScores.forEach((s) => { map[s.criteria_id] = s })
+        setScores(map)
+      }
     }
   }
 

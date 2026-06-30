@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const { transcript, teamId, sessionId, brief } = await request.json()
 
   if (!transcript?.trim()) {
@@ -25,29 +26,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No criteria configured for this session' }, { status: 400 })
   }
 
-  const briefContext = brief
-    ? `\n\nHackathon brief / context:\n${brief}`
-    : ''
-
+  const briefContext = brief ? `\n\nHackathon brief / context:\n${brief}` : ''
   const criteriaBlock = criteria
     .map((c) => `- ${c.name} (ID: ${c.id}, weight: ${c.weight}): ${c.description || 'No description'}`)
     .join('\n')
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    response_format: { type: 'json_object' },
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+  const message = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 1024,
     temperature: 0.2,
-    messages: [
-      {
-        role: 'system',
-        content: `You are an expert hackathon judge scoring a team's live pitch.${briefContext}
+    system: `You are an expert hackathon judge scoring a team's live pitch.${briefContext}
 
 Score the team on EACH criterion from 0 to 100 based solely on what has been said in the transcript so far. Be specific — reference actual things mentioned in the pitch to justify scores. Do not award high scores for things not yet mentioned.
 
 Criteria:
 ${criteriaBlock}
 
-Return ONLY valid JSON in this exact format — no extra fields:
+Return ONLY valid JSON in this exact format — no extra fields, no markdown:
 {
   "scores": [
     {
@@ -57,7 +54,7 @@ Return ONLY valid JSON in this exact format — no extra fields:
     }
   ]
 }`,
-      },
+    messages: [
       {
         role: 'user',
         content: `Transcript so far:\n\n${transcript.slice(-4000)}`,
@@ -65,7 +62,12 @@ Return ONLY valid JSON in this exact format — no extra fields:
     ],
   })
 
-  const result = JSON.parse(completion.choices[0].message.content!)
+  const content = message.content[0]
+  if (content.type !== 'text') {
+    return NextResponse.json({ error: 'Unexpected response from AI' }, { status: 500 })
+  }
+
+  const result = JSON.parse(content.text)
 
   await supabase.from('scores').upsert(
     result.scores.map((s: any) => ({

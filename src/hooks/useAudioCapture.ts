@@ -2,11 +2,12 @@
 
 import { useRef, useCallback } from 'react'
 import { useAppStore } from '@/lib/store'
+import { createClient as createSupabaseClient } from '@/lib/supabase'
 
 export function useAudioCapture() {
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const connectionRef = useRef<ReturnType<any>>( null)
+  const connectionRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const bufferRef = useRef('')
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -58,23 +59,29 @@ export function useAudioCapture() {
         fetch('/api/deepgram-token').then((r) => r.json()),
         navigator.mediaDevices.getUserMedia({ audio: true, video: false }),
       ])
-      if (tokenData.error) throw new Error(`Deepgram token error: ${tokenData.error}`)
-      const { key } = tokenData
+
+      if (tokenData.error) {
+        throw new Error(`Deepgram token error: ${tokenData.error}`)
+      }
+
+      const key: string = tokenData.key
+      if (!key) throw new Error('Deepgram token missing from response')
+
       streamRef.current = stream
 
-      const { DeepgramClient } = await import('@deepgram/sdk')
-      const dg = new DeepgramClient(key)
-      const conn = await dg.listen.v1.connect({
-        model: 'nova-2' as any,
-        language: 'en-US' as any,
-        smart_format: true as any,
-        interim_results: true as any,
-        endpointing: 300 as any,
-        Authorization: `Token ${key}`,
+      const { createClient: createDgClient, LiveTranscriptionEvents } = await import('@deepgram/sdk')
+      const dg = createDgClient(key)
+
+      const conn = dg.listen.live({
+        model: 'nova-2',
+        language: 'en-US',
+        smart_format: true,
+        interim_results: true,
+        endpointing: 300,
       })
       connectionRef.current = conn
 
-      conn.on('open', () => {
+      conn.on(LiveTranscriptionEvents.Open, () => {
         setConnecting(false)
         setRecording(true)
 
@@ -86,31 +93,43 @@ export function useAudioCapture() {
 
         const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
         mr.ondataavailable = (e) => {
-          if (e.data.size > 0 && conn.readyState === 1) conn.sendMedia(e.data)
+          if (e.data.size > 0 && conn.getReadyState() === 1) conn.send(e.data)
         }
         mr.start(250)
         mediaRecorderRef.current = mr
 
-        timerRef.current = setInterval(runCycle, 20_000)
+        timerRef.current = setInterval(runCycle, 15_000)
       })
 
-      conn.on('message', (message: any) => {
-        if (message?.type !== 'Results') return
-        const alt = message?.channel?.alternatives?.[0]
+      conn.on(LiveTranscriptionEvents.Transcript, (data: any) => {
+        const alt = data?.channel?.alternatives?.[0]
         if (!alt?.transcript?.trim()) return
-        if (message.is_final) {
+        if (data.is_final) {
           appendTranscript(alt.transcript)
           bufferRef.current += ' ' + alt.transcript
+
+          // Write to transcript_chunks so the display page ticker works
+          const { activeTeam: team, session: sess } = useAppStore.getState()
+          if (team && sess) {
+            const supabase = createSupabaseClient()
+            supabase.from('transcript_chunks').insert({
+              session_id: sess.id,
+              team_id: team.id,
+              content: alt.transcript,
+            }).then(() => {})
+          }
         }
       })
 
-      conn.on('error', (e: any) => {
+      conn.on(LiveTranscriptionEvents.Error, (e: any) => {
         console.error('Deepgram error:', e)
         useAppStore.getState().setConnecting(false)
         useAppStore.getState().setRecording(false)
       })
 
-      conn.on('close', () => useAppStore.getState().setRecording(false))
+      conn.on(LiveTranscriptionEvents.Close, () => {
+        useAppStore.getState().setRecording(false)
+      })
     } catch (e) {
       console.error('Start recording error:', e)
       useAppStore.getState().setConnecting(false)
@@ -120,7 +139,7 @@ export function useAudioCapture() {
   const stop = useCallback(async () => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
     mediaRecorderRef.current?.stop()
-    try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
+    try { connectionRef.current?.requestClose() } catch (_) {}
     streamRef.current?.getTracks().forEach((t) => t.stop())
     mediaRecorderRef.current = null
     connectionRef.current = null

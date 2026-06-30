@@ -20,6 +20,7 @@ interface AppState {
   setTeams: (t: Team[]) => void
   setCriteria: (c: Criteria[]) => void
   setActiveTeam: (t: Team | null) => void
+  setScores: (scores: Record<string, Score>) => void
   updateScore: (score: Score) => void
   appendTranscript: (text: string) => void
   setSummary: (s: string) => void
@@ -52,6 +53,7 @@ export const useAppStore = create<AppState>()(
       setCriteria: (criteria) => set({ criteria }),
       setActiveTeam: (activeTeam) =>
         set({ activeTeam, scores: {}, transcript: '', summary: '' }),
+      setScores: (scores) => set({ scores }),
       updateScore: (score) =>
         set((state) => ({
           scores: { ...state.scores, [score.criteria_id]: score },
