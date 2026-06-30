@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@supabase/supabase-js'
 import { getSetting } from '@/lib/serverSettings'
 import { getServerUser } from '@/lib/supabase-server'
 
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
   const user = await getServerUser()
   if (!user) return NextResponse.json({ summary: '' })
 
-  const { transcript, brief } = await request.json()
+  const { transcript, brief, teamId } = await request.json()
 
   if (!transcript?.trim()) return NextResponse.json({ summary: '' })
 
@@ -37,6 +38,14 @@ Write 2–3 tight sentences capturing the key points from what has been said so 
 
   const content = message.content[0]
   const summary = content.type === 'text' ? content.text : ''
+
+  if (summary && teamId && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    await supabase.from('teams').update({ summary }).eq('id', teamId)
+  }
 
   return NextResponse.json({ summary })
 }

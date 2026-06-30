@@ -55,7 +55,7 @@ export function useAudioCapture() {
         fetch('/api/summarise', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transcript, brief: session.brief }),
+          body: JSON.stringify({ transcript, brief: session.brief, teamId: activeTeam.id }),
         }).then((r) => r.json()),
       ])
 
