@@ -9,6 +9,8 @@ export function ScorePanel() {
   const criteria = useAppStore((s) => s.criteria)
   const scores = useAppStore((s) => s.scores)
   const activeTeam = useAppStore((s) => s.activeTeam)
+  const isSummarising = useAppStore((s) => s.isSummarising)
+  const isRecording = useAppStore((s) => s.isRecording)
 
   const overall = useMemo(() => {
     const scored = criteria.filter((c) => (scores[c.id]?.score ?? 0) > 0)
@@ -54,6 +56,7 @@ export function ScorePanel() {
                 reasoning={scores[c.id]?.reasoning}
                 weight={c.weight}
                 index={i}
+                isScanning={isRecording && isSummarising}
               />
             ))}
 

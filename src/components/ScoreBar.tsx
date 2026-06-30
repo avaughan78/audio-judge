@@ -51,9 +51,10 @@ interface ScoreBarProps {
   weight?: number
   index?: number
   large?: boolean
+  isScanning?: boolean
 }
 
-export function ScoreBar({ name, description, score, reasoning, weight = 1, index = 0, large = false }: ScoreBarProps) {
+export function ScoreBar({ name, description, score, reasoning, weight = 1, index = 0, large = false, isScanning = false }: ScoreBarProps) {
   const style = getScoreStyle(score)
   const hasScore = score > 0
 
@@ -108,6 +109,16 @@ export function ScoreBar({ name, description, score, reasoning, weight = 1, inde
             <div key={p} className="absolute inset-y-0 w-px" style={{ left: `${p}%`, background: 'rgba(255,255,255,0.05)' }} />
           ))}
         </div>
+
+        {/* Scanning shimmer (shown while AI is working and no score yet) */}
+        {isScanning && !hasScore && (
+          <motion.div
+            className="absolute inset-y-0 w-1/3 rounded-full"
+            animate={{ left: ['-33%', '100%'] }}
+            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ background: `linear-gradient(90deg, transparent, var(--accent-dim), transparent)` }}
+          />
+        )}
 
         {/* Fill */}
         <motion.div

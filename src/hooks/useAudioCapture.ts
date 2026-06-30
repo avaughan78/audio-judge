@@ -4,19 +4,27 @@ import { useRef, useCallback } from 'react'
 import { useAppStore } from '@/lib/store'
 import { createClient as createSupabaseClient } from '@/lib/supabase'
 
+const WORDS_PER_CYCLE = 40   // trigger a score after every 40 new words
+const CYCLE_INTERVAL_MS = 12_000  // also trigger on a 12s timer as fallback
+
 export function useAudioCapture() {
   const connectionRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const bufferRef = useRef('')
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const isJudgingRef = useRef(false)
+  const wordCountAtLastJudgeRef = useRef(0)
 
   const runCycle = useCallback(async () => {
+    if (isJudgingRef.current) return  // skip if a cycle is already running
     const state = useAppStore.getState()
     const { activeTeam, session, setSummarising, setSummary, setLastJudgedAt } = state
     const transcript = bufferRef.current.trim()
     if (!transcript || !activeTeam || !session) return
 
+    isJudgingRef.current = true
+    wordCountAtLastJudgeRef.current = transcript.split(/\s+/).filter(Boolean).length
     setSummarising(true)
     try {
       const [, summaryRes] = await Promise.allSettled([
@@ -45,6 +53,7 @@ export function useAudioCapture() {
       console.error('Judging cycle error:', e)
     } finally {
       setSummarising(false)
+      isJudgingRef.current = false
     }
   }, [])
 
@@ -66,7 +75,6 @@ export function useAudioCapture() {
 
       streamRef.current = stream
 
-      // DeepgramClient constructor takes an options object — NOT a plain string
       const { DeepgramClient } = await import('@deepgram/sdk')
       const dg = new DeepgramClient({ apiKey: key })
 
@@ -97,7 +105,8 @@ export function useAudioCapture() {
         mr.start(250)
         mediaRecorderRef.current = mr
 
-        timerRef.current = setInterval(runCycle, 15_000)
+        // Fallback timer: score every 12s even if word count hasn't been hit
+        timerRef.current = setInterval(runCycle, CYCLE_INTERVAL_MS)
       })
 
       conn.on('message', (message: any) => {
@@ -116,6 +125,13 @@ export function useAudioCapture() {
               .insert({ session_id: sess.id, team_id: team.id, content: alt.transcript })
               .then(() => {})
           }
+
+          // Trigger a scoring cycle after every WORDS_PER_CYCLE new words
+          const wordCount = bufferRef.current.split(/\s+/).filter(Boolean).length
+          const newWords = wordCount - wordCountAtLastJudgeRef.current
+          if (newWords >= WORDS_PER_CYCLE) {
+            runCycle()
+          }
         }
       })
 
@@ -127,7 +143,6 @@ export function useAudioCapture() {
 
       conn.on('close', () => useAppStore.getState().setRecording(false))
 
-      // Must call connect() to actually open the WebSocket and bind the event handlers
       conn.connect()
     } catch (e) {
       console.error('Start recording error:', e)
@@ -143,6 +158,7 @@ export function useAudioCapture() {
     mediaRecorderRef.current = null
     connectionRef.current = null
     streamRef.current = null
+    wordCountAtLastJudgeRef.current = 0
     await runCycle()
     useAppStore.getState().setRecording(false)
     bufferRef.current = ''
