@@ -1,0 +1,112 @@
+'use client'
+
+import { AnimatePresence, motion } from 'framer-motion'
+import { useAppStore } from '@/lib/store'
+import { useAudioCapture } from '@/hooks/useAudioCapture'
+
+export function RecordingControl() {
+  const isRecording = useAppStore((s) => s.isRecording)
+  const isConnecting = useAppStore((s) => s.isConnecting)
+  const isSummarising = useAppStore((s) => s.isSummarising)
+  const activeTeam = useAppStore((s) => s.activeTeam)
+  const lastJudgedAt = useAppStore((s) => s.lastJudgedAt)
+  const { start, stop } = useAudioCapture()
+
+  const canRecord = !!activeTeam && !isConnecting
+
+  return (
+    <div className="relative z-20 shrink-0 px-5 py-3" style={{ borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)' }}>
+      <div className="flex items-center justify-between">
+
+        {/* Left status */}
+        <div className="flex items-center gap-4 min-w-0">
+          <AnimatePresence mode="wait">
+            {isConnecting ? (
+              <motion.div key="connecting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-2" style={{ color: 'var(--score-mid)' }}>
+                <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                <span className="text-xs">Connecting to Deepgram...</span>
+              </motion.div>
+            ) : isRecording ? (
+              <motion.div key="recording" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--score-low)' }} />
+                  <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: 'var(--score-low)' }} />
+                </span>
+                <span className="text-xs font-medium" style={{ color: 'var(--score-low)' }}>
+                  Recording{activeTeam ? ` · ${activeTeam.name}` : ''}
+                </span>
+                {isSummarising && (
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>· Scoring...</span>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {activeTeam ? `Ready · ${activeTeam.name}` : 'Select a team to begin'}
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {lastJudgedAt > 0 && !isRecording && (
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              Last scored {new Date(lastJudgedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
+
+        {/* Record button */}
+        <motion.button
+          onClick={isRecording ? stop : start}
+          disabled={!canRecord}
+          whileTap={{ scale: 0.95 }}
+          className="relative flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            background: isRecording ? 'rgba(239,68,68,0.12)' : 'var(--accent-dim)',
+            color: isRecording ? 'var(--score-low)' : 'var(--accent)',
+            border: `1px solid ${isRecording ? 'var(--score-low)' : 'var(--border-hover)'}`,
+          }}
+        >
+          {/* Pulse ring */}
+          {isRecording && (
+            <motion.span
+              className="absolute inset-0 rounded-full"
+              animate={{ scale: 1.2, opacity: 0 }}
+              transition={{ duration: 1.4, repeat: Infinity }}
+              style={{ border: '1px solid var(--score-low)' }}
+            />
+          )}
+
+          {isConnecting ? (
+            <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          ) : isRecording ? (
+            <>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="1" y1="1" x2="23" y2="23" />
+                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+              </svg>
+              Stop Recording
+            </>
+          ) : (
+            <>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+              </svg>
+              Start Recording
+            </>
+          )}
+        </motion.button>
+      </div>
+    </div>
+  )
+}
