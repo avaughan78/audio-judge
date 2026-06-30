@@ -15,6 +15,7 @@ export function useAudioCapture() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isJudgingRef = useRef(false)
   const wordCountAtLastJudgeRef = useRef(0)
+  const stoppedRef = useRef(false)  // guards against SDK reconnect firing open/close after stop()
 
   const runCycle = useCallback(async () => {
     if (isJudgingRef.current) return  // skip if a cycle is already running
@@ -77,6 +78,7 @@ export function useAudioCapture() {
       useAppStore.getState()
     if (!activeTeam) return
 
+    stoppedRef.current = false
     setConnecting(true)
     try {
       const [tokenData, stream] = await Promise.all([
@@ -104,6 +106,7 @@ export function useAudioCapture() {
       connectionRef.current = conn
 
       conn.on('open', () => {
+        if (stoppedRef.current) return
         console.log('[deepgram] Connected')
         setConnecting(false)
         setRecording(true)
@@ -127,6 +130,7 @@ export function useAudioCapture() {
       })
 
       conn.on('message', (message: any) => {
+        if (stoppedRef.current) return
         if (message?.type !== 'Results') return
         const alt = message?.channel?.alternatives?.[0]
         if (!alt?.transcript?.trim()) return
@@ -159,12 +163,14 @@ export function useAudioCapture() {
       })
 
       conn.on('error', (e: any) => {
+        if (stoppedRef.current) return
         console.error('[deepgram] Error:', e)
         useAppStore.getState().setConnecting(false)
         useAppStore.getState().setRecording(false)
       })
 
       conn.on('close', () => {
+        if (stoppedRef.current) return
         console.log('[deepgram] Connection closed')
         useAppStore.getState().setRecording(false)
       })
@@ -177,6 +183,7 @@ export function useAudioCapture() {
   }, [runCycle])
 
   const stop = useCallback(async () => {
+    stoppedRef.current = true  // block any SDK reconnect events from this point on
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
     mediaRecorderRef.current?.stop()
     try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
