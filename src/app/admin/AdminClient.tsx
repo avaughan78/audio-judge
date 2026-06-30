@@ -155,8 +155,9 @@ export default function AdminClient() {
 
   const [dbError, setDbError] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
-  const [activeSession, setActiveSession] = useState<Session | null>(null)
-  const [showAllSessions, setShowAllSessions] = useState(false)
+  // viewedSession = the event whose config is displayed/edited in the panel below.
+  // is_active on the session record = what's live for judging. These are independent.
+  const [viewedSession, setViewedSession] = useState<Session | null>(null)
   const [editingSessionName, setEditingSessionName] = useState(false)
   const [sessionNameDraft, setSessionNameDraft] = useState('')
 
@@ -191,18 +192,19 @@ export default function AdminClient() {
 
   // ── Auto-save brief ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!activeSession) return
+    if (!viewedSession) return
     if (brief === savedBriefRef.current) { setBriefStatus('saved'); return }
     setBriefStatus('unsaved')
     const t = setTimeout(async () => {
       setBriefStatus('saving')
-      await supabase.from('sessions').update({ brief: brief.trim() || null }).eq('id', activeSession.id)
-      setActiveSession(p => p ? { ...p, brief: brief.trim() || null } : null)
+      await supabase.from('sessions').update({ brief: brief.trim() || null }).eq('id', viewedSession.id)
+      setViewedSession(p => p ? { ...p, brief: brief.trim() || null } : null)
+      setSessions(p => p.map(s => s.id === viewedSession.id ? { ...s, brief: brief.trim() || null } : s))
       savedBriefRef.current = brief
       setBriefStatus('saved')
     }, 1200)
     return () => clearTimeout(t)
-  }, [brief, activeSession?.id])
+  }, [brief, viewedSession?.id])
 
   const loadApiKeys = async () => {
     const res = await fetch('/api/settings')
@@ -227,23 +229,47 @@ export default function AdminClient() {
       setDbError(null)
       if (data) {
         setSessions(data)
-        const active = data.find(s => s.is_active)
-        if (active) { setActiveSession(active); setBrief(active.brief || ''); savedBriefRef.current = active.brief || ''; setDetectionMode(active.detection_mode || 'manual') }
+        // Default to viewing the active session, or the most recent if none active
+        const toView = data.find(s => s.is_active) ?? data[0] ?? null
+        if (toView) {
+          setViewedSession(toView)
+          setBrief(toView.brief || '')
+          savedBriefRef.current = toView.brief || ''
+          setDetectionMode(toView.detection_mode || 'manual')
+          if (toView.is_active) setThemeId(toView.theme_id || 'midnight')
+        }
       }
     }
     load()
   }, [])
 
+  // Load teams + criteria whenever the viewed event changes
   useEffect(() => {
-    if (!activeSession) return
+    if (!viewedSession) return
+    setTeams([]); setCriteria([])
     Promise.all([
-      supabase.from('teams').select('*').eq('session_id', activeSession.id).order('order_index'),
-      supabase.from('criteria').select('*').eq('session_id', activeSession.id).order('order_index'),
+      supabase.from('teams').select('*').eq('session_id', viewedSession.id).order('order_index'),
+      supabase.from('criteria').select('*').eq('session_id', viewedSession.id).order('order_index'),
     ]).then(([{ data: t }, { data: c }]) => {
       if (t) setTeams(t)
       if (c) setCriteria(c)
     })
-  }, [activeSession?.id])
+  }, [viewedSession?.id])
+
+  // ── Event selection ────────────────────────────────────────────────────────
+
+  const selectEvent = (sess: Session) => {
+    if (sess.id === viewedSession?.id) return
+    setViewedSession(sess)
+    setBrief(sess.brief || '')
+    savedBriefRef.current = sess.brief || ''
+    setBriefStatus('saved')
+    setDetectionMode(sess.detection_mode || 'manual')
+    setAppliedTemplate(null)
+    setEditingSessionName(false)
+    setEditingTeam(null)
+    setEditingCriteria(null)
+  }
 
   // ── Sessions ──────────────────────────────────────────────────────────────
 
@@ -252,49 +278,58 @@ export default function AdminClient() {
     const { data } = await supabase.from('sessions').update({ is_active: true }).eq('id', sess.id).select().single()
     if (data) {
       setSessions(p => p.map(s => ({ ...s, is_active: s.id === sess.id })))
-      setActiveSession(data)
+      setViewedSession(data)
       setBrief(data.brief || '')
       savedBriefRef.current = data.brief || ''
       setBriefStatus('saved')
       setThemeId(data.theme_id || 'midnight')
       setDetectionMode(data.detection_mode || 'manual')
-      setTeams([]); setCriteria([])
-      setAppliedTemplate(null)
     }
+  }
+
+  const deactivateSession = async (sess: Session) => {
+    await supabase.from('sessions').update({ is_active: false }).eq('id', sess.id)
+    setSessions(p => p.map(s => s.id === sess.id ? { ...s, is_active: false } : s))
+    setViewedSession(p => p?.id === sess.id ? { ...p, is_active: false } : p)
   }
 
   const createSession = async () => {
     if (!newSessionName.trim()) return
-    if (activeSession) await supabase.from('sessions').update({ is_active: false }).eq('id', activeSession.id)
-    const { data, error } = await supabase.from('sessions').insert({ name: newSessionName.trim(), is_active: true }).select().single()
+    const { data, error } = await supabase.from('sessions').insert({ name: newSessionName.trim(), is_active: false }).select().single()
     if (error) { setDbError(`Create failed: ${error.message}`); return }
     if (data) {
-      setSessions(p => [data, ...p.map(s => ({ ...s, is_active: false }))])
-      setActiveSession(data); setBrief(''); savedBriefRef.current = ''; setBriefStatus('saved')
-      setTeams([]); setCriteria([]); setNewSessionName(''); setDbError(null); setAppliedTemplate(null)
+      setSessions(p => [data, ...p])
+      selectEvent(data)
+      setNewSessionName('')
+      setDbError(null)
     }
   }
 
   const saveSessionName = async () => {
-    if (!activeSession || !sessionNameDraft.trim()) return
+    if (!viewedSession || !sessionNameDraft.trim()) return
     const name = sessionNameDraft.trim()
-    await supabase.from('sessions').update({ name }).eq('id', activeSession.id)
-    setActiveSession(p => p ? { ...p, name } : null)
-    setSessions(p => p.map(s => s.id === activeSession.id ? { ...s, name } : s))
+    await supabase.from('sessions').update({ name }).eq('id', viewedSession.id)
+    setViewedSession(p => p ? { ...p, name } : null)
+    setSessions(p => p.map(s => s.id === viewedSession.id ? { ...s, name } : s))
     setEditingSessionName(false)
   }
 
   const deleteSession = async (id: string) => {
     await supabase.from('sessions').delete().eq('id', id)
-    setSessions(p => p.filter(s => s.id !== id))
-    if (activeSession?.id === id) { setActiveSession(null); setBrief(''); savedBriefRef.current = ''; setTeams([]); setCriteria([]) }
+    const remaining = sessions.filter(s => s.id !== id)
+    setSessions(remaining)
+    if (viewedSession?.id === id) {
+      const next = remaining[0] ?? null
+      if (next) { selectEvent(next) } else { setViewedSession(null); setBrief(''); savedBriefRef.current = ''; setTeams([]); setCriteria([]) }
+    }
     setConfirmDelete(null)
   }
 
   const setSessionTheme = async (themeId: string) => {
-    if (!activeSession) return
-    await supabase.from('sessions').update({ theme_id: themeId }).eq('id', activeSession.id)
-    setActiveSession(p => p ? { ...p, theme_id: themeId as any } : null)
+    if (!viewedSession) return
+    await supabase.from('sessions').update({ theme_id: themeId }).eq('id', viewedSession.id)
+    setViewedSession(p => p ? { ...p, theme_id: themeId as any } : null)
+    setSessions(p => p.map(s => s.id === viewedSession.id ? { ...s, theme_id: themeId as any } : s))
     setThemeId(themeId as any)
   }
 
@@ -323,18 +358,19 @@ export default function AdminClient() {
   }
 
   const saveDetectionMode = async (mode: 'manual' | 'automatic') => {
-    if (!activeSession) return
+    if (!viewedSession) return
     setDetectionMode(mode)
-    await supabase.from('sessions').update({ detection_mode: mode }).eq('id', activeSession.id)
-    setActiveSession(p => p ? { ...p, detection_mode: mode } : null)
+    await supabase.from('sessions').update({ detection_mode: mode }).eq('id', viewedSession.id)
+    setViewedSession(p => p ? { ...p, detection_mode: mode } : null)
+    setSessions(p => p.map(s => s.id === viewedSession.id ? { ...s, detection_mode: mode } : s))
   }
 
   // ── Teams ─────────────────────────────────────────────────────────────────
 
   const createTeam = async () => {
-    if (!newTeamName.trim() || !activeSession) return
+    if (!newTeamName.trim() || !viewedSession) return
     const { data } = await supabase.from('teams').insert({
-      session_id: activeSession.id, name: newTeamName.trim(),
+      session_id: viewedSession.id, name: newTeamName.trim(),
       description: newTeamDesc.trim() || null, order_index: teams.length,
     }).select().single()
     if (data) { setTeams(p => [...p, data]); setNewTeamName(''); setNewTeamDesc('') }
@@ -369,9 +405,9 @@ export default function AdminClient() {
   // ── Criteria ──────────────────────────────────────────────────────────────
 
   const createCriteria = async () => {
-    if (!newCritName.trim() || !activeSession) return
+    if (!newCritName.trim() || !viewedSession) return
     const { data } = await supabase.from('criteria').insert({
-      session_id: activeSession.id, name: newCritName.trim(),
+      session_id: viewedSession.id, name: newCritName.trim(),
       description: newCritDesc.trim() || null,
       weight: newCritWeight,
       order_index: criteria.length,
@@ -406,16 +442,16 @@ export default function AdminClient() {
   }
 
   const applyTemplate = async (template: Template) => {
-    if (!activeSession) return
+    if (!viewedSession) return
     setBrief(template.brief)
     savedBriefRef.current = template.brief
     setBriefStatus('saved')
-    await supabase.from('sessions').update({ brief: template.brief }).eq('id', activeSession.id)
-    setActiveSession(p => p ? { ...p, brief: template.brief } : null)
-    if (criteria.length > 0) await supabase.from('criteria').delete().eq('session_id', activeSession.id)
+    await supabase.from('sessions').update({ brief: template.brief }).eq('id', viewedSession.id)
+    setViewedSession(p => p ? { ...p, brief: template.brief } : null)
+    if (criteria.length > 0) await supabase.from('criteria').delete().eq('session_id', viewedSession.id)
     setCriteria([])
     const rows = template.criteria.map((c, i) => ({
-      session_id: activeSession.id, name: c.name, description: c.description, weight: c.weight, order_index: i,
+      session_id: viewedSession.id, name: c.name, description: c.description, weight: c.weight, order_index: i,
     }))
     const { data } = await supabase.from('criteria').insert(rows).select()
     if (data) setCriteria(data)
@@ -428,7 +464,7 @@ export default function AdminClient() {
     applyTemplate(t)
   }
 
-  const inactiveSessions = sessions.filter(s => !s.is_active)
+  const liveSession = sessions.find(s => s.is_active) ?? null
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -459,10 +495,10 @@ export default function AdminClient() {
             <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Setup</span>
           </div>
           <div className="flex items-center gap-3">
-            {activeSession && (
+            {liveSession && (
               <div className="flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#4ade80' }} />
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{activeSession.name}</span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{liveSession.name}</span>
               </div>
             )}
             <button
@@ -485,15 +521,17 @@ export default function AdminClient() {
             </div>
           )}
 
-          {/* ── Step 1: Session ──────────────────────────────────────────── */}
+          {/* ── Step 1: Events ───────────────────────────────────────────── */}
           <section>
-            <SectionHeading step={1} title="Session" subtitle="One session per event. Creating a new one activates it automatically." />
-            <div className="space-y-3">
+            <SectionHeading step={1} title="Events"
+              subtitle="Each event has its own context, criteria, and participants. Click an event to edit its config below." />
 
-              <div className="glass rounded-xl p-4">
+            <div className="space-y-2">
+              {/* Create new */}
+              <div className="glass rounded-xl p-3">
                 <div className="flex gap-2">
                   <Input value={newSessionName} onChange={setNewSessionName}
-                    placeholder="Session name — e.g. HackDay 2025"
+                    placeholder="New event name — e.g. HackDay 2025"
                     className="flex-1" onEnter={createSession} />
                   <Btn onClick={createSession} disabled={!newSessionName.trim()}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -504,74 +542,108 @@ export default function AdminClient() {
                 </div>
               </div>
 
-              {activeSession && (
-                <div className="glass rounded-xl px-4 py-3 flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: '#4ade80' }} />
-                  {editingSessionName ? (
-                    <div className="flex-1 flex gap-2">
-                      <Input value={sessionNameDraft} onChange={setSessionNameDraft} autoFocus
-                        className="flex-1" onEnter={saveSessionName} />
-                      <Btn onClick={saveSessionName} small>Save</Btn>
-                      <Btn onClick={() => setEditingSessionName(false)} variant="ghost" small>Cancel</Btn>
-                    </div>
-                  ) : (
-                    <>
-                      <button className="text-sm font-medium flex-1 text-left hover:underline underline-offset-2"
-                        onClick={() => { setSessionNameDraft(activeSession.name); setEditingSessionName(true) }}>
-                        {activeSession.name}
-                      </button>
-                      <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}>
-                        Active
-                      </span>
-                      <InlineDeleteBtn
-                        isConfirming={confirmDelete?.id === activeSession.id && confirmDelete.type === 'session'}
-                        onRequest={() => setConfirmDelete({ type: 'session', id: activeSession.id })}
-                        onConfirm={() => deleteSession(activeSession.id)}
-                        onCancel={() => setConfirmDelete(null)}
-                      />
-                    </>
-                  )}
-                </div>
+              {/* Event list */}
+              {sessions.length === 0 && !dbError && (
+                <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted)' }}>No events yet — create one above</p>
               )}
+              {sessions.map(sess => {
+                const isViewed = sess.id === viewedSession?.id
+                const isLive = sess.is_active
+                return (
+                  <div key={sess.id}
+                    className="glass rounded-xl overflow-hidden transition-all cursor-pointer"
+                    style={{ border: `1px solid ${isViewed ? 'var(--border-hover)' : 'var(--border)'}`, background: isViewed ? 'var(--accent-dim)' : undefined }}
+                    onClick={() => selectEvent(sess)}>
+                    {isViewed && editingSessionName ? (
+                      <div className="px-4 py-3 flex gap-2" onClick={e => e.stopPropagation()}>
+                        <Input value={sessionNameDraft} onChange={setSessionNameDraft} autoFocus
+                          className="flex-1" onEnter={saveSessionName} />
+                        <Btn onClick={saveSessionName} small>Save</Btn>
+                        <Btn onClick={() => setEditingSessionName(false)} variant="ghost" small>Cancel</Btn>
+                      </div>
+                    ) : (
+                      <div className="px-4 py-3 flex items-center gap-3">
+                        {/* Live indicator */}
+                        <span className="h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
 
-              {inactiveSessions.length > 0 && (
-                <div>
-                  <button onClick={() => setShowAllSessions(v => !v)}
-                    className="flex items-center gap-1.5 text-xs py-1" style={{ color: 'var(--text-muted)' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                      style={{ transform: showAllSessions ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                    {inactiveSessions.length} other session{inactiveSessions.length !== 1 ? 's' : ''}
-                  </button>
-                  <AnimatePresence>
-                    {showAllSessions && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }} className="space-y-1.5 mt-1.5 overflow-hidden">
-                        {inactiveSessions.map(sess => (
-                          <div key={sess.id} className="glass rounded-xl px-4 py-2.5 flex items-center gap-3">
-                            <span className="text-sm flex-1 truncate" style={{ color: 'var(--text-muted)' }}>{sess.name}</span>
-                            <Btn onClick={() => activateSession(sess)} variant="ghost" small>Activate</Btn>
-                            <InlineDeleteBtn
-                              isConfirming={confirmDelete?.id === sess.id && confirmDelete.type === 'session'}
-                              onRequest={() => setConfirmDelete({ type: 'session', id: sess.id })}
-                              onConfirm={() => deleteSession(sess.id)}
-                              onCancel={() => setConfirmDelete(null)}
-                            />
-                          </div>
-                        ))}
-                      </motion.div>
+                        {/* Name */}
+                        <span className="text-sm font-medium flex-1 truncate"
+                          style={{ color: isViewed ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                          {sess.name}
+                        </span>
+
+                        {/* Badges + actions */}
+                        <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                          {isLive ? (
+                            <>
+                              <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full"
+                                style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}>
+                                Live
+                              </span>
+                              <button
+                                onClick={() => deactivateSession(sess)}
+                                className="text-[11px] px-2 py-0.5 rounded transition-all"
+                                style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.3)' }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                                Stop
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => activateSession(sess)}
+                              className="text-[11px] px-2.5 py-1 rounded font-medium transition-all"
+                              style={{ color: 'var(--accent)', border: '1px solid var(--border-hover)', background: 'var(--accent-dim)' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLElement).style.color = 'white' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-dim)'; (e.currentTarget as HTMLElement).style.color = 'var(--accent)' }}>
+                              Set live
+                            </button>
+                          )}
+                          {isViewed && (
+                            <button
+                              onClick={() => { setSessionNameDraft(sess.name); setEditingSessionName(true) }}
+                              className="p-1.5 rounded-lg transition-all"
+                              style={{ color: 'var(--text-muted)' }}
+                              title="Rename"
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                            </button>
+                          )}
+                          <InlineDeleteBtn
+                            isConfirming={confirmDelete?.id === sess.id && confirmDelete.type === 'session'}
+                            onRequest={() => setConfirmDelete({ type: 'session', id: sess.id })}
+                            onConfirm={() => deleteSession(sess.id)}
+                            onCancel={() => setConfirmDelete(null)}
+                          />
+                        </div>
+                      </div>
                     )}
-                  </AnimatePresence>
-                </div>
-              )}
+                  </div>
+                )
+              })}
             </div>
           </section>
 
           <AnimatePresence>
-            {activeSession && (
+            {viewedSession && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
+
+                {/* Editing indicator when viewed ≠ live */}
+                {!viewedSession.is_active && liveSession && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
+                    style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.15)', color: '#fbbf24' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    Editing <strong className="font-semibold">{viewedSession.name}</strong> — not live.
+                    <strong className="font-semibold">{liveSession.name}</strong> is currently live.
+                  </div>
+                )}
 
                 {/* ── Quick-start templates ─────────────────────────────── */}
                 <section>
@@ -616,7 +688,6 @@ export default function AdminClient() {
                     </div>
                   )}
 
-                  {/* Replace criteria confirmation */}
                   <AnimatePresence>
                     {confirmReplaceTemplate && (
                       <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -866,36 +937,50 @@ export default function AdminClient() {
                 </section>
 
                 {/* ── Ready banner ─────────────────────────────────────── */}
-                {teams.length > 0 && criteria.length > 0 && (
+                {(detectionMode === 'automatic' || teams.length > 0) && criteria.length > 0 && (
                   <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
                     className="rounded-xl p-4 flex items-center justify-between gap-4"
                     style={{ background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.2)' }}>
                     <div>
-                      <p className="text-sm font-semibold" style={{ color: '#4ade80' }}>Ready to evaluate</p>
+                      <p className="text-sm font-semibold" style={{ color: '#4ade80' }}>
+                        {viewedSession.is_active ? 'Live and ready' : 'Ready — set live to start'}
+                      </p>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        {teams.length} participant{teams.length !== 1 ? 's' : ''} · {criteria.length} criteri{criteria.length !== 1 ? 'a' : 'on'}
+                        {detectionMode === 'automatic' ? 'Auto-detect' : `${teams.length} participant${teams.length !== 1 ? 's' : ''}`}
+                        {' '}· {criteria.length} criteri{criteria.length !== 1 ? 'a' : 'on'}
                         {briefStatus === 'unsaved' && <span style={{ color: '#fbbf24' }}> · context unsaved</span>}
                       </p>
                     </div>
-                    <Link href="/"
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-                      style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
-                      Start evaluating
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </Link>
+                    {viewedSession.is_active ? (
+                      <Link href="/"
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                        style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                        Start evaluating
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </Link>
+                    ) : (
+                      <button onClick={() => activateSession(viewedSession)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                        style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                        Set live
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                    )}
                   </motion.div>
                 )}
 
-                {/* ── Display Theme (secondary) ─────────────────────────── */}
+                {/* ── Display Theme ─────────────────────────────────────── */}
                 <section>
                   <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--text-muted)' }}>
                     Display Theme
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     {themes.map(theme => {
-                      const isSelected = (activeSession.theme_id || 'midnight') === theme.id
+                      const isSelected = (viewedSession.theme_id || 'midnight') === theme.id
                       return (
                         <button key={theme.id} onClick={() => setSessionTheme(theme.id)}
                           className="flex items-center gap-3 p-3 rounded-xl text-left transition-all"
