@@ -11,14 +11,19 @@ import { TranscriptTicker } from '@/components/TranscriptTicker'
 import { ScorePanel } from '@/components/ScorePanel'
 import { RecordingControl } from '@/components/RecordingControl'
 import { ThemeSelector, ThemeProvider } from '@/components/ThemeSelector'
+import { useAudioCapture } from '@/hooks/useAudioCapture'
 
 export default function JudgePage() {
   const { session, setSession, setTeams, setCriteria, updateScore, setThemeId } = useAppStore()
   const activeTeam = useAppStore((s) => s.activeTeam)
+  const teams = useAppStore((s) => s.teams)
   const isRecording = useAppStore((s) => s.isRecording)
+  const isSummarising = useAppStore((s) => s.isSummarising)
   const [prevTeamName, setPrevTeamName] = useState<string | null>(null)
   const [showTransition, setShowTransition] = useState(false)
   const [missingKeys, setMissingKeys] = useState<string[]>([])
+  const [confirmNext, setConfirmNext] = useState(false)
+  const { advanceToNextTeam } = useAudioCapture()
 
   // Flash transition banner when team changes
   useEffect(() => {
@@ -190,6 +195,39 @@ export default function JudgePage() {
                   <div className="flex-1 overflow-hidden">
                     <TeamSelector />
                   </div>
+                  {/* Next presenter button — manual mode only */}
+                  {activeTeam && teams.findIndex(t => t.id === activeTeam.id) < teams.length - 1 && (
+                    confirmNext ? (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Score &amp; advance?</span>
+                        <button
+                          onClick={async () => { setConfirmNext(false); await advanceToNextTeam() }}
+                          disabled={isSummarising}
+                          className="text-xs px-2.5 py-1 rounded-lg font-medium disabled:opacity-50"
+                          style={{ background: 'var(--accent)', color: 'white' }}>
+                          Yes
+                        </button>
+                        <button
+                          onClick={() => setConfirmNext(false)}
+                          className="text-xs px-2.5 py-1 rounded-lg"
+                          style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmNext(true)}
+                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                        Next presenter
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                    )
+                  )}
                 </>
               )}
               <RecordingControl compact />

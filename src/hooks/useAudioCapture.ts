@@ -305,5 +305,35 @@ export function useAudioCapture() {
     bufferRef.current = ''
   }, [runCycle])
 
-  return { start, stop }
+  // Advance to the next team in manual mode: score the current buffer, then switch.
+  const advanceToNextTeam = useCallback(async () => {
+    const state = useAppStore.getState()
+    const { teams, activeTeam, session, setActiveTeam, setScores } = state
+    if (!activeTeam || !session || !teams.length) return
+
+    const currentIndex = teams.findIndex(t => t.id === activeTeam.id)
+    const nextTeam = teams[currentIndex + 1]
+    if (!nextTeam) return
+
+    await runCycle()
+
+    const supabase = createSupabaseClient()
+    await supabase.from('sessions').update({ active_team_id: nextTeam.id }).eq('id', session.id)
+
+    const { data: existingScores } = await supabase.from('scores').select('*')
+      .eq('session_id', session.id).eq('team_id', nextTeam.id)
+
+    setActiveTeam(nextTeam)
+    if (existingScores?.length) {
+      const map: Record<string, any> = {}
+      existingScores.forEach((s: any) => { map[s.criteria_id] = s })
+      setScores(map)
+    }
+
+    bufferRef.current = ''
+    wordCountAtLastJudgeRef.current = 0
+    wordCountAtLastTransitionCheckRef.current = 0
+  }, [runCycle])
+
+  return { start, stop, advanceToNextTeam }
 }
