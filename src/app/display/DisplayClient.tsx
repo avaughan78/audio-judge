@@ -43,46 +43,64 @@ export default function DisplayClient() {
     if (themeId && themeMap[themeId]) applyTheme(themeMap[themeId])
   }, [])
 
-  useEffect(() => {
-    async function load() {
-      const { data: sess } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
-      if (!sess) return
-      setSession(sess)
-      applySessionTheme(sess.theme_id)
+  // Initialise display for a given session (called on load and when session goes live mid-display)
+  const initSession = useCallback(async (sess: Session) => {
+    setSession(sess)
+    applySessionTheme(sess.theme_id)
 
-      const { data: crit } = await supabase.from('criteria').select('*').eq('session_id', sess.id).order('order_index')
-      if (crit) setCriteria(crit)
+    const { data: crit } = await supabase.from('criteria').select('*').eq('session_id', sess.id).order('order_index')
+    if (crit) setCriteria(crit)
 
-      if (sess.active_team_id) {
-        activeTeamIdRef.current = sess.active_team_id
-        const { data: team } = await supabase.from('teams').select('*').eq('id', sess.active_team_id).single()
-        if (team) setActiveTeam(team)
+    if (sess.active_team_id) {
+      activeTeamIdRef.current = sess.active_team_id
+      const { data: team } = await supabase.from('teams').select('*').eq('id', sess.active_team_id).single()
+      if (team) setActiveTeam(team)
 
-        const { data: existingScores } = await supabase.from('scores').select('*')
-          .eq('session_id', sess.id).eq('team_id', sess.active_team_id)
-        if (existingScores) {
-          const map: Record<string, Score> = {}
-          existingScores.forEach((s) => { map[s.criteria_id] = s })
-          setScores(map)
-        }
+      const { data: existingScores } = await supabase.from('scores').select('*')
+        .eq('session_id', sess.id).eq('team_id', sess.active_team_id)
+      if (existingScores) {
+        const map: Record<string, Score> = {}
+        existingScores.forEach((s) => { map[s.criteria_id] = s })
+        setScores(map)
       }
+    }
 
-      // Realtime: scores
-      supabase.channel('display-scores')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${sess.id}` },
-          (payload: any) => { if (payload.new) setScores((prev) => ({ ...prev, [payload.new.criteria_id]: payload.new })) })
-        .subscribe()
+    // Score updates for this session
+    supabase.channel('display-scores')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${sess.id}` },
+        (payload: any) => { if (payload.new) setScores((prev) => ({ ...prev, [payload.new.criteria_id]: payload.new })) })
+      .subscribe()
 
-      // Realtime: session (theme + active team changes)
-      supabase.channel('display-session')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sess.id}` },
-          async (payload: any) => {
-            const updated = payload.new as Session
-            setSession(updated)
+    // Transcript chunks for live ticker
+    supabase.channel('display-transcript')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transcript_chunks', filter: `session_id=eq.${sess.id}` },
+        (payload: any) => { if (payload.new?.content) setLatestTranscript(payload.new.content) })
+      .subscribe()
+  }, [applySessionTheme])
+
+  useEffect(() => {
+    // Always subscribe to ALL session updates so we detect:
+    //  - a session becoming active after the display page loads
+    //  - active_team_id changing (presenter switch)
+    //  - theme changes
+    const sessionChannel = supabase.channel('display-session')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions' },
+        async (payload: any) => {
+          const updated = payload.new as Session
+          // If a session just became active and we have no session yet, initialise
+          if (updated.is_active) {
+            setSession(prev => {
+              if (!prev || prev.id !== updated.id) {
+                // New active session — do a full init
+                initSession(updated)
+                return prev // initSession will call setSession again
+              }
+              return updated
+            })
             applySessionTheme(updated.theme_id)
-            // Use ref to compare against current active team (avoids stale closure)
+            // Handle presenter switch
             if (updated.active_team_id !== activeTeamIdRef.current) {
-              activeTeamIdRef.current = updated.active_team_id
+              activeTeamIdRef.current = updated.active_team_id ?? null
               setScores({})
               setLatestTranscript('')
               if (updated.active_team_id) {
@@ -92,18 +110,19 @@ export default function DisplayClient() {
                 setActiveTeam(null)
               }
             }
-          })
-        .subscribe()
+          }
+        })
+      .subscribe()
 
-      // Realtime: transcript chunks
-      supabase.channel('display-transcript')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transcript_chunks', filter: `session_id=eq.${sess.id}` },
-          (payload: any) => { if (payload.new?.content) setLatestTranscript(payload.new.content) })
-        .subscribe()
+    // Initial load
+    async function load() {
+      const { data: sess } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
+      if (sess) await initSession(sess)
     }
-
     load()
-  }, [])
+
+    return () => { supabase.removeChannel(sessionChannel) }
+  }, [initSession, applySessionTheme])
 
   const overall = (() => {
     const scored = criteria.filter((c) => (scores[c.id]?.score ?? 0) > 0)
