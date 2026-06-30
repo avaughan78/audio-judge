@@ -23,9 +23,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' }, { status: 500 })
     }
 
-    const anthropicKey = await getSetting('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY, user.id)
+    const anthropicKey = await getSetting('ANTHROPIC_API_KEY', undefined, user.id)
     if (!anthropicKey) {
-      return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 })
+      return NextResponse.json({ error: 'Anthropic API key not configured — add it in Admin → API Keys' }, { status: 500 })
     }
 
     const supabase = createClient(

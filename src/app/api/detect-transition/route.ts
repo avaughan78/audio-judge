@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ transition: false })
     }
 
-    const anthropicKey = await getSetting('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY, user.id)
+    const anthropicKey = await getSetting('ANTHROPIC_API_KEY', undefined, user.id)
     if (!anthropicKey) return NextResponse.json({ transition: false })
 
     const anthropic = new Anthropic({ apiKey: anthropicKey })

@@ -18,6 +18,7 @@ export default function JudgePage() {
   const isRecording = useAppStore((s) => s.isRecording)
   const [prevTeamName, setPrevTeamName] = useState<string | null>(null)
   const [showTransition, setShowTransition] = useState(false)
+  const [missingKeys, setMissingKeys] = useState<string[]>([])
 
   // Flash transition banner when team changes
   useEffect(() => {
@@ -33,6 +34,13 @@ export default function JudgePage() {
   useEffect(() => {
     if (activeTeam) setPrevTeamName(activeTeam.name)
   }, [activeTeam?.name])
+
+  useEffect(() => {
+    fetch('/api/settings/check')
+      .then(r => r.json())
+      .then(d => { if (!d.ok) setMissingKeys(d.missing) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const supabase = createClient()
@@ -125,6 +133,24 @@ export default function JudgePage() {
             <NavLink href="/admin" label="Admin" icon="settings" />
           </div>
         </header>
+
+        {/* Missing API keys warning */}
+        {missingKeys.length > 0 && (
+          <div className="relative z-10 flex items-center justify-between gap-3 px-5 py-2"
+            style={{ background: 'rgba(239,68,68,0.08)', borderBottom: '1px solid rgba(239,68,68,0.2)' }}>
+            <div className="flex items-center gap-2">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p className="text-xs" style={{ color: '#f87171' }}>
+                Missing API keys: {missingKeys.join(', ')} — scoring and transcription won't work.
+              </p>
+            </div>
+            <Link href="/admin" className="text-xs font-medium underline underline-offset-2 shrink-0" style={{ color: '#f87171' }}>
+              Add in Admin →
+            </Link>
+          </div>
+        )}
 
         {!session ? (
           <div className="relative z-10 flex-1 flex items-center justify-center">

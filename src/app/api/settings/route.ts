@@ -31,16 +31,15 @@ export async function GET() {
   const dbMap: Record<string, { value: string; updated_at: string }> = {}
   for (const row of rows ?? []) dbMap[row.key] = row
 
-  const result = MANAGED_KEYS.map(({ key, label, hint, envVar }) => {
+  const result = MANAGED_KEYS.map(({ key, label, hint }) => {
     const dbRow = dbMap[key]
-    const envValue = process.env[envVar]
-    const value = dbRow?.value || envValue || ''
+    const value = dbRow?.value || ''
     return {
       key,
       label,
       hint,
       isSet: !!value,
-      source: dbRow ? 'db' : envValue ? 'env' : 'unset',
+      source: dbRow ? 'db' : 'unset',
       preview: value ? maskValue(value) : '',
       updatedAt: dbRow?.updated_at ?? null,
     }

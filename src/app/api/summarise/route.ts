@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
   const briefContext = brief ? `\n\nEvaluation context: ${brief}` : ''
 
-  const anthropicKey = await getSetting('ANTHROPIC_API_KEY', process.env.ANTHROPIC_API_KEY, user.id)
+  const anthropicKey = await getSetting('ANTHROPIC_API_KEY', undefined, user.id)
   if (!anthropicKey) return NextResponse.json({ summary: '' })
 
   const anthropic = new Anthropic({ apiKey: anthropicKey })
