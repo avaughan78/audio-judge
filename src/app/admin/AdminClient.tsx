@@ -229,13 +229,22 @@ export default function AdminClient() {
 
   useEffect(() => {
     if (!viewedSession) return
-    setTeams([]); setCriteria([])
+    setTeams([]); setCriteria([]); setAppliedTemplate(null)
     Promise.all([
       supabase.from('teams').select('*').eq('session_id', viewedSession.id).order('order_index'),
       supabase.from('criteria').select('*').eq('session_id', viewedSession.id).order('order_index'),
     ]).then(([{ data: t }, { data: c }]) => {
       if (t) setTeams(t)
-      if (c) setCriteria(c)
+      if (c) {
+        setCriteria(c)
+        // Detect if criteria match a template by comparing criterion names
+        const names = c.map((x: Criteria) => x.name)
+        const match = TEMPLATES.find(tmpl =>
+          tmpl.criteria.length === names.length &&
+          tmpl.criteria.every((tc, i) => tc.name === names[i])
+        )
+        if (match) setAppliedTemplate(match.id)
+      }
     })
   }, [viewedSession?.id])
 
