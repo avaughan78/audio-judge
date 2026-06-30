@@ -71,6 +71,7 @@ export default function AdminClient() {
   const { setThemeId } = useAppStore()
   const supabase = createClient()
 
+  const [dbError, setDbError] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
   const [activeSession, setActiveSession] = useState<Session | null>(null)
   const [newSessionName, setNewSessionName] = useState('')
@@ -88,7 +89,9 @@ export default function AdminClient() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('sessions').select('*').order('created_at', { ascending: false })
+      const { data, error } = await supabase.from('sessions').select('*').order('created_at', { ascending: false })
+      if (error) { setDbError(`DB Error: ${error.message} (code: ${error.code})`); return }
+      setDbError(null)
       if (data) {
         setSessions(data)
         const active = data.find((s) => s.is_active)
@@ -112,8 +115,9 @@ export default function AdminClient() {
   // ── Sessions ──
   const createSession = async () => {
     if (!newSessionName.trim()) return
-    const { data } = await supabase.from('sessions').insert({ name: newSessionName.trim() }).select().single()
-    if (data) { setSessions((p) => [data, ...p]); setNewSessionName('') }
+    const { data, error } = await supabase.from('sessions').insert({ name: newSessionName.trim() }).select().single()
+    if (error) { setDbError(`Create failed: ${error.message} (code: ${error.code})`); return }
+    if (data) { setSessions((p) => [data, ...p]); setNewSessionName(''); setDbError(null) }
   }
 
   const activateSession = async (sess: Session) => {
