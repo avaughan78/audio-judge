@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { Session, Team, Criteria } from '@/lib/types'
 import { ThemeProvider } from '@/components/ThemeSelector'
-import { themes } from '@/lib/themes'
 import { useAppStore } from '@/lib/store'
 
 // ── Templates ────────────────────────────────────────────────────────────────
@@ -308,14 +307,6 @@ export default function AdminClient() {
       if (next) { selectEvent(next) } else { setViewedSession(null); setBrief(''); savedBriefRef.current = ''; setTeams([]); setCriteria([]) }
     }
     setConfirmDelete(null)
-  }
-
-  const setSessionTheme = async (themeId: string) => {
-    if (!viewedSession) return
-    await supabase.from('sessions').update({ theme_id: themeId }).eq('id', viewedSession.id)
-    setViewedSession(p => p ? { ...p, theme_id: themeId as any } : null)
-    setSessions(p => p.map(s => s.id === viewedSession.id ? { ...s, theme_id: themeId as any } : s))
-    setThemeId(themeId as any)
   }
 
   const saveDetectionMode = async (mode: 'manual' | 'automatic') => {
@@ -943,40 +934,6 @@ export default function AdminClient() {
                         No criteria yet — use "Load defaults" for a ready-made set
                       </p>
                     )}
-                  </div>
-                </StepCard>
-
-                {/* ── Display Theme ─────────────────────────────────────── */}
-                <StepCard number={detectionMode === 'manual' ? 5 : 4} title="Display Theme"
-                  subtitle="Visual theme shown on the judging and display screens.">
-                  <div className="grid grid-cols-2 gap-3">
-                    {themes.map(theme => {
-                      const isSelected = (viewedSession.theme_id || 'midnight') === theme.id
-                      return (
-                        <button key={theme.id} onClick={() => setSessionTheme(theme.id)}
-                          className="flex items-center gap-3 p-4 rounded-xl text-left transition-all"
-                          style={{
-                            background: isSelected ? 'var(--accent-dim)' : 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
-                          }}>
-                          <div className="w-9 h-9 rounded-full shrink-0"
-                            style={{ background: theme.swatch, boxShadow: isSelected ? `0 0 14px ${theme.vars.glowAccent}` : 'none' }} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold"
-                              style={{ color: isSelected ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                              {theme.name}
-                            </p>
-                            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{theme.description}</p>
-                          </div>
-                          {isSelected && (
-                            <svg className="ml-auto shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                              stroke="var(--accent)" strokeWidth="2.5">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          )}
-                        </button>
-                      )
-                    })}
                   </div>
                 </StepCard>
 
