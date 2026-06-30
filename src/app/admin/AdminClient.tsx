@@ -115,25 +115,19 @@ function Btn({ onClick, children, variant = 'primary', disabled = false, size = 
   )
 }
 
-function StepCard({ number, title, subtitle, children, action }: {
-  number: number; title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode
+function Section({ title, subtitle, children, action }: {
+  title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode
 }) {
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-      <div className="flex items-center justify-between gap-4 px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-3">
-          <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0"
-            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-            {number}
-          </span>
-          <div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h2>
-            {subtitle && <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
-          </div>
+    <div>
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h2 className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>{title}</h2>
+          {subtitle && <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
         </div>
-        {action}
+        {action && <div className="shrink-0 pt-0.5">{action}</div>}
       </div>
-      <div className="p-6">{children}</div>
+      {children}
     </div>
   )
 }
@@ -610,25 +604,6 @@ export default function AdminClient() {
             </div>
 
             <div className="flex-1" />
-
-            {/* API key status */}
-            {apiKeySettings.length > 0 && (
-              <div className="px-4 pb-3" style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                <p className="text-sm font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>API Keys</p>
-                <div className="space-y-1">
-                  {apiKeySettings.map(s => (
-                    <div key={s.key} className="flex items-center gap-2 px-1 py-1">
-                      <span className="h-1.5 w-1.5 rounded-full shrink-0"
-                        style={{ background: s.isSet ? '#4ade80' : '#f87171' }} />
-                      <span className="text-sm flex-1 truncate" style={{ color: 'var(--text-muted)' }}>{s.label}</span>
-                      <span className="text-xs" style={{ color: s.isSet ? '#4ade80' : '#f87171' }}>
-                        {s.isSet ? 'set' : 'missing'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </aside>
 
           {/* ── Main content ──────────────────────────────────────────── */}
@@ -642,10 +617,10 @@ export default function AdminClient() {
                 </div>
               </div>
             ) : (
-              <div className="max-w-6xl mx-auto px-8 py-8">
+              <div className="max-w-5xl mx-auto px-10 py-10">
 
                 {/* Event header */}
-                <div className="flex items-start justify-between gap-4 mb-6">
+                <div className="flex items-start justify-between gap-4 mb-10">
                   <div>
                     {editingSessionName ? (
                       <div className="flex items-center gap-2">
@@ -740,146 +715,83 @@ export default function AdminClient() {
                   </div>
                 )}
 
-                {/* ── Quick start ─────────────────────────────────────── */}
-                <div className="mb-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>Quick start</p>
-                    <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>or configure manually below</p>
-                  </div>
-
-                  {appliedTemplate ? (
-                    <div className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.2)' }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <span className="text-sm flex-1" style={{ color: '#4ade80' }}>
-                        {TEMPLATES.find(t => t.id === appliedTemplate)?.name} template applied
-                      </span>
-                      <button onClick={() => setAppliedTemplate(null)} className="text-sm underline underline-offset-2"
-                        style={{ color: 'var(--text-muted)' }}>
-                        Switch
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-4">
-                      {TEMPLATES.map(t => (
-                        <button key={t.id} onClick={() => handleTemplateClick(t)}
-                          className="text-left p-5 rounded-xl transition-all"
-                          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLElement).style.background = 'var(--accent-dim)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)' }}>
-                          <div className="text-3xl mb-3">{t.icon}</div>
-                          <p className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{t.name}</p>
-                          <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--text-muted)' }}>{t.tagline}</p>
-                          <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
-                            {t.criteria.length} criteria pre-loaded →
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <AnimatePresence>
-                    {confirmReplaceTemplate && (
-                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        className="mt-4 p-4 rounded-xl flex items-center gap-3"
-                        style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2">
-                          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                          <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                        </svg>
-                        <span className="text-sm flex-1" style={{ color: '#fbbf24' }}>
-                          This will replace {criteria.length} existing criteria. Continue?
-                        </span>
-                        <button onClick={() => applyTemplate(confirmReplaceTemplate)}
-                          className="text-sm px-3 py-1.5 rounded-lg font-medium"
-                          style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
-                          Replace
-                        </button>
-                        <button onClick={() => setConfirmReplaceTemplate(null)} className="text-sm"
-                          style={{ color: 'var(--text-muted)' }}>
-                          Cancel
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
                 {/* ── Two-column layout ────────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-16 gap-y-12 items-start">
 
                   {/* Left column: Context + Scoring Criteria */}
-                  <div className="col-span-1 lg:col-span-3 space-y-6">
+                  <div className="col-span-1 lg:col-span-3 space-y-12">
 
-                    {/* ── Step 1: Context ────────────────────────────── */}
-                    <StepCard
-                      number={1}
+                    {/* Context */}
+                    <Section
                       title="Context"
                       subtitle="What are you evaluating and what does good look like? The more specific, the more accurate the AI scoring."
                       action={
                         briefStatus !== 'saved' ? (
-                          <span className="text-sm font-medium px-2.5 py-1 rounded-full"
+                          <span className="text-xs font-medium px-2 py-1 rounded-md"
                             style={{
                               background: briefStatus === 'saving' ? 'rgba(99,102,241,0.12)' : 'rgba(251,191,36,0.12)',
                               color: briefStatus === 'saving' ? 'var(--accent)' : '#fbbf24',
-                              border: `1px solid ${briefStatus === 'saving' ? 'var(--border-hover)' : 'rgba(251,191,36,0.3)'}`,
                             }}>
                             {briefStatus === 'saving' ? 'Saving…' : 'Unsaved'}
                           </span>
                         ) : null
                       }>
-                      <Textarea value={brief} onChange={setBrief} rows={6}
+                      <Textarea value={brief} onChange={setBrief} rows={7}
                         placeholder={`Describe what you're evaluating and what good looks like.\n\ne.g. "5-minute investor pitch. We want a clear problem, evidence of market size, and a working prototype. Strong teams will demonstrate real traction."`} />
-                    </StepCard>
+                    </Section>
 
-                    {/* ── Step 2: Scoring Criteria ───────────────────── */}
-                    <StepCard
-                      number={2}
+                    {/* Scoring Criteria */}
+                    <Section
                       title={`Scoring Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
-                      subtitle="What the AI scores on. Specific descriptions produce much more reliable scores."
+                      subtitle="What the AI scores on. Specific descriptions produce more reliable scores."
                       action={
-                        <button onClick={() => handleTemplateClick(TEMPLATES[0])}
-                          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg font-medium"
-                          style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                          </svg>
-                          {criteria.length > 0 ? 'Use template' : 'Load defaults'}
-                        </button>
-                      }>
-                      <div className="space-y-3">
-                        <div className="space-y-2 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
-                          <Input value={newCritName} onChange={setNewCritName}
-                            placeholder="Criterion name — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
-                          {newCritName.trim() && (
-                            <div className="flex justify-end">
-                              <button onClick={generateNewCriteriaDesc} disabled={generatingNewDesc}
-                                className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
-                                style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                                <SparkleIcon spinning={generatingNewDesc} />
-                                {generatingNewDesc ? 'Generating…' : 'AI fill description'}
-                              </button>
-                            </div>
-                          )}
-                          <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3}
-                            placeholder="Scoring guide — the more specific the better. e.g. Does the presenter identify the problem with evidence, or just assert it exists?" />
-                          <div className="flex items-center gap-3 pt-1">
-                            <div className="w-44"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} /></div>
-                            <Btn onClick={createCriteria} disabled={!newCritName.trim()}>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                              </svg>
-                              Add criterion
-                            </Btn>
-                          </div>
+                        <div className="flex items-center gap-1.5">
+                          {TEMPLATES.map(t => (
+                            <button key={t.id} onClick={() => handleTemplateClick(t)}
+                              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
+                              style={{
+                                background: appliedTemplate === t.id ? 'var(--accent-dim)' : 'rgba(255,255,255,0.04)',
+                                color: appliedTemplate === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                                border: `1px solid ${appliedTemplate === t.id ? 'var(--border-hover)' : 'var(--border)'}`,
+                              }}>
+                              {t.icon} {t.name}
+                              {appliedTemplate === t.id && (
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              )}
+                            </button>
+                          ))}
                         </div>
+                      }>
 
+                      <AnimatePresence>
+                        {confirmReplaceTemplate && (
+                          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                            className="mb-4 p-3 rounded-xl flex items-center gap-3"
+                            style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
+                            <span className="text-sm flex-1" style={{ color: '#fbbf24' }}>
+                              Replace {criteria.length} existing criteria?
+                            </span>
+                            <button onClick={() => applyTemplate(confirmReplaceTemplate)}
+                              className="text-sm px-3 py-1 rounded-lg font-medium"
+                              style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
+                              Replace
+                            </button>
+                            <button onClick={() => setConfirmReplaceTemplate(null)} className="text-sm"
+                              style={{ color: 'var(--text-muted)' }}>
+                              Cancel
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Criteria list */}
+                      <div style={{ borderTop: criteria.length > 0 ? '1px solid var(--border)' : undefined }}>
                         {criteria.map((c, i) => (
-                          <div key={c.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                          <div key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             {editingCriteria?.id === c.id ? (
-                              <div className="p-4 space-y-2">
+                              <div className="py-4 space-y-3">
                                 <Input value={editingCriteria.name}
                                   onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
                                   placeholder="Name" autoFocus />
@@ -897,7 +809,7 @@ export default function AdminClient() {
                                   onChange={v => setEditingCriteria(p => p ? { ...p, description: v } : null)}
                                   rows={3} placeholder="Scoring guide" />
                                 <div className="flex items-center gap-3">
-                                  <div className="w-44"><WeightSelect value={editingCriteria.weight}
+                                  <div className="w-40"><WeightSelect value={editingCriteria.weight}
                                     onChange={v => setEditingCriteria(p => p ? { ...p, weight: v } : null)} /></div>
                                   <div className="flex-1" />
                                   <Btn onClick={() => setEditingCriteria(null)} variant="ghost" size="sm">Cancel</Btn>
@@ -905,16 +817,16 @@ export default function AdminClient() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="px-4 py-3 flex items-start gap-3">
+                              <div className="py-3.5 flex items-start gap-3">
                                 <ReorderBtns onUp={() => moveCriteria(i, 'up')} onDown={() => moveCriteria(i, 'down')}
                                   canUp={i > 0} canDown={i < criteria.length - 1} />
                                 <div className="flex-1 min-w-0 cursor-pointer"
                                   onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <p className="text-sm font-semibold hover:underline underline-offset-2">{c.name}</p>
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
                                     {c.weight !== 1 && (
-                                      <span className="text-sm px-2 py-0.5 rounded font-mono"
-                                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                                      <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
                                         ×{c.weight}
                                       </span>
                                     )}
@@ -934,87 +846,81 @@ export default function AdminClient() {
                           </div>
                         ))}
                         {criteria.length === 0 && (
-                          <p className="text-sm text-center py-2" style={{ color: 'var(--text-muted)' }}>
-                            No criteria yet — use "Load defaults" for a ready-made set
+                          <p className="text-sm py-3" style={{ color: 'var(--text-muted)' }}>
+                            No criteria yet — load a template above or add one below.
                           </p>
                         )}
                       </div>
-                    </StepCard>
+
+                      {/* Add criterion — progressive disclosure */}
+                      <div className="mt-4 space-y-3">
+                        <Input value={newCritName} onChange={setNewCritName}
+                          placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
+                        {newCritName.trim() && (
+                          <>
+                            <div className="flex justify-end">
+                              <button onClick={generateNewCriteriaDesc} disabled={generatingNewDesc}
+                                className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
+                                style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                                <SparkleIcon spinning={generatingNewDesc} />
+                                {generatingNewDesc ? 'Generating…' : 'AI fill description'}
+                              </button>
+                            </div>
+                            <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3}
+                              placeholder="Scoring guide — the more specific the better." />
+                            <div className="flex items-center gap-3">
+                              <div className="w-40"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} /></div>
+                              <Btn onClick={createCriteria} disabled={!newCritName.trim()}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                                Add
+                              </Btn>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </Section>
 
                   </div>
 
                   {/* Right column: Detection Mode + Participants + API Keys */}
-                  <div className="col-span-1 lg:col-span-2 space-y-6">
+                  <div className="col-span-1 lg:col-span-2 space-y-10">
 
-                    {/* ── Step 3: Detection Mode ─────────────────────── */}
-                    <StepCard number={3} title="Detection Mode"
-                      subtitle="How should the app know when the next presenter steps up?">
-                      <div className="grid grid-cols-1 gap-3">
+                    {/* Detection Mode */}
+                    <Section title="Detection Mode" subtitle="How the app knows when to switch presenters.">
+                      <div className="flex gap-2 mb-3">
                         {([
-                          { value: 'manual', label: 'Manual', icon: '🎯', desc: 'You tap to select each participant before recording starts.' },
-                          { value: 'automatic', label: 'Automatic', icon: '🤖', desc: 'AI listens for applause and new introductions to switch presenter automatically.' },
-                        ] as const).map(({ value, label, icon, desc }) => {
-                          const isSelected = detectionMode === value
-                          return (
-                            <button key={value} onClick={() => saveDetectionMode(value)}
-                              className="text-left p-4 rounded-xl transition-all"
-                              style={{
-                                background: isSelected ? 'var(--accent-dim)' : 'rgba(255,255,255,0.03)',
-                                border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
-                              }}>
-                              <div className="text-2xl mb-2">{icon}</div>
-                              <p className="text-sm font-semibold mb-1 flex items-center gap-2"
-                                style={{ color: isSelected ? 'var(--accent)' : 'var(--text-primary)' }}>
-                                {label}
-                                {isSelected && (
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5">
-                                    <polyline points="20 6 9 17 4 12" />
-                                  </svg>
-                                )}
-                              </p>
-                              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{desc}</p>
-                            </button>
-                          )
-                        })}
+                          { value: 'manual', label: 'Manual' },
+                          { value: 'automatic', label: 'Automatic' },
+                        ] as const).map(({ value, label }) => (
+                          <button key={value} onClick={() => saveDetectionMode(value)}
+                            className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
+                            style={{
+                              background: detectionMode === value ? 'var(--accent-dim)' : 'rgba(255,255,255,0.03)',
+                              color: detectionMode === value ? 'var(--accent)' : 'var(--text-muted)',
+                              border: `1px solid ${detectionMode === value ? 'var(--accent)' : 'var(--border)'}`,
+                            }}>
+                            {label}
+                          </button>
+                        ))}
                       </div>
-                      {detectionMode === 'automatic' && (
-                        <div className="mt-3 flex items-start gap-3 px-4 py-3 rounded-xl"
-                          style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.15)' }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" className="mt-0.5 shrink-0">
-                            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                          </svg>
-                          <p className="text-sm" style={{ color: '#fbbf24' }}>
-                            Participants are created on the fly — no need to add them below.
-                            Scores and summaries are stored per presenter automatically.
-                          </p>
-                        </div>
-                      )}
-                    </StepCard>
+                      <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                        {detectionMode === 'manual'
+                          ? 'Select each participant before their presentation starts.'
+                          : 'AI detects presenter changes automatically. Participants are created on the fly — no setup needed.'}
+                      </p>
+                    </Section>
 
-                    {/* ── Step 4: Participants (manual only) ─────────── */}
+                    {/* Participants — manual mode only */}
                     {detectionMode === 'manual' && (
-                      <StepCard number={4} title={`Participants${teams.length ? ` (${teams.length})` : ''}`}
-                        subtitle="Add each team, candidate, or presenter being evaluated.">
-                        <div className="space-y-3">
-                          <div className="space-y-2 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
-                            <Input value={newTeamName} onChange={setNewTeamName}
-                              placeholder="Name — e.g. Team Alpha, Candidate A" onEnter={createTeam} />
-                            <Input value={newTeamDesc} onChange={setNewTeamDesc}
-                              placeholder="Short description (optional)" />
-                            <div className="flex justify-end pt-1">
-                              <Btn onClick={createTeam} disabled={!newTeamName.trim()}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                                </svg>
-                                Add participant
-                              </Btn>
-                            </div>
-                          </div>
-
+                      <Section title={`Participants${teams.length ? ` (${teams.length})` : ''}`}
+                        subtitle="Add each team, candidate, or presenter.">
+                        <div style={{ borderTop: teams.length > 0 ? '1px solid var(--border)' : undefined }}>
                           {teams.map((team, i) => (
-                            <div key={team.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                            <div key={team.id} style={{ borderBottom: '1px solid var(--border)' }}>
                               {editingTeam?.id === team.id ? (
-                                <div className="p-4 space-y-2">
+                                <div className="py-4 space-y-2">
                                   <Input value={editingTeam.name} onChange={v => setEditingTeam(p => p ? { ...p, name: v } : null)}
                                     placeholder="Name" autoFocus onEnter={saveTeamEdit} />
                                   <Input value={editingTeam.description}
@@ -1026,7 +932,7 @@ export default function AdminClient() {
                                   </div>
                                 </div>
                               ) : (
-                                <div className="px-4 py-3 flex items-center gap-3">
+                                <div className="py-3.5 flex items-center gap-3">
                                   <ReorderBtns onUp={() => moveTeam(i, 'up')} onDown={() => moveTeam(i, 'down')}
                                     canUp={i > 0} canDown={i < teams.length - 1} />
                                   <div className="flex-1 min-w-0 cursor-pointer"
@@ -1070,34 +976,52 @@ export default function AdminClient() {
                             </div>
                           ))}
                           {teams.length === 0 && (
-                            <p className="text-sm text-center py-2" style={{ color: 'var(--text-muted)' }}>No participants yet</p>
+                            <p className="text-sm py-3" style={{ color: 'var(--text-muted)' }}>No participants yet</p>
                           )}
                         </div>
-                      </StepCard>
+
+                        {/* Add participant — progressive disclosure */}
+                        <div className="mt-4 space-y-2">
+                          <Input value={newTeamName} onChange={setNewTeamName}
+                            placeholder="Add a participant — e.g. Team Alpha" onEnter={createTeam} />
+                          {newTeamName.trim() && (
+                            <>
+                              <Input value={newTeamDesc} onChange={setNewTeamDesc}
+                                placeholder="Short description (optional)" />
+                              <div className="flex justify-end pt-1">
+                                <Btn onClick={createTeam} disabled={!newTeamName.trim()}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                                  </svg>
+                                  Add
+                                </Btn>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </Section>
                     )}
 
-                    {/* ── Step 5: API Keys ───────────────────────────── */}
-                    <StepCard number={5} title="API Keys"
-                      subtitle="Keys are stored per-user and never shared.">
-                      <div className="space-y-2">
+                    {/* API Keys */}
+                    <Section title="API Keys" subtitle="Stored per-user, never shared.">
+                      <div style={{ borderTop: '1px solid var(--border)' }}>
                         {apiKeySettings.length === 0 ? (
-                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p>
+                          <p className="text-sm py-4" style={{ color: 'var(--text-muted)' }}>Loading…</p>
                         ) : apiKeySettings.map((setting) => (
-                          <div key={setting.key} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-                            <div className="px-4 py-3 flex items-center gap-3">
+                          <div key={setting.key} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <div className="py-4 flex items-center gap-3">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-0.5">
-                                  <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{setting.label}</p>
-                                  <span className="text-sm px-2 py-0.5 rounded-full font-medium"
+                                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{setting.label}</p>
+                                  <span className="text-xs px-1.5 py-0.5 rounded font-medium"
                                     style={{
-                                      background: setting.isSet ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.1)',
+                                      background: setting.isSet ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
                                       color: setting.isSet ? '#4ade80' : '#f87171',
-                                      border: `1px solid ${setting.isSet ? 'rgba(74,222,128,0.2)' : 'rgba(239,68,68,0.2)'}`,
                                     }}>
                                     {setting.isSet ? 'saved' : 'not set'}
                                   </span>
                                 </div>
-                                <p className="text-sm font-mono truncate" style={{ color: 'var(--text-muted)' }}>
+                                <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>
                                   {setting.isSet ? setting.preview : setting.hint}
                                 </p>
                               </div>
@@ -1114,7 +1038,7 @@ export default function AdminClient() {
                               {editingKey === setting.key && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                                   exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                  <div className="px-4 pb-4 flex gap-2" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                                  <div className="pb-4 flex gap-2">
                                     <input
                                       type="password" value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
                                       placeholder={`Paste ${setting.label}…`} autoFocus
@@ -1143,9 +1067,9 @@ export default function AdminClient() {
                           </div>
                         ))}
                       </div>
-                    </StepCard>
+                    </Section>
 
-                    {/* ── Env vars + Billing ─────────────────────────── */}
+                    {/* External links */}
                     <div className="flex flex-col gap-3 pb-8">
                       <div className="flex flex-wrap gap-2">
                         {[

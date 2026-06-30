@@ -201,6 +201,8 @@ export function useAudioCapture() {
         if (stoppedRef.current) return
         setConnecting(false)
         setRecording(true)
+        // Guard: if MediaRecorder already exists the SDK reconnected — don't re-init
+        if (mediaRecorderRef.current) return
         setRecordingStartedAt(Date.now())
 
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')

@@ -28,7 +28,7 @@ export default function JudgePage() {
   const [showAddTeamInline, setShowAddTeamInline] = useState(false)
   const [newTeamNameInline, setNewTeamNameInline] = useState('')
   const [addingTeamInline, setAddingTeamInline] = useState(false)
-  const { advanceToNextTeam, manualAdvanceAutoMode } = useAudioCapture()
+  const { start, stop, advanceToNextTeam, manualAdvanceAutoMode } = useAudioCapture()
 
   // Flash transition banner when team changes
   useEffect(() => {
@@ -332,7 +332,7 @@ export default function JudgePage() {
                   )}
                 </>
               )}
-              <RecordingControl compact />
+              <RecordingControl compact onStart={start} onStop={stop} />
             </div>
 
             {/* Presenter transition flash */}

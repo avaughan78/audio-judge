@@ -25,9 +25,11 @@ function formatTime(s: number) {
 
 interface RecordingControlProps {
   compact?: boolean
+  onStart?: () => Promise<void>
+  onStop?: () => Promise<void>
 }
 
-export function RecordingControl({ compact = false }: RecordingControlProps) {
+export function RecordingControl({ compact = false, onStart, onStop }: RecordingControlProps) {
   const isRecording = useAppStore((s) => s.isRecording)
   const isConnecting = useAppStore((s) => s.isConnecting)
   const isSummarising = useAppStore((s) => s.isSummarising)
@@ -36,7 +38,9 @@ export function RecordingControl({ compact = false }: RecordingControlProps) {
   const lastJudgedAt = useAppStore((s) => s.lastJudgedAt)
   const recordingStartedAt = useAppStore((s) => s.recordingStartedAt)
   const elapsed = useElapsedTime(recordingStartedAt)
-  const { start, stop } = useAudioCapture()
+  const { start: hookStart, stop: hookStop } = useAudioCapture()
+  const start = onStart ?? hookStart
+  const stop = onStop ?? hookStop
 
   const isAutoMode = session?.detection_mode === 'automatic'
   const canRecord = (!!activeTeam || isAutoMode) && !isConnecting
