@@ -134,6 +134,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing from response')
 
+      console.log('[meeting] raw tracks:', rawStream.getTracks().map(t => `${t.kind}:${t.label}:${t.readyState}`))
       if (!rawStream.getAudioTracks().length) {
         rawStream.getTracks().forEach((t) => t.stop())
         const msg = captureMode === 'online'
@@ -148,6 +149,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       const stream = rawStream.getVideoTracks().length > 0
         ? new MediaStream(rawStream.getAudioTracks())
         : rawStream
+      console.log('[meeting] recording stream tracks:', stream.getTracks().map(t => `${t.kind}:${t.readyState}`))
       streamRef.current = rawStream
 
       const { DeepgramClient } = await import('@deepgram/sdk')
@@ -175,8 +177,14 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           ? 'audio/webm;codecs=opus'
           : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
 
+        console.log('[meeting] mimeType:', mimeType, '| conn.readyState:', conn.readyState)
         const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+        let chunkCount = 0
         mr.ondataavailable = (e) => {
+          chunkCount++
+          if (chunkCount <= 5 || chunkCount % 20 === 0) {
+            console.log(`[meeting] chunk #${chunkCount}: ${e.data.size} bytes, conn=${conn.readyState}`)
+          }
           if (e.data.size > 0 && conn.readyState === 1) conn.sendMedia(e.data)
         }
         try {
@@ -237,6 +245,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
 
       conn.on('message', (message: any) => {
         if (stoppedRef.current) return
+        console.log('[meeting] Deepgram msg type:', message?.type)
         if (message?.type !== 'Results') return
         const alt = message?.channel?.alternatives?.[0]
         if (!alt?.transcript?.trim()) return
