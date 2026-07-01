@@ -142,12 +142,13 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         useAppStore.getState().setJudgeError(msg)
         throw new Error(msg)
       }
-      // If fallback gave us a video track, strip it — record audio-only
+      // For display capture with video tracks, create an audio-only stream for
+      // MediaRecorder. Do NOT stop the video track — that ends the entire capture
+      // session and kills audio too. Keep rawStream in streamRef for cleanup.
       const stream = rawStream.getVideoTracks().length > 0
         ? new MediaStream(rawStream.getAudioTracks())
         : rawStream
-      rawStream.getVideoTracks().forEach((t) => t.stop())
-      streamRef.current = stream
+      streamRef.current = rawStream
 
       const { DeepgramClient } = await import('@deepgram/sdk')
       const dg = new DeepgramClient({ apiKey: key, baseUrl: 'https://api.eu.deepgram.com' })
@@ -190,8 +191,10 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         }
         mediaRecorderRef.current = mr
 
-        // When screen share ends externally, clean up so state stays in sync
-        stream.getTracks().forEach((track) => {
+        // When screen share ends externally, clean up so state stays in sync.
+        // Listen on rawStream — for display capture the video track fires 'ended'
+        // when the user stops sharing; stream may be audio-only and miss this.
+        rawStream.getTracks().forEach((track) => {
           track.addEventListener('ended', () => {
             if (stoppedRef.current) return
             stoppedRef.current = true
