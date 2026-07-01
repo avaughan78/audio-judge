@@ -55,53 +55,47 @@ const tabVariants = {
 
 // ── Primitives ───────────────────────────────────────────────────────────────
 
-const LIGHT_INPUT = { bg: 'white', border: 'rgba(0,0,0,0.15)', borderFocus: 'rgba(0,0,0,0.35)', color: '#1e293b' }
-const DARK_INPUT  = { bg: 'var(--input-bg)', border: 'var(--border)', borderFocus: 'var(--border-hover)', color: 'var(--text-primary)' }
-
-function Input({ value, onChange, placeholder, className = '', onEnter, autoFocus, type = 'text', light = false }: {
+function Input({ value, onChange, placeholder, className = '', onEnter, autoFocus, type = 'text' }: {
   value: string; onChange: (v: string) => void; placeholder?: string
-  className?: string; onEnter?: () => void; autoFocus?: boolean; type?: string; light?: boolean
+  className?: string; onEnter?: () => void; autoFocus?: boolean; type?: string
 }) {
-  const s = light ? LIGHT_INPUT : DARK_INPUT
   return (
     <input
       type={type} value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder} autoFocus={autoFocus}
       onKeyDown={e => { if (e.key === 'Enter' && onEnter) { e.preventDefault(); onEnter() } }}
-      className={`w-full px-4 py-2.5 rounded-xl text-base placeholder:text-slate-400 focus:outline-none transition-colors ${className}`}
-      style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.color }}
-      onFocus={e => { e.currentTarget.style.borderColor = s.borderFocus }}
-      onBlur={e => { e.currentTarget.style.borderColor = s.border }}
+      className={`w-full px-4 py-2.5 rounded-xl text-base placeholder:text-[color:var(--text-muted)] focus:outline-none transition-colors ${className}`}
+      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+      onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+      onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
     />
   )
 }
 
-function Textarea({ value, onChange, placeholder, rows = 4, light = false }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; light?: boolean
+function Textarea({ value, onChange, placeholder, rows = 4 }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; rows?: number
 }) {
-  const s = light ? LIGHT_INPUT : DARK_INPUT
   return (
     <textarea
       value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder} rows={rows}
-      className="w-full px-4 py-3 rounded-xl text-base placeholder:text-slate-400 focus:outline-none transition-colors resize-none leading-relaxed"
-      style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.color }}
-      onFocus={e => { e.currentTarget.style.borderColor = s.borderFocus }}
-      onBlur={e => { e.currentTarget.style.borderColor = s.border }}
+      className="w-full px-4 py-3 rounded-xl text-base placeholder:text-[color:var(--text-muted)] focus:outline-none transition-colors resize-none leading-relaxed"
+      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+      onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+      onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
     />
   )
 }
 
-function WeightSelect({ value, onChange, light = false }: { value: number; onChange: (v: number) => void; light?: boolean }) {
-  const s = light ? LIGHT_INPUT : DARK_INPUT
+function WeightSelect({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
     <select value={value} onChange={e => onChange(parseFloat(e.target.value))}
       className="w-full px-4 py-2.5 rounded-xl text-base focus:outline-none transition-colors"
-      style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.color, appearance: 'none' }}
-      onFocus={e => { e.currentTarget.style.borderColor = s.borderFocus }}
-      onBlur={e => { e.currentTarget.style.borderColor = s.border }}>
+      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', appearance: 'none' }}
+      onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+      onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}>
       {WEIGHT_OPTIONS.map(o => (
-        <option key={o.value} value={o.value} style={{ background: '#fff', color: '#1e293b' }}>{o.label}</option>
+        <option key={o.value} value={o.value} style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>{o.label}</option>
       ))}
     </select>
   )
@@ -802,7 +796,7 @@ export default function AdminClient() {
                                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                                   What are you evaluating and what does good look like? The more specific, the more accurate the AI scoring.
                                 </p>
-                                <Textarea value={brief} onChange={setBrief} rows={10} light
+                                <Textarea value={brief} onChange={setBrief} rows={10}
                                   placeholder={`Describe what you're evaluating and what good looks like.\n\ne.g. "5-minute investor pitch. We want a clear problem, evidence of market size, and a working prototype. Strong teams will demonstrate real traction."`} />
                               </div>
 
@@ -885,7 +879,7 @@ export default function AdminClient() {
                                             style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border-hover)' }}>
                                             <Input value={editingCriteria.name}
                                               onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
-                                              placeholder="Name" autoFocus light />
+                                              placeholder="Name" autoFocus />
                                             {editingCriteria.name.trim() && (
                                               <div className="flex justify-end">
                                                 <button onClick={generateEditCriteriaDesc} disabled={generatingEditDesc}
@@ -898,10 +892,10 @@ export default function AdminClient() {
                                             )}
                                             <Textarea value={editingCriteria.description}
                                               onChange={v => setEditingCriteria(p => p ? { ...p, description: v } : null)}
-                                              rows={3} placeholder="Scoring guide" light />
+                                              rows={3} placeholder="Scoring guide" />
                                             <div className="flex items-center gap-3">
                                               <div className="w-40"><WeightSelect value={editingCriteria.weight}
-                                                onChange={v => setEditingCriteria(p => p ? { ...p, weight: v } : null)} light /></div>
+                                                onChange={v => setEditingCriteria(p => p ? { ...p, weight: v } : null)} /></div>
                                               <div className="flex-1" />
                                               <Btn onClick={() => setEditingCriteria(null)} variant="ghost" size="sm">Cancel</Btn>
                                               <Btn onClick={saveCriteriaEdit} size="sm" disabled={!editingCriteria.name.trim()}>Save</Btn>
@@ -948,7 +942,7 @@ export default function AdminClient() {
                                   {/* Add criterion */}
                                   <div className="mt-4 pt-4 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
                                     <Input value={newCritName} onChange={setNewCritName}
-                                      placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} light />
+                                      placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
                                     {newCritName.trim() && (
                                       <>
                                         <div className="flex justify-end">
@@ -959,10 +953,10 @@ export default function AdminClient() {
                                             {generatingNewDesc ? 'Generating…' : 'AI fill description'}
                                           </button>
                                         </div>
-                                        <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3} light
+                                        <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3}
                                           placeholder="Scoring guide — the more specific the better." />
                                         <div className="flex items-center gap-3">
-                                          <div className="w-40"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} light /></div>
+                                          <div className="w-40"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} /></div>
                                           <Btn onClick={createCriteria} disabled={!newCritName.trim()}>
                                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -1110,8 +1104,8 @@ export default function AdminClient() {
                                   placeholder={`Paste ${setting.label}…`} autoFocus
                                   className="flex-1 text-base px-4 py-2.5 rounded-xl font-mono placeholder:text-[color:var(--text-muted)]"
                                   style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }}
-                                  onFocus={e => { e.target.style.borderColor = 'var(--border-hover)' }}
-                                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                                  onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-hover)' }}
+                                  onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border)' }}
                                   onKeyDown={async e => { if (e.key === 'Enter' && keyDraft.trim()) await saveApiKey(setting.key) }}
                                 />
                                 <button onClick={() => saveApiKey(setting.key)} disabled={keySaving || !keyDraft.trim()}
