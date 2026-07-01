@@ -184,6 +184,14 @@ export default function RecordsClient() {
   const [records, setRecords] = useState<SessionRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState<string | null>(null)
+
+  const deleteSession = async (id: string) => {
+    const supabase = createClient()
+    await supabase.from('sessions').delete().eq('id', id)
+    setRecords(prev => prev.filter(r => r.session.id !== id))
+    setConfirmDeleteSession(null)
+  }
 
   useEffect(() => {
     async function load() {
@@ -296,14 +304,43 @@ export default function RecordsClient() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4 shrink-0">
+                      <div className="flex items-center gap-3 shrink-0">
                         {hasData && <OverallScore teams={teams} criteria={criteria} />}
+                        <button
+                          onClick={e => { e.stopPropagation(); setConfirmDeleteSession(confirmDeleteSession === session.id ? null : session.id) }}
+                          className="p-1.5 rounded-lg transition-all"
+                          style={{ color: 'var(--text-muted)' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+                          </svg>
+                        </button>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                           style={{ color: 'var(--text-muted)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
                           <polyline points="9 18 15 12 9 6" />
                         </svg>
                       </div>
                     </button>
+
+                    {/* Delete confirm */}
+                    <AnimatePresence>
+                      {confirmDeleteSession === session.id && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden">
+                          <div className="flex items-center gap-3 px-6 py-3 text-sm"
+                            style={{ background: 'rgba(239,68,68,0.06)', borderTop: '1px solid rgba(239,68,68,0.15)', color: '#f87171' }}>
+                            <span className="flex-1">Delete <strong>{session.name}</strong> and all its data?</span>
+                            <button onClick={() => deleteSession(session.id)}
+                              className="px-3 py-1 rounded-lg font-medium"
+                              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                              Delete
+                            </button>
+                            <button onClick={() => setConfirmDeleteSession(null)} style={{ color: 'var(--text-muted)' }}>Cancel</button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {/* Session segments */}
                     <AnimatePresence>
