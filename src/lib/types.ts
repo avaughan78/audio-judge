@@ -1,4 +1,4 @@
-export type ThemeId = 'midnight' | 'neon' | 'aurora' | 'ember'
+export type ThemeId = 'midnight' | 'neon' | 'aurora' | 'ember' | 'daylight'
 
 export interface Session {
   id: string

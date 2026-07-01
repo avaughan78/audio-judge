@@ -220,9 +220,9 @@ export default function DisplayClient() {
                       </div>
                     </div>
 
-                    <div className="relative h-5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <div className="relative h-5 rounded-full overflow-hidden" style={{ background: 'var(--bar-track)' }}>
                       {[20, 40, 60, 80].map((p) => (
-                        <div key={p} className="absolute inset-y-0 w-px" style={{ left: `${p}%`, background: 'rgba(255,255,255,0.06)' }} />
+                        <div key={p} className="absolute inset-y-0 w-px" style={{ left: `${p}%`, background: 'var(--bar-track)' }} />
                       ))}
                       <motion.div
                         className="absolute inset-y-0 left-0 rounded-full"
@@ -253,7 +253,7 @@ export default function DisplayClient() {
               </p>
               <div className="relative w-56 h-56">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 110 110">
-                  <circle cx="55" cy="55" r="46" fill="none" strokeWidth="8" style={{ stroke: 'rgba(255,255,255,0.05)' }} />
+                  <circle cx="55" cy="55" r="46" fill="none" strokeWidth="8" style={{ stroke: 'var(--ring-track)' }} />
                   <motion.circle
                     cx="55" cy="55" r="46" fill="none" strokeWidth="8" strokeLinecap="round"
                     strokeDasharray={circumference}

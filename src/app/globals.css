@@ -22,6 +22,8 @@
   --text-muted: #334155;
   --gradient-from: #3b82f6;
   --gradient-to: #8b5cf6;
+  --bar-track: rgba(255,255,255,0.05);
+  --ring-track: rgba(255,255,255,0.05);
 }
 
 @theme inline {

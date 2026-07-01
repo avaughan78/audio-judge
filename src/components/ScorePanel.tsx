@@ -126,7 +126,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
               >
                 <div className="relative w-24 h-24 shrink-0">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="40" fill="none" strokeWidth="7" style={{ stroke: 'rgba(255,255,255,0.05)' }} />
+                    <circle cx="50" cy="50" r="40" fill="none" strokeWidth="7" style={{ stroke: 'var(--ring-track)' }} />
                     <motion.circle
                       cx="50" cy="50" r="40" fill="none" strokeWidth="7" strokeLinecap="round"
                       strokeDasharray={circumference}
@@ -219,7 +219,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
                 </div>
                 <div className="relative w-20 h-20">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="40" fill="none" strokeWidth="7" style={{ stroke: 'rgba(255,255,255,0.05)' }} />
+                    <circle cx="50" cy="50" r="40" fill="none" strokeWidth="7" style={{ stroke: 'var(--ring-track)' }} />
                     <motion.circle
                       cx="50" cy="50" r="40" fill="none" strokeWidth="7" strokeLinecap="round"
                       strokeDasharray={circumference}

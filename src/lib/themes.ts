@@ -21,6 +21,8 @@ export interface ThemeVars {
   textMuted: string
   gradientFrom: string
   gradientTo: string
+  barTrack: string
+  ringTrack: string
 }
 
 export interface Theme {
@@ -58,6 +60,8 @@ export const themes: Theme[] = [
       textMuted: '#475569',
       gradientFrom: '#3b82f6',
       gradientTo: '#8b5cf6',
+      barTrack: 'rgba(255,255,255,0.05)',
+      ringTrack: 'rgba(255,255,255,0.05)',
     },
   },
   {
@@ -86,6 +90,8 @@ export const themes: Theme[] = [
       textMuted: '#16a34a',
       gradientFrom: '#39ff14',
       gradientTo: '#00e5ff',
+      barTrack: 'rgba(57,255,20,0.08)',
+      ringTrack: 'rgba(57,255,20,0.08)',
     },
   },
   {
@@ -114,6 +120,8 @@ export const themes: Theme[] = [
       textMuted: '#7c3aed',
       gradientFrom: '#c084fc',
       gradientTo: '#2dd4bf',
+      barTrack: 'rgba(192,132,252,0.1)',
+      ringTrack: 'rgba(192,132,252,0.1)',
     },
   },
   {
@@ -142,6 +150,38 @@ export const themes: Theme[] = [
       textMuted: '#431407',
       gradientFrom: '#f97316',
       gradientTo: '#fbbf24',
+      barTrack: 'rgba(249,115,22,0.1)',
+      ringTrack: 'rgba(249,115,22,0.08)',
+    },
+  },
+  {
+    id: 'daylight',
+    name: 'Daylight',
+    description: 'Clean light mode for bright rooms',
+    swatch: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+    vars: {
+      bg: '#f8fafc',
+      bgCard: 'rgba(0,0,0,0.03)',
+      bgCardHover: 'rgba(0,0,0,0.055)',
+      border: 'rgba(0,0,0,0.09)',
+      borderHover: 'rgba(37,99,235,0.45)',
+      accent: '#2563eb',
+      accentDim: 'rgba(37,99,235,0.1)',
+      accentSecondary: '#7c3aed',
+      scoreHigh: '#059669',
+      scoreMid: '#d97706',
+      scoreLow: '#dc2626',
+      glowAccent: 'rgba(37,99,235,0.2)',
+      glowHigh: 'rgba(5,150,105,0.25)',
+      glowMid: 'rgba(217,119,6,0.25)',
+      glowLow: 'rgba(220,38,38,0.25)',
+      textPrimary: '#0f172a',
+      textSecondary: '#334155',
+      textMuted: '#64748b',
+      gradientFrom: '#2563eb',
+      gradientTo: '#7c3aed',
+      barTrack: 'rgba(0,0,0,0.07)',
+      ringTrack: 'rgba(0,0,0,0.09)',
     },
   },
 ]
@@ -171,5 +211,7 @@ export function applyTheme(theme: Theme) {
   r.style.setProperty('--text-muted', v.textMuted)
   r.style.setProperty('--gradient-from', v.gradientFrom)
   r.style.setProperty('--gradient-to', v.gradientTo)
+  r.style.setProperty('--bar-track', v.barTrack)
+  r.style.setProperty('--ring-track', v.ringTrack)
   document.body.style.background = v.bg
 }

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 
-export function TranscriptSummary() {
+export function TranscriptSummary({ fullHeight = false }: { fullHeight?: boolean }) {
   const summary = useAppStore((s) => s.summary)
   const isSummarising = useAppStore((s) => s.isSummarising)
   const lastJudgedAt = useAppStore((s) => s.lastJudgedAt)
@@ -14,8 +14,12 @@ export function TranscriptSummary() {
     ? new Date(lastJudgedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : null
 
+  const rootStyle = fullHeight
+    ? { height: '100%' }
+    : { height: expanded ? 'auto' : '130px', minHeight: '130px', transition: 'height 0.2s ease' }
+
   return (
-    <div className="flex flex-col" style={{ height: expanded ? 'auto' : '130px', minHeight: '130px', transition: 'height 0.2s ease' }}>
+    <div className="flex flex-col" style={rootStyle}>
       <div className="flex items-center justify-between px-4 py-2.5 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-secondary)" strokeWidth="2">
@@ -42,7 +46,7 @@ export function TranscriptSummary() {
           {timeStr && (
             <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Updated {timeStr}</span>
           )}
-          {summary && (
+          {!fullHeight && summary && (
             <button
               onClick={() => setExpanded(e => !e)}
               className="text-[10px] px-1.5 py-0.5 rounded transition-colors"

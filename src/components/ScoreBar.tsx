@@ -112,12 +112,12 @@ export function ScoreBar({ name, description, score, reasoning, weight = 1, inde
 
       {/* Bar track */}
       <div className={`relative ${barHeight} rounded-full overflow-hidden`}
-        style={{ background: 'rgba(255,255,255,0.04)' }}>
+        style={{ background: 'var(--bar-track)' }}>
 
         {/* Segment markers */}
         <div className="absolute inset-0 flex pointer-events-none">
           {[20, 40, 60, 80].map((p) => (
-            <div key={p} className="absolute inset-y-0 w-px" style={{ left: `${p}%`, background: 'rgba(255,255,255,0.05)' }} />
+            <div key={p} className="absolute inset-y-0 w-px" style={{ left: `${p}%`, background: 'var(--bar-track)' }} />
           ))}
         </div>
 

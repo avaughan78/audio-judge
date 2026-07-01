@@ -25,6 +25,7 @@ export default function JudgePage() {
   const [missingKeys, setMissingKeys] = useState<string[]>([])
   const [confirmNext, setConfirmNext] = useState(false)
   const [confirmAutoAdvance, setConfirmAutoAdvance] = useState(false)
+  const [mobileTab, setMobileTab] = useState<'scores' | 'summary'>('scores')
   const [showAddTeamInline, setShowAddTeamInline] = useState(false)
   const [newTeamNameInline, setNewTeamNameInline] = useState('')
   const [addingTeamInline, setAddingTeamInline] = useState(false)
@@ -137,24 +138,26 @@ export default function JudgePage() {
         {/* Header */}
         <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
           style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(8px)' }}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
               style={{ background: 'linear-gradient(135deg, var(--gradient-from), var(--gradient-to))' }}>
               <span className="text-[9px] font-black text-white">AJ</span>
             </div>
-            <span className="text-sm font-bold gradient-text">AudioJudge</span>
+            <span className="text-sm font-bold gradient-text shrink-0">AudioJudge</span>
             {session && (
               <>
-                <span style={{ color: 'var(--text-muted)' }}>·</span>
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
+                <span className="hidden sm:inline" style={{ color: 'var(--text-muted)' }}>·</span>
+                <span className="hidden sm:inline text-sm truncate" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-4">
-            <ThemeSelector />
-            <div className="w-px h-4" style={{ background: 'var(--border)' }} />
-            <NavLink href="/display" target="_blank" label="Display" icon="external" />
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="hidden sm:flex items-center gap-3">
+              <ThemeSelector />
+              <div className="w-px h-4" style={{ background: 'var(--border)' }} />
+              <NavLink href="/display" target="_blank" label="Display" icon="external" />
+            </div>
             <NavLink href="/admin" label="Admin" icon="settings" />
           </div>
         </header>
@@ -206,7 +209,7 @@ export default function JudgePage() {
           <div className="relative z-10 flex flex-col flex-1 overflow-hidden min-h-0">
 
             {/* Participant + recording strip */}
-            <div className="relative shrink-0 flex items-center gap-3 px-5 py-2.5"
+            <div className="relative shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5"
               style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
               {session?.detection_mode === 'automatic' ? (
                 <>
@@ -332,7 +335,9 @@ export default function JudgePage() {
                   )}
                 </>
               )}
-              <RecordingControl compact onStart={start} onStop={stop} />
+              <div className="ml-auto shrink-0">
+                <RecordingControl compact onStart={start} onStop={stop} />
+              </div>
             </div>
 
             {/* Presenter transition flash */}
@@ -359,14 +364,34 @@ export default function JudgePage() {
               )}
             </AnimatePresence>
 
-            {/* Score bars — hero element */}
-            <div className="flex-1 overflow-hidden min-h-0">
+            {/* Mobile tab bar — hidden on desktop */}
+            <div className="flex md:hidden shrink-0" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.15)' }}>
+              {(['scores', 'summary'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setMobileTab(tab)}
+                  className="flex-1 py-2.5 text-xs font-semibold capitalize transition-colors"
+                  style={{
+                    color: mobileTab === tab ? 'var(--accent)' : 'var(--text-muted)',
+                    borderBottom: `2px solid ${mobileTab === tab ? 'var(--accent)' : 'transparent'}`,
+                  }}
+                >
+                  {tab === 'scores' ? 'Scores' : 'Summary'}
+                </button>
+              ))}
+            </div>
+
+            {/* Score bars — hero element; hidden on mobile when summary tab active */}
+            <div className={`flex-1 overflow-hidden min-h-0 ${mobileTab === 'summary' ? 'hidden md:flex md:flex-col' : ''}`}>
               <ScorePanel fullscreen />
             </div>
 
-            {/* AI summary strip */}
-            <div className="shrink-0 overflow-hidden" style={{ borderTop: '1px solid var(--border)', height: '130px' }}>
-              <TranscriptSummary />
+            {/* AI summary — desktop: fixed 130px strip; mobile: fills space in summary tab */}
+            <div
+              className={`overflow-hidden md:shrink-0 ${mobileTab === 'scores' ? 'hidden md:block' : 'flex-1 min-h-0'}`}
+              style={{ borderTop: '1px solid var(--border)' }}
+            >
+              <TranscriptSummary fullHeight={mobileTab === 'summary'} />
             </div>
 
             {/* Live ticker */}
