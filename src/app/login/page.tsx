@@ -125,12 +125,12 @@ function LoginForm() {
         </div>
 
         <h1 style={{ fontSize: 'clamp(36px, 6vw, 58px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', color: '#f8fafc', marginBottom: '20px' }}>
-          Score pitches live,<br />
+          Score meetings & events live,<br />
           <span style={{ color: '#65A30D' }}>as they happen.</span>
         </h1>
 
         <p style={{ fontSize: '18px', lineHeight: 1.7, color: '#64748b', maxWidth: '540px', margin: '0 auto 40px' }}>
-          AudioJudge listens to hackathon presentations, scores them against your criteria in real time using AI, and shows live results on the big screen.
+          AudioJudge listens to meetings and events, scores them against your criteria in real time using AI, and shows live results on the big screen.
         </p>
 
         {/* Primary CTA */}
@@ -198,9 +198,16 @@ function LoginForm() {
       </section>
 
       {/* Footer */}
-      <footer style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '20px 40px', borderTop: '1px solid rgba(255,255,255,0.04)', fontSize: '12px', color: '#1e293b' }}>
-        <img src="/app-icon.svg" alt="" style={{ width: '16px', height: '16px', borderRadius: '4px', opacity: 0.4 }} />
-        AudioJudge · Built with Deepgram and Claude
+      <footer style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '20px 40px', borderTop: '1px solid rgba(255,255,255,0.04)', fontSize: '12px', color: '#1e293b' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src="/app-icon.svg" alt="" style={{ width: '16px', height: '16px', borderRadius: '4px', opacity: 0.4 }} />
+          AudioJudge · Built with Deepgram and Claude
+        </div>
+        <a href="https://awoken.dev" target="_blank" rel="noopener noreferrer" style={{ color: '#1e293b', textDecoration: 'none', transition: 'color 0.15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#475569' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#1e293b' }}>
+          Powered by awoken.dev
+        </a>
       </footer>
 
       <style>{`
