@@ -87,16 +87,16 @@ export default function CollectPage() {
           style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-3">
             <img src="/app-icon.svg" alt="Audio Judge" className="w-6 h-6 shrink-0" />
-            <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>Audio Judge</span>
+            <span className="text-base font-bold" style={{ color: 'var(--text-secondary)' }}>Audio Judge</span>
             <span style={{ color: 'var(--text-muted)' }}>·</span>
-            <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+            <span className="text-base px-2 py-0.5 rounded-full font-semibold"
               style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
               Collector
             </span>
           </div>
           <div className="flex items-center gap-3">
             {session && (
-              <span className="hidden sm:inline text-xs truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
+              <span className="hidden sm:inline text-base truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
             )}
             <ThemeSelector />
           </div>
@@ -112,7 +112,7 @@ export default function CollectPage() {
           <div className="relative z-10 flex-1 flex items-center justify-center text-center px-8">
             <div className="space-y-3">
               <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>No active session</p>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Ask the organiser to activate a session in Admin.</p>
+              <p className="text-base" style={{ color: 'var(--text-muted)' }}>Ask the organiser to activate a session in Admin.</p>
             </div>
           </div>
         ) : (
@@ -120,7 +120,7 @@ export default function CollectPage() {
 
             {/* Current presenter */}
             <div className="text-center">
-              <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
                 Now presenting
               </p>
               <AnimatePresence mode="wait">
@@ -137,7 +137,7 @@ export default function CollectPage() {
 
             {/* Connection status */}
             <div className="flex items-center gap-3 flex-wrap justify-center">
-              <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
+              <div className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-full"
                 style={{
                   background: judgeOnline ? 'rgba(16,185,129,0.1)' : 'var(--bg-card)',
                   color: judgeOnline ? 'var(--score-high)' : 'var(--text-muted)',
@@ -151,7 +151,7 @@ export default function CollectPage() {
                 Judge {judgeOnline ? 'online' : 'offline'}
               </div>
               {otherCollectors.length > 0 && (
-                <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
+                <div className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-full"
                   style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
                   +{otherCollectors.length} other mic{otherCollectors.length !== 1 ? 's' : ''}
                 </div>
@@ -159,7 +159,7 @@ export default function CollectPage() {
             </div>
 
             {/* Capture mode toggle */}
-            <div className="flex rounded-xl overflow-hidden text-xs font-medium"
+            <div className="flex rounded-xl overflow-hidden text-base font-medium"
               style={{ border: '1px solid var(--border)', opacity: isRecording ? 0.4 : 1, pointerEvents: isRecording ? 'none' : 'auto' }}>
               {([
                 { value: 'local', label: 'Local audio', icon: (
@@ -190,7 +190,7 @@ export default function CollectPage() {
 
             {/* Big record button */}
             {!judgeRecording && !isRecording && (
-              <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-base text-center" style={{ color: 'var(--text-muted)' }}>
                 Waiting for the judge to start recording…
               </p>
             )}
@@ -199,7 +199,7 @@ export default function CollectPage() {
               onClick={isRecording ? stop : start}
               disabled={isConnecting || !activeTeam || (!isRecording && !judgeRecording)}
               whileTap={{ scale: 0.94 }}
-              className="relative w-28 h-28 rounded-full flex flex-col items-center justify-center gap-2 font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="relative w-28 h-28 rounded-full flex flex-col items-center justify-center gap-2 font-semibold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: isRecording ? 'rgba(239,68,68,0.12)' : 'var(--accent-dim)',
                 border: `2px solid ${isRecording ? 'var(--score-low)' : 'var(--accent)'}`,
@@ -242,7 +242,7 @@ export default function CollectPage() {
             {isRecording && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-full text-xs"
+                className="flex items-center gap-2 px-4 py-2 rounded-full text-base"
                 style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -266,7 +266,7 @@ export default function CollectPage() {
               <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'var(--score-low)' }} />
             </span>
           )}
-          <p className="text-xs font-mono flex-1 truncate" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-base font-mono flex-1 truncate" style={{ color: 'var(--text-muted)' }}>
             {tail || interimTranscript
               ? <>{tail}{interimTranscript && <span className="italic ml-1" style={{ opacity: 0.5 }}>{interimTranscript}</span>}</>
               : isRecording ? 'Listening…' : 'Transcript will appear here once recording begins'

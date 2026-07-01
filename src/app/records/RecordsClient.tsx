@@ -40,7 +40,7 @@ function OverallScore({ teams, criteria }: { teams: (Team & { scores: Score[] })
   const style = getScoreStyle(avg)
 
   return (
-    <span className="text-sm font-bold tabular-nums" style={style}>{avg}/100</span>
+    <span className="text-base font-bold tabular-nums" style={style}>{avg}/100</span>
   )
 }
 
@@ -73,15 +73,15 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
         style={{ background: expanded ? 'var(--bg-card-hover)' : 'transparent' }}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{team.name}</span>
+            <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{team.name}</span>
             {createdAt && (
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-base" style={{ color: 'var(--text-muted)' }}>
                 {createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </div>
           {team.summary && !expanded && (
-            <p className="text-xs mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{team.summary}</p>
+            <p className="text-base mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{team.summary}</p>
           )}
         </div>
 
@@ -93,22 +93,22 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
                 const score = team.scores.find(s => s.criteria_id === c.id)?.score ?? 0
                 return (
                   <div key={c.id} className="text-center">
-                    <div className="text-xs font-bold tabular-nums" style={getScoreStyle(score)}>{score}</div>
-                    <div className="text-xs truncate max-w-[48px]" style={{ color: 'var(--text-muted)' }}>{c.name}</div>
+                    <div className="text-base font-bold tabular-nums" style={getScoreStyle(score)}>{score}</div>
+                    <div className="text-base truncate max-w-[48px]" style={{ color: 'var(--text-muted)' }}>{c.name}</div>
                   </div>
                 )
               })}
               {scoredCriteria.length > 3 && (
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>+{scoredCriteria.length - 3}</span>
+                <span className="text-base" style={{ color: 'var(--text-muted)' }}>+{scoredCriteria.length - 3}</span>
               )}
               <div className="w-px h-6 mx-1" style={{ background: 'var(--border)' }} />
               <div className="text-center">
-                <div className="text-sm font-black tabular-nums" style={overallStyle}>{weighted}</div>
-                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Overall</div>
+                <div className="text-base font-black tabular-nums" style={overallStyle}>{weighted}</div>
+                <div className="text-base" style={{ color: 'var(--text-muted)' }}>Overall</div>
               </div>
             </div>
           ) : (
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>No scores</span>
+            <span className="text-base" style={{ color: 'var(--text-muted)' }}>No scores</span>
           )}
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
             style={{ color: 'var(--text-muted)', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
@@ -130,15 +130,15 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
               {/* Summary */}
               {team.summary && (
                 <div className="pt-4">
-                  <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Summary</p>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{team.summary}</p>
+                  <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Summary</p>
+                  <p className="text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{team.summary}</p>
                 </div>
               )}
 
               {/* Criteria scores */}
               {criteria.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold tracking-widest uppercase mb-3 pt-2" style={{ color: 'var(--text-muted)' }}>Scores</p>
+                  <p className="text-base font-bold tracking-widest uppercase mb-3 pt-2" style={{ color: 'var(--text-muted)' }}>Scores</p>
                   <div className="space-y-3">
                     {criteria.map(c => {
                       const scoreEntry = team.scores.find(s => s.criteria_id === c.id)
@@ -147,8 +147,8 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
                       return (
                         <div key={c.id}>
                           <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{c.name}</span>
-                            <span className="text-sm font-bold tabular-nums" style={score > 0 ? style : { color: 'var(--text-muted)' }}>
+                            <span className="text-base font-medium" style={{ color: 'var(--text-secondary)' }}>{c.name}</span>
+                            <span className="text-base font-bold tabular-nums" style={score > 0 ? style : { color: 'var(--text-muted)' }}>
                               {score > 0 ? `${score}/100` : '—'}
                             </span>
                           </div>
@@ -162,7 +162,7 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
                             />
                           </div>
                           {scoreEntry?.reasoning && (
-                            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{scoreEntry.reasoning}</p>
+                            <p className="text-base mt-1" style={{ color: 'var(--text-muted)' }}>{scoreEntry.reasoning}</p>
                           )}
                         </div>
                       )
@@ -249,12 +249,12 @@ export default function RecordsClient() {
             <img src="/app-icon.svg" alt="Audio Judge" className="w-7 h-7 shrink-0" />
             <span className="font-bold gradient-text">Audio Judge</span>
             <span style={{ color: 'var(--border-hover)' }}>·</span>
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Records</span>
+            <span className="text-base" style={{ color: 'var(--text-muted)' }}>Records</span>
           </div>
           <div className="flex items-center gap-3">
             <ThemeSelector />
             <Link href="/admin"
-              className="text-sm px-3 py-1.5 rounded-lg transition-colors"
+              className="text-base px-3 py-1.5 rounded-lg transition-colors"
               style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
@@ -274,10 +274,10 @@ export default function RecordsClient() {
             <div className="text-center py-24 space-y-4">
               <div className="text-5xl">📂</div>
               <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>No records yet</p>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-base" style={{ color: 'var(--text-muted)' }}>
                 Records appear here once you start recording.
               </p>
-              <Link href="/" className="inline-block mt-2 text-sm underline underline-offset-4"
+              <Link href="/" className="inline-block mt-2 text-base underline underline-offset-4"
                 style={{ color: 'var(--accent)' }}>
                 Go to Judge →
               </Link>
@@ -305,15 +305,15 @@ export default function RecordsClient() {
                           )}
                           <h2 className="text-base font-bold truncate" style={{ color: 'var(--text-primary)' }}>{session.name}</h2>
                           {session.is_active && (
-                            <span className="text-xs font-bold shrink-0" style={{ color: '#4ade80' }}>LIVE</span>
+                            <span className="text-base font-bold shrink-0" style={{ color: '#4ade80' }}>LIVE</span>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          <span className="text-base" style={{ color: 'var(--text-muted)' }}>
                             {new Date(session.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
                           </span>
                           {hasData && (
-                            <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                            <span className="text-base px-1.5 py-0.5 rounded font-medium"
                               style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
                               {teams.length} participant{teams.length !== 1 ? 's' : ''}
                             </span>
@@ -340,15 +340,15 @@ export default function RecordsClient() {
                           className="overflow-hidden">
                           <div className="px-4 pb-4 pt-2 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
                             {!hasData ? (
-                              <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+                              <p className="text-base py-4 text-center" style={{ color: 'var(--text-muted)' }}>
                                 No recordings yet — press Record on the Judge page to begin.
                               </p>
                             ) : (
                               <>
                                 {session.brief && (
                                   <div className="px-1 py-3">
-                                    <p className="text-xs font-bold tracking-widest uppercase mb-1.5" style={{ color: 'var(--text-muted)' }}>Context</p>
-                                    <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{session.brief}</p>
+                                    <p className="text-base font-bold tracking-widest uppercase mb-1.5" style={{ color: 'var(--text-muted)' }}>Context</p>
+                                    <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>{session.brief}</p>
                                   </div>
                                 )}
                                 {teams.map((team, i) => (

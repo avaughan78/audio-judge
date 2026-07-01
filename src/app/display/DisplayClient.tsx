@@ -168,11 +168,11 @@ export default function DisplayClient() {
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-12 pt-6">
         <div className="flex items-center gap-3">
           <img src="/app-icon.svg" alt="Audio Judge" className="w-8 h-8" />
-          <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{session?.name || 'Audio Judge'}</span>
+          <span className="text-base font-bold" style={{ color: 'var(--text-muted)' }}>{session?.name || 'Audio Judge'}</span>
         </div>
         <div className="flex items-center gap-5">
           <ThemeSelector />
-          <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
+          <span className="text-base tabular-nums" style={{ color: 'var(--text-muted)' }}>
             {clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
           <AnimatePresence mode="wait">
@@ -184,13 +184,13 @@ export default function DisplayClient() {
                     style={{ background: 'var(--score-low)' }} />
                   <span className="relative h-2 w-2 rounded-full" style={{ background: 'var(--score-low)' }} />
                 </span>
-                <span className="text-xs font-bold tracking-widest" style={{ color: 'var(--score-low)' }}>RECORDING</span>
+                <span className="text-base font-bold tracking-widest" style={{ color: 'var(--score-low)' }}>RECORDING</span>
               </motion.div>
             ) : (
               <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full" style={{ background: 'var(--text-muted)' }} />
-                <span className="text-xs font-bold tracking-widest" style={{ color: 'var(--text-muted)' }}>STANDBY</span>
+                <span className="text-base font-bold tracking-widest" style={{ color: 'var(--text-muted)' }}>STANDBY</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -211,7 +211,7 @@ export default function DisplayClient() {
           <AnimatePresence mode="wait">
             <motion.div key={activeTeam.id} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }} className="mb-8 shrink-0">
-              <p className="text-xs font-bold tracking-[0.35em] uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-base font-bold tracking-[0.35em] uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
                 Now Presenting
               </p>
               <h1 className="text-6xl font-black tracking-tight gradient-text">{activeTeam.name}</h1>
@@ -233,14 +233,14 @@ export default function DisplayClient() {
                   <motion.div key={c.id} initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.1 }} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold tracking-widest uppercase" style={{ color: 'var(--text-secondary)' }}>
+                      <span className="text-base font-bold tracking-widest uppercase" style={{ color: 'var(--text-secondary)' }}>
                         {c.name}
                       </span>
                       <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-black tabular-nums" style={{ color: score > 0 ? s.color : 'var(--text-muted)' }}>
                           {score > 0 ? <AnimatedNumber value={score} /> : '—'}
                         </span>
-                        {score > 0 && <span className="text-sm" style={{ color: 'var(--text-muted)' }}>/100</span>}
+                        {score > 0 && <span className="text-base" style={{ color: 'var(--text-muted)' }}>/100</span>}
                       </div>
                     </div>
 
@@ -263,7 +263,7 @@ export default function DisplayClient() {
                     </div>
 
                     {scores[c.id]?.reasoning && (
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{scores[c.id].reasoning}</p>
+                      <p className="text-base" style={{ color: 'var(--text-muted)' }}>{scores[c.id].reasoning}</p>
                     )}
                   </motion.div>
                 )
@@ -272,7 +272,7 @@ export default function DisplayClient() {
 
             {/* Overall circular gauge */}
             <div className="w-64 shrink-0 flex flex-col items-center justify-center">
-              <p className="text-xs font-bold tracking-[0.35em] uppercase mb-6" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-base font-bold tracking-[0.35em] uppercase mb-6" style={{ color: 'var(--text-muted)' }}>
                 Overall
               </p>
               <div className="relative w-56 h-56">
@@ -306,13 +306,13 @@ export default function DisplayClient() {
       {latestTranscript && (
         <div className="absolute bottom-0 inset-x-0 px-12 py-3" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-4 overflow-hidden">
-            <span className="text-xs font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-base font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
               Transcript
             </span>
             <AnimatePresence mode="wait">
               <motion.p key={latestTranscript.slice(-60)}
                 initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="text-sm truncate font-mono" style={{ color: 'var(--text-secondary)' }}>
+                className="text-base truncate font-mono" style={{ color: 'var(--text-secondary)' }}>
                 {latestTranscript}
               </motion.p>
             </AnimatePresence>
