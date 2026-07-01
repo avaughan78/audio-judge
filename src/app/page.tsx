@@ -305,9 +305,9 @@ export default function JudgePage() {
                 )}
               </AnimatePresence>
 
-              {/* Capture mode toggle */}
+              {/* Capture mode toggle + Record button */}
               <div className="ml-auto shrink-0 flex items-center gap-2">
-                <div className="flex rounded-lg overflow-hidden text-xs font-medium shrink-0"
+                <div className="hidden sm:flex rounded-lg overflow-hidden text-xs font-medium shrink-0"
                   style={{ border: '1px solid var(--border)', opacity: isRecording ? 0.4 : 1, pointerEvents: isRecording ? 'none' : 'auto' }}>
                   {([
                     { value: 'local' as const, label: 'Local', icon: (

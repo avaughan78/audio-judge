@@ -27,7 +27,7 @@ export function TranscriptTicker() {
       <p className="text-xs font-mono flex-1 truncate" style={{ color: 'var(--text-muted)' }}>
         {hasText
           ? <>{tail}{interimTranscript && <span className="italic ml-1" style={{ opacity: 0.5 }}>{interimTranscript}</span>}</>
-          : isRecording ? 'Listening…' : 'Live transcript will appear here once recording begins'
+          : isRecording ? 'Listening…' : 'Transcript will appear here'
         }
       </p>
     </div>

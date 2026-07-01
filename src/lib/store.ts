@@ -17,7 +17,6 @@ interface AppState {
   lastJudgedAt: number
   recordingStartedAt: number | null
   themeId: ThemeId
-  autoTeamCounter: number
   judgeError: string | null
 
   setSession: (s: Session | null) => void
@@ -36,8 +35,6 @@ interface AppState {
   setLastJudgedAt: (t: number) => void
   setRecordingStartedAt: (t: number | null) => void
   setThemeId: (id: ThemeId) => void
-  incrementAutoTeamCounter: () => void
-  resetAutoTeamCounter: () => void
   setJudgeError: (e: string | null) => void
 }
 
@@ -58,7 +55,6 @@ export const useAppStore = create<AppState>()(
       lastJudgedAt: 0,
       recordingStartedAt: null,
       themeId: 'midnight',
-      autoTeamCounter: 0,
       judgeError: null,
 
       setSession: (session) => set({ session }),
@@ -84,8 +80,6 @@ export const useAppStore = create<AppState>()(
       setLastJudgedAt: (lastJudgedAt) => set({ lastJudgedAt }),
       setRecordingStartedAt: (recordingStartedAt) => set({ recordingStartedAt }),
       setThemeId: (themeId) => set({ themeId }),
-      incrementAutoTeamCounter: () => set((s) => ({ autoTeamCounter: s.autoTeamCounter + 1 })),
-      resetAutoTeamCounter: () => set({ autoTeamCounter: 0 }),
       setJudgeError: (judgeError) => set({ judgeError }),
     }),
     {

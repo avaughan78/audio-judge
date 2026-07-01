@@ -39,7 +39,7 @@ function ScoreOverrideInput({ criteriaId, current, onClose }: { criteriaId: stri
         autoFocus
         onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') onClose() }}
         className="w-16 px-2 py-1 rounded-lg text-sm text-center font-bold tabular-nums focus:outline-none"
-        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-hover)', color: 'var(--text-primary)' }}
+        style={{ background: 'var(--input-bg)', border: '1px solid var(--border-hover)', color: 'var(--text-primary)' }}
       />
       <button onClick={save} disabled={saving}
         className="text-xs px-2 py-1 rounded-lg font-medium disabled:opacity-40"
@@ -83,7 +83,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
       <div className="flex flex-col h-full">
         {!activeTeam ? (
           <div className="flex-1 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>
-            Select a participant above to begin
+            Press Record to begin
           </div>
         ) : criteria.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -174,7 +174,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
       <div className="flex-1 overflow-y-auto p-4 space-y-5 min-h-0">
         {!activeTeam ? (
           <div className="flex items-center justify-center h-full text-sm" style={{ color: 'var(--text-muted)' }}>
-            Select a participant to begin
+            Press Record to begin
           </div>
         ) : criteria.length === 0 ? (
           <div className="flex items-center justify-center h-full text-sm" style={{ color: 'var(--text-muted)' }}>

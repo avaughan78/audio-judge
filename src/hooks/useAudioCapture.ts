@@ -107,16 +107,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
     activeTeam = data.team
 
-    // Restore transcript buffer from sessionStorage after page refresh mid-session
-    try {
-      const savedBuffer = sessionStorage.getItem('aj_transcript_buffer')
-      const savedTeamId = sessionStorage.getItem('aj_transcript_team_id')
-      if (savedBuffer && savedTeamId === activeTeam?.id) {
-        bufferRef.current = savedBuffer
-        wordCountAtLastJudgeRef.current = savedBuffer.split(/\s+/).filter(Boolean).length
-      }
-    } catch (_) {}
-
     stoppedRef.current = false
     setConnecting(true)
     try {
@@ -255,7 +245,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       console.error('Start recording error:', e)
       useAppStore.getState().setConnecting(false)
     }
-  }, [runCycle, clearBuffer])
+  }, [runCycle, clearBuffer, captureMode])
 
   const stop = useCallback(async () => {
     stoppedRef.current = true

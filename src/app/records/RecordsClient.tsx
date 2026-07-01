@@ -237,7 +237,7 @@ export default function RecordsClient() {
 
         {/* Header */}
         <header className="sticky top-0 z-20 flex items-center justify-between px-6 h-14"
-          style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)' }}>
+          style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)' }}>
           <div className="flex items-center gap-3">
             <Link href="/" className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--text-muted)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
@@ -278,7 +278,7 @@ export default function RecordsClient() {
               <div className="text-5xl">📂</div>
               <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>No records yet</p>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                Records appear here after you use Punctuate during a session.
+                Records appear here once you start recording.
               </p>
               <Link href="/" className="inline-block mt-2 text-sm underline underline-offset-4"
                 style={{ color: 'var(--accent)' }}>
@@ -318,7 +318,7 @@ export default function RecordsClient() {
                           {hasData && (
                             <span className="text-xs px-1.5 py-0.5 rounded font-medium"
                               style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                              {teams.length} session{teams.length !== 1 ? 's' : ''}
+                              {teams.length} participant{teams.length !== 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
@@ -344,7 +344,7 @@ export default function RecordsClient() {
                           <div className="px-4 pb-4 pt-2 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
                             {!hasData ? (
                               <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>
-                                No sessions recorded yet — use Punctuate on the Judge page to capture segments.
+                                No recordings yet — press Record on the Judge page to begin.
                               </p>
                             ) : (
                               <>
