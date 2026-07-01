@@ -127,20 +127,20 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing from response')
 
-      // For online mode: build an audio-only stream for the MediaRecorder but
-      // do NOT stop the video track yet. Stopping video prematurely can terminate
-      // the entire Chrome tab-capture session (including audio), causing the
-      // Deepgram connection to drop and re-open — the flip-flop. stop() will call
-      // streamRef.current.getTracks().forEach(stop) to clean up everything.
       let stream: MediaStream
       if (captureMode === 'online') {
         const audioTracks = rawStream.getAudioTracks()
         if (!audioTracks.length) {
           rawStream.getTracks().forEach((t) => t.stop())
-          throw new Error('No audio captured — share a browser tab and tick "Share tab audio"')
+          const msg = 'No audio captured — select a Chrome tab and tick "Share tab audio"'
+          useAppStore.getState().setJudgeError(msg)
+          throw new Error(msg)
         }
-        stream = new MediaStream(audioTracks)
-        streamRef.current = rawStream   // full stream so stop() closes video + audio
+        // Use rawStream directly — new MediaStream(audioTracks) can silently break
+        // the audio data pipeline for getDisplayMedia tracks in Chrome.
+        // audio/webm mimeType ensures only audio is encoded even with video tracks present.
+        stream = rawStream
+        streamRef.current = rawStream
       } else {
         stream = rawStream
         streamRef.current = stream
@@ -256,9 +256,10 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       })
 
       conn.connect()
-    } catch (e) {
+    } catch (e: any) {
       console.error('Start recording error:', e)
       useAppStore.getState().setConnecting(false)
+      useAppStore.getState().setJudgeError(e?.message ?? 'Failed to start recording')
     }
   }, [runCycle, clearBuffer, captureMode])
 

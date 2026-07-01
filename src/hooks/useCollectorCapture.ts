@@ -60,18 +60,17 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing')
 
-      // For online mode: build an audio-only stream for the MediaRecorder but
-      // keep rawStream alive — stopping video prematurely can end the entire
-      // Chrome tab-capture session (audio included). stop() cleans up everything.
       let stream: MediaStream
       if (mode === 'online') {
         const audioTracks = rawStream.getAudioTracks()
         if (!audioTracks.length) {
           rawStream.getTracks().forEach((t) => t.stop())
-          throw new Error('No audio captured — share a browser tab and tick "Share tab audio"')
+          throw new Error('No audio captured — select a Chrome tab and tick "Share tab audio"')
         }
-        stream = new MediaStream(audioTracks)
-        streamRef.current = rawStream   // full stream so stop() closes video + audio
+        // Use rawStream directly — new MediaStream(audioTracks) can silently break
+        // the audio data pipeline for getDisplayMedia tracks in Chrome.
+        stream = rawStream
+        streamRef.current = rawStream
       } else {
         stream = rawStream
         streamRef.current = stream
@@ -143,7 +142,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       console.error('[collector] Start error:', e)
       setIsConnecting(false)
     }
-  }, [sessionId, activeTeamId, acquireWakeLock, handleVisibilityChange])
+  }, [sessionId, activeTeamId, mode, acquireWakeLock, handleVisibilityChange])
 
   const stop = useCallback(() => {
     stoppedRef.current = true
