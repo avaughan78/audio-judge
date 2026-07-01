@@ -165,7 +165,7 @@ export default function CollectPage() {
                 )},
               ] as const).map(({ value, label, icon }) => (
                 <button key={value} onClick={() => setMode(value)}
-                  className="flex items-center gap-1.5 px-3 py-2 transition-all"
+                  className="flex items-center gap-1.5 px-3 py-2 text-base transition-all"
                   style={{
                     background: captureMode === value ? 'var(--accent-dim)' : 'transparent',
                     color: captureMode === value ? 'var(--accent)' : 'var(--text-muted)',
@@ -188,7 +188,7 @@ export default function CollectPage() {
               onClick={isRecording ? stop : start}
               disabled={isConnecting || !activeTeam || (!isRecording && !judgeRecording)}
               whileTap={{ scale: 0.94 }}
-              className="relative w-28 h-28 rounded-full flex flex-col items-center justify-center gap-2 font-semibold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="relative w-28 h-28 rounded-full flex flex-col items-center justify-center gap-2 font-semibold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: isRecording ? 'rgba(239,68,68,0.12)' : 'var(--accent-dim)',
                 border: `2px solid ${isRecording ? 'var(--score-low)' : 'var(--accent)'}`,
