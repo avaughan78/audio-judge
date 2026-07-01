@@ -47,6 +47,12 @@ const WEIGHT_OPTIONS = [
   { label: 'Critical ×2', value: 2 },
 ]
 
+const tabVariants = {
+  enter: (dir: number) => ({ x: `${dir * 100}%`, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir: number) => ({ x: `${-dir * 100}%`, opacity: 0 }),
+}
+
 // ── Primitives ───────────────────────────────────────────────────────────────
 
 function Input({ value, onChange, placeholder, className = '', onEnter, autoFocus, type = 'text' }: {
@@ -162,6 +168,9 @@ export default function AdminClient() {
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'criteria' | 'session'; id: string } | null>(null)
   const [showEnvVars, setShowEnvVars] = useState(false)
   const [showOverflow, setShowOverflow] = useState(false)
+  const [activeTab, setActiveTab] = useState(0)
+  const [tabDir, setTabDir] = useState(1)
+  const goToTab = (idx: number) => { setTabDir(idx > activeTab ? 1 : -1); setActiveTab(idx) }
   const overflowRef = useRef<HTMLDivElement>(null)
 
   type ApiKeySetting = { key: string; label: string; hint: string; isSet: boolean; source: string; preview: string; updatedAt: string | null }
@@ -260,6 +269,7 @@ export default function AdminClient() {
     setAppliedTemplate(null)
     setEditingSessionName(false)
     setEditingCriteria(null)
+    setActiveTab(0)
   }
 
   const activateSession = async (sess: Session) => {
@@ -556,9 +566,9 @@ export default function AdminClient() {
           </aside>
 
           {/* ── Main content ──────────────────────────────────────────── */}
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 flex flex-col overflow-hidden">
             {!viewedSession ? (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center flex-1">
                 <div className="text-center space-y-3">
                   <div className="text-5xl">📋</div>
                   <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>No events yet</p>
@@ -566,482 +576,526 @@ export default function AdminClient() {
                 </div>
               </div>
             ) : (
-              <div className="max-w-2xl mx-auto px-10 py-10">
+              <>
+                {/* ── Fixed top: event header + banners + tab bar ── */}
+                <div className="shrink-0 pt-8">
+                  <div className="max-w-2xl mx-auto px-10">
 
-                {/* Event header */}
-                <div className="flex items-start justify-between gap-4 mb-10">
-                  <div className="min-w-0">
-                    {editingSessionName ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          value={sessionNameDraft} onChange={e => setSessionNameDraft(e.target.value)}
-                          autoFocus
-                          onKeyDown={e => { if (e.key === 'Enter') saveSessionName(); if (e.key === 'Escape') setEditingSessionName(false) }}
-                          className="text-2xl font-bold bg-transparent border-b-2 focus:outline-none w-64"
-                          style={{ color: 'var(--text-primary)', borderColor: 'var(--accent)' }}
-                        />
-                        <button onClick={saveSessionName} className="text-base px-3 py-1 rounded-lg font-medium"
-                          style={{ background: 'var(--accent)', color: 'white' }}>Save</button>
-                        <button onClick={() => setEditingSessionName(false)} className="text-base px-3 py-1 rounded-lg"
-                          style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
-                      </div>
-                    ) : (
-                      <button className="group flex items-center gap-2 text-left"
-                        onClick={() => { setSessionNameDraft(viewedSession.name); setEditingSessionName(true) }}>
-                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{viewedSession.name}</h1>
-                        <svg className="opacity-0 group-hover:opacity-40 transition-opacity shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Primary action + overflow */}
-                  <div className="flex items-center gap-2 shrink-0 pt-1">
-                    {viewedSession.is_active ? (
-                      <>
-                        <button onClick={() => deactivateSession(viewedSession)}
-                          className="flex items-center gap-1.5 text-base font-semibold px-3 py-1.5 rounded-xl transition-all"
-                          style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)'; (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.3)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)'; (e.currentTarget as HTMLElement).style.color = '#4ade80'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(74,222,128,0.25)' }}>
-                          <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'currentColor' }} />
-                          Active
-                        </button>
-                        <Link href="/" className="flex items-center gap-2 text-base font-semibold px-4 py-1.5 rounded-xl"
-                          style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
-                          Start evaluating
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <polyline points="9 18 15 12 9 6" />
-                          </svg>
-                        </Link>
-                      </>
-                    ) : (
-                      <button onClick={() => activateSession(viewedSession)}
-                        className="flex items-center gap-1.5 text-base font-semibold px-3 py-1.5 rounded-xl transition-all"
-                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)'; (e.currentTarget as HTMLElement).style.color = '#4ade80'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(74,222,128,0.25)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
-                        Inactive
-                      </button>
-                    )}
-
-                    {/* ··· overflow menu */}
-                    <div className="relative" ref={overflowRef}>
-                      <button
-                        onClick={() => setShowOverflow(v => !v)}
-                        className="p-1.5 rounded-lg transition-all"
-                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
-                        </svg>
-                      </button>
-                      <AnimatePresence>
-                        {showOverflow && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                            transition={{ duration: 0.1 }}
-                            className="absolute right-0 top-full mt-1 z-30 min-w-[140px] rounded-xl py-1 overflow-hidden"
-                            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                            <button onClick={() => { exportCsv(); setShowOverflow(false) }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-left"
-                              style={{ color: 'var(--text-secondary)' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-                              </svg>
-                              Export CSV
-                            </button>
-                            <button
-                              onClick={() => { setConfirmDelete({ type: 'session', id: viewedSession.id }); setShowOverflow(false) }}
-                              className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-left"
-                              style={{ color: '#f87171' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
-                              </svg>
-                              Delete event
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Delete confirm banner */}
-                <AnimatePresence>
-                  {confirmDelete?.type === 'session' && confirmDelete.id === viewedSession.id && (
-                    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-base mb-6"
-                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
-                      <span className="flex-1">Delete <strong>{viewedSession.name}</strong> and all its data?</span>
-                      <button onClick={() => deleteSession(viewedSession.id)}
-                        className="px-3 py-1 rounded-lg font-medium text-base"
-                        style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
-                        Delete
-                      </button>
-                      <button onClick={() => setConfirmDelete(null)} className="text-base" style={{ color: 'var(--text-muted)' }}>Cancel</button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Warning: editing non-live event */}
-                {!viewedSession.is_active && liveSession && (
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-base mb-6"
-                    style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-                      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    You're editing <strong className="font-semibold mx-0.5">{viewedSession.name}</strong> — not live.
-                    <strong className="font-semibold mx-0.5">{liveSession.name}</strong> is currently live.
-                  </div>
-                )}
-
-                <div className="space-y-8">
-
-                  {/* Context */}
-                  <Section
-                    title="Context"
-                    subtitle="What are you evaluating and what does good look like? The more specific, the more accurate the AI scoring."
-                    action={
-                      briefStatus !== 'saved' ? (
-                        <span className="text-base font-medium px-2 py-1 rounded-md"
-                          style={{
-                            background: briefStatus === 'saving' ? 'rgba(99,102,241,0.12)' : 'rgba(251,191,36,0.12)',
-                            color: briefStatus === 'saving' ? 'var(--accent)' : '#fbbf24',
-                          }}>
-                          {briefStatus === 'saving' ? 'Saving…' : 'Unsaved'}
-                        </span>
-                      ) : null
-                    }>
-                    <Textarea value={brief} onChange={setBrief} rows={7}
-                      placeholder={`Describe what you're evaluating and what good looks like.\n\ne.g. "5-minute investor pitch. We want a clear problem, evidence of market size, and a working prototype. Strong teams will demonstrate real traction."`} />
-                  </Section>
-
-                  {/* Scoring Criteria */}
-                  <Section
-                    title={`Scoring Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
-                    subtitle="What the AI scores on. Specific descriptions produce more reliable scores."
-                    action={
-                      <button
-                        onClick={() => generateCriteriaSet()}
-                        disabled={!brief.trim() || generatingCriteriaSet}
-                        title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context above first'}
-                        className="flex items-center gap-1.5 text-base px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
-                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                        <SparkleIcon spinning={generatingCriteriaSet} />
-                        {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
-                      </button>
-                    }>
-
-                    <AnimatePresence>
-                      {confirmAutoGenerate && (
-                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                          className="mb-3 p-3 rounded-xl flex items-center gap-3"
-                          style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid var(--border-hover)' }}>
-                          <SparkleIcon spinning={false} />
-                          <span className="text-base flex-1" style={{ color: 'var(--text-secondary)' }}>
-                            Replace {criteria.length} existing criteria with AI-generated ones?
-                          </span>
-                          <button onClick={() => generateCriteriaSet(true)}
-                            className="text-base px-3 py-1 rounded-lg font-medium"
-                            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                            Replace
-                          </button>
-                          <button onClick={() => setConfirmAutoGenerate(false)} className="text-base" style={{ color: 'var(--text-muted)' }}>
-                            Cancel
-                          </button>
-                        </motion.div>
-                      )}
-                      {confirmReplaceTemplate && (
-                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                          className="mb-3 p-3 rounded-xl flex items-center gap-3"
-                          style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
-                          <span className="text-base flex-1" style={{ color: '#fbbf24' }}>
-                            Replace {criteria.length} existing criteria?
-                          </span>
-                          <button onClick={() => applyTemplate(confirmReplaceTemplate)}
-                            className="text-base px-3 py-1 rounded-lg font-medium"
-                            style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
-                            Replace
-                          </button>
-                          <button onClick={() => setConfirmReplaceTemplate(null)} className="text-base" style={{ color: 'var(--text-muted)' }}>
-                            Cancel
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Templates — quick-start label when empty, switch row when populated */}
-                    <div className="flex items-center gap-2 flex-wrap mb-3">
-                      <span className="text-base" style={{ color: 'var(--text-muted)' }}>
-                        {criteria.length === 0 ? 'Quick start:' : 'Template:'}
-                      </span>
-                      {TEMPLATES.map(t => (
-                        <button key={t.id} onClick={() => handleTemplateClick(t)}
-                          className="flex items-center gap-1.5 text-base px-2.5 py-1 rounded-lg font-medium transition-all"
-                          style={{
-                            background: appliedTemplate === t.id ? 'var(--accent-dim)' : 'transparent',
-                            color: appliedTemplate === t.id ? 'var(--accent)' : 'var(--text-muted)',
-                            border: `1px solid ${appliedTemplate === t.id ? 'var(--border-hover)' : 'var(--border)'}`,
-                          }}>
-                          {t.icon} {t.name}
-                          {appliedTemplate === t.id && (
-                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <polyline points="20 6 9 17 4 12" />
+                    {/* Event header */}
+                    <div className="flex items-start justify-between gap-4 mb-5">
+                      <div className="min-w-0">
+                        {editingSessionName ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              value={sessionNameDraft} onChange={e => setSessionNameDraft(e.target.value)}
+                              autoFocus
+                              onKeyDown={e => { if (e.key === 'Enter') saveSessionName(); if (e.key === 'Escape') setEditingSessionName(false) }}
+                              className="text-2xl font-bold bg-transparent border-b-2 focus:outline-none w-64"
+                              style={{ color: 'var(--text-primary)', borderColor: 'var(--accent)' }}
+                            />
+                            <button onClick={saveSessionName} className="text-base px-3 py-1 rounded-lg font-medium"
+                              style={{ background: 'var(--accent)', color: 'white' }}>Save</button>
+                            <button onClick={() => setEditingSessionName(false)} className="text-base px-3 py-1 rounded-lg"
+                              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
+                          </div>
+                        ) : (
+                          <button className="group flex items-center gap-2 text-left"
+                            onClick={() => { setSessionNameDraft(viewedSession.name); setEditingSessionName(true) }}>
+                            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{viewedSession.name}</h1>
+                            <svg className="opacity-0 group-hover:opacity-40 transition-opacity shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
-                          )}
-                        </button>
-                      ))}
-                    </div>
+                          </button>
+                        )}
+                      </div>
 
-                    {/* Criteria list */}
-                    <Reorder.Group as="div" axis="y" values={criteria} onReorder={handleReorder} className="space-y-0.5">
-                      {criteria.map((c) => (
-                        <Reorder.Item as="div" key={c.id} value={c} layout="position">
-                          {editingCriteria?.id === c.id ? (
-                            <div className="p-4 rounded-xl space-y-3 my-1"
-                              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-hover)' }}>
-                              <Input value={editingCriteria.name}
-                                onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
-                                placeholder="Name" autoFocus />
-                              {editingCriteria.name.trim() && (
-                                <div className="flex justify-end">
-                                  <button onClick={generateEditCriteriaDesc} disabled={generatingEditDesc}
-                                    className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
-                                    style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                                    <SparkleIcon spinning={generatingEditDesc} />
-                                    {generatingEditDesc ? 'Generating…' : 'AI fill description'}
-                                  </button>
-                                </div>
-                              )}
-                              <Textarea value={editingCriteria.description}
-                                onChange={v => setEditingCriteria(p => p ? { ...p, description: v } : null)}
-                                rows={3} placeholder="Scoring guide" />
-                              <div className="flex items-center gap-3">
-                                <div className="w-40"><WeightSelect value={editingCriteria.weight}
-                                  onChange={v => setEditingCriteria(p => p ? { ...p, weight: v } : null)} /></div>
-                                <div className="flex-1" />
-                                <Btn onClick={() => setEditingCriteria(null)} variant="ghost" size="sm">Cancel</Btn>
-                                <Btn onClick={saveCriteriaEdit} size="sm" disabled={!editingCriteria.name.trim()}>Save</Btn>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="group/row -mx-2 px-2 py-3 rounded-xl flex items-start gap-3 transition-colors"
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card)' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                              <div className="shrink-0 self-center cursor-grab active:cursor-grabbing touch-none py-1"
-                                style={{ color: 'var(--text-muted)' }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                  <circle cx="9" cy="5" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="9" cy="19" r="1.5" />
-                                  <circle cx="15" cy="5" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="15" cy="19" r="1.5" />
-                                </svg>
-                              </div>
-                              <div className="flex-1 min-w-0 cursor-pointer"
-                                onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
-                                <div className="flex items-center gap-2 mb-0.5">
-                                  <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
-                                  {c.weight !== 1 && (
-                                    <span className="text-base px-1.5 py-0.5 rounded font-medium"
-                                      style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
-                                      ×{c.weight}
-                                    </span>
-                                  )}
-                                </div>
-                                {c.description && (
-                                  <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>{c.description}</p>
-                                )}
-                              </div>
-                              <InlineDeleteBtn
-                                isConfirming={confirmDelete?.id === c.id && confirmDelete.type === 'criteria'}
-                                onRequest={() => setConfirmDelete({ type: 'criteria', id: c.id })}
-                                onConfirm={() => deleteCriteria(c.id)}
-                                onCancel={() => setConfirmDelete(null)}
-                              />
-                            </div>
-                          )}
-                        </Reorder.Item>
-                      ))}
-                    </Reorder.Group>
-
-                    {/* Add criterion */}
-                    <div className="mt-4 pt-4 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
-                      <Input value={newCritName} onChange={setNewCritName}
-                        placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
-                      {newCritName.trim() && (
-                        <>
-                          <div className="flex justify-end">
-                            <button onClick={generateNewCriteriaDesc} disabled={generatingNewDesc}
-                              className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
-                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                              <SparkleIcon spinning={generatingNewDesc} />
-                              {generatingNewDesc ? 'Generating…' : 'AI fill description'}
+                      {/* Primary action + overflow */}
+                      <div className="flex items-center gap-2 shrink-0 pt-1">
+                        {viewedSession.is_active ? (
+                          <>
+                            <button onClick={() => deactivateSession(viewedSession)}
+                              className="flex items-center gap-1.5 text-base font-semibold px-3 py-1.5 rounded-xl transition-all"
+                              style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)'; (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.3)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)'; (e.currentTarget as HTMLElement).style.color = '#4ade80'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(74,222,128,0.25)' }}>
+                              <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'currentColor' }} />
+                              Active
                             </button>
-                          </div>
-                          <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3}
-                            placeholder="Scoring guide — the more specific the better." />
-                          <div className="flex items-center gap-3">
-                            <div className="w-40"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} /></div>
-                            <Btn onClick={createCriteria} disabled={!newCritName.trim()}>
+                            <Link href="/" className="flex items-center gap-2 text-base font-semibold px-4 py-1.5 rounded-xl"
+                              style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                              Start evaluating
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                                <polyline points="9 18 15 12 9 6" />
                               </svg>
-                              Add
-                            </Btn>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </Section>
+                            </Link>
+                          </>
+                        ) : (
+                          <button onClick={() => activateSession(viewedSession)}
+                            className="flex items-center gap-1.5 text-base font-semibold px-3 py-1.5 rounded-xl transition-all"
+                            style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)'; (e.currentTarget as HTMLElement).style.color = '#4ade80'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(74,222,128,0.25)' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                            <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
+                            Inactive
+                          </button>
+                        )}
 
-                  {/* API Keys — flat section at bottom */}
-                  <div className="pt-6 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
-                    <div className="flex items-center justify-between">
-                      <p className="text-base font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>API Keys</p>
-                      {apiKeySettings.length > 0 && (
-                        <span className="text-base px-1.5 py-0.5 rounded font-medium"
-                          style={{
-                            background: keysSet === keysTotal ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
-                            color: keysSet === keysTotal ? '#4ade80' : '#f87171',
-                          }}>
-                          {keysSet}/{keysTotal} set
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ borderTop: '1px solid var(--border)' }}>
-                      {apiKeySettings.length === 0 ? (
-                        <p className="text-base py-4" style={{ color: 'var(--text-muted)' }}>Loading…</p>
-                      ) : apiKeySettings.map((setting) => (
-                        <div key={setting.key} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <div className="py-3 flex items-center gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>{setting.label}</p>
-                                <span className="text-base px-1.5 py-0.5 rounded font-medium"
-                                  style={{
-                                    background: setting.isSet ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
-                                    color: setting.isSet ? '#4ade80' : '#f87171',
-                                  }}>
-                                  {setting.isSet ? 'saved' : 'not set'}
-                                </span>
-                              </div>
-                              <p className="text-base font-mono truncate" style={{ color: 'var(--text-muted)' }}>
-                                {setting.isSet ? setting.preview : setting.hint}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => { setEditingKey(setting.key === editingKey ? null : setting.key); setKeyDraft('') }}
-                              className="text-base px-3 py-1.5 rounded-lg shrink-0 transition-all"
-                              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                              {editingKey === setting.key ? 'Cancel' : setting.isSet ? 'Update' : 'Set'}
-                            </button>
-                          </div>
+                        {/* ··· overflow menu */}
+                        <div className="relative" ref={overflowRef}>
+                          <button
+                            onClick={() => setShowOverflow(v => !v)}
+                            className="p-1.5 rounded-lg transition-all"
+                            style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                            </svg>
+                          </button>
                           <AnimatePresence>
-                            {editingKey === setting.key && (
-                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                <div className="pb-3 flex gap-2">
-                                  <input
-                                    type="password" value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
-                                    placeholder={`Paste ${setting.label}…`} autoFocus
-                                    className="flex-1 text-base px-4 py-2.5 rounded-xl font-mono"
-                                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }}
-                                    onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-                                    onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-                                    onKeyDown={async e => { if (e.key === 'Enter' && keyDraft.trim()) await saveApiKey(setting.key) }}
-                                  />
-                                  <button onClick={() => saveApiKey(setting.key)} disabled={keySaving || !keyDraft.trim()}
-                                    className="text-base px-4 py-2.5 rounded-xl font-medium shrink-0"
-                                    style={{ background: keyDraft.trim() ? 'var(--accent)' : 'var(--bg-card)', color: keyDraft.trim() ? 'white' : 'var(--text-muted)', opacity: keySaving ? 0.6 : 1 }}>
-                                    {keySaving ? 'Saving…' : 'Save'}
-                                  </button>
-                                  {setting.isSet && (
-                                    <button onClick={() => removeApiKey(setting.key)}
-                                      className="text-base px-3 py-2.5 rounded-xl shrink-0"
-                                      style={{ color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                      Remove
-                                    </button>
-                                  )}
-                                </div>
+                            {showOverflow && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                                transition={{ duration: 0.1 }}
+                                className="absolute right-0 top-full mt-1 z-30 min-w-[140px] rounded-xl py-1 overflow-hidden"
+                                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                                <button onClick={() => { exportCsv(); setShowOverflow(false) }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-left"
+                                  style={{ color: 'var(--text-secondary)' }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                                  </svg>
+                                  Export CSV
+                                </button>
+                                <button
+                                  onClick={() => { setConfirmDelete({ type: 'session', id: viewedSession.id }); setShowOverflow(false) }}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-left"
+                                  style={{ color: '#f87171' }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+                                  </svg>
+                                  Delete event
+                                </button>
                               </motion.div>
                             )}
                           </AnimatePresence>
                         </div>
-                      ))}
+                      </div>
                     </div>
 
-                    {/* Footer links row */}
-                    <div className="flex items-center gap-5 flex-wrap pt-1 pb-8">
-                      {[
-                        { label: 'Anthropic Console', url: 'https://console.anthropic.com' },
-                        { label: 'Deepgram Console', url: 'https://console.deepgram.com' },
-                      ].map(({ label, url }) => (
-                        <a key={url} href={url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-base transition-colors"
-                          style={{ color: 'var(--text-muted)' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-                          {label}
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                            <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                          </svg>
-                        </a>
-                      ))}
-                      <button onClick={() => setShowEnvVars(v => !v)}
-                        className="flex items-center gap-1 text-base transition-colors"
-                        style={{ color: 'var(--text-muted)' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-                        Env vars
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                          style={{ transform: showEnvVars ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
-                          <polyline points="6 9 12 15 18 9" />
+                    {/* Banners */}
+                    <AnimatePresence>
+                      {confirmDelete?.type === 'session' && confirmDelete.id === viewedSession.id && (
+                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                          className="flex items-center gap-3 px-4 py-3 rounded-xl text-base mb-4"
+                          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+                          <span className="flex-1">Delete <strong>{viewedSession.name}</strong> and all its data?</span>
+                          <button onClick={() => deleteSession(viewedSession.id)}
+                            className="px-3 py-1 rounded-lg font-medium text-base"
+                            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                            Delete
+                          </button>
+                          <button onClick={() => setConfirmDelete(null)} className="text-base" style={{ color: 'var(--text-muted)' }}>Cancel</button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    {!viewedSession.is_active && liveSession && (
+                      <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-base mb-4"
+                        style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
-                      </button>
-                      <AnimatePresence>
-                        {showEnvVars && (
-                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }} className="overflow-hidden w-full">
-                            <div className="rounded-xl overflow-hidden divide-y" style={{ border: '1px solid var(--border)' }}>
-                              {[
-                                { key: 'NEXT_PUBLIC_SUPABASE_URL', hint: 'Project Settings → API' },
-                                { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', hint: 'Public key, safe for browser' },
-                                { key: 'SUPABASE_SERVICE_ROLE_KEY', hint: 'Server-only, never in browser' },
-                                { key: 'DEEPGRAM_API_KEY', hint: 'console.deepgram.com' },
-                                { key: 'DEEPGRAM_PROJECT_ID', hint: 'Optional — enables temporary keys' },
-                                { key: 'ANTHROPIC_API_KEY', hint: 'console.anthropic.com' },
-                              ].map(({ key, hint }) => (
-                                <div key={key} className="px-4 py-3 flex items-center justify-between gap-4">
-                                  <p className="text-base" style={{ color: 'var(--text-muted)' }}>{hint}</p>
-                                  <code className="text-base px-2 py-1 rounded font-mono shrink-0"
-                                    style={{ background: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                                    {key}
-                                  </code>
-                                </div>
-                              ))}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                        You're editing <strong className="font-semibold mx-0.5">{viewedSession.name}</strong> — not live.
+                        <strong className="font-semibold mx-0.5">{liveSession.name}</strong> is currently live.
+                      </div>
+                    )}
                   </div>
 
+                  {/* Tab bar */}
+                  <div className="flex mt-3 relative" style={{ borderBottom: '1px solid var(--border)' }}>
+                    {(['Context', 'Scoring Criteria'] as const).map((tab, i) => (
+                      <button key={i} onClick={() => goToTab(i)}
+                        className="flex-1 py-3 text-sm font-semibold tracking-wider uppercase text-center transition-colors relative"
+                        style={{ color: activeTab === i ? 'var(--accent)' : 'var(--text-muted)' }}>
+                        {tab}
+                        {activeTab === i && (
+                          <motion.span layoutId="tab-indicator" className="absolute bottom-[-1px] left-0 right-0 h-[2px]"
+                            style={{ background: 'var(--accent)' }} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+
+                {/* ── Swipeable panels ── */}
+                <div className="flex-1 relative overflow-hidden">
+                  <AnimatePresence mode="wait" custom={tabDir} initial={false}>
+                    <motion.div
+                      key={activeTab}
+                      custom={tabDir}
+                      variants={tabVariants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.1}
+                      onDragEnd={(_, info) => {
+                        if (info.offset.x < -80 && activeTab < 1) goToTab(1)
+                        else if (info.offset.x > 80 && activeTab > 0) goToTab(0)
+                      }}
+                      className="absolute inset-0 overflow-y-auto"
+                    >
+                      <div className="max-w-2xl mx-auto px-10 py-8 pb-16">
+                        {activeTab === 0 ? (
+
+                          /* ── Panel 0: Context ── */
+                          <Section
+                            title="Context"
+                            subtitle="What are you evaluating and what does good look like? The more specific, the more accurate the AI scoring."
+                            action={
+                              briefStatus !== 'saved' ? (
+                                <span className="text-base font-medium px-2 py-1 rounded-md"
+                                  style={{
+                                    background: briefStatus === 'saving' ? 'rgba(99,102,241,0.12)' : 'rgba(251,191,36,0.12)',
+                                    color: briefStatus === 'saving' ? 'var(--accent)' : '#fbbf24',
+                                  }}>
+                                  {briefStatus === 'saving' ? 'Saving…' : 'Unsaved'}
+                                </span>
+                              ) : null
+                            }>
+                            <Textarea value={brief} onChange={setBrief} rows={10}
+                              placeholder={`Describe what you're evaluating and what good looks like.\n\ne.g. "5-minute investor pitch. We want a clear problem, evidence of market size, and a working prototype. Strong teams will demonstrate real traction."`} />
+                          </Section>
+
+                        ) : (
+
+                          /* ── Panel 1: Scoring Criteria + API Keys ── */
+                          <div className="space-y-8">
+                            <Section
+                              title={`Scoring Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
+                              subtitle="What the AI scores on. Specific descriptions produce more reliable scores."
+                              action={
+                                <button
+                                  onClick={() => generateCriteriaSet()}
+                                  disabled={!brief.trim() || generatingCriteriaSet}
+                                  title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context above first'}
+                                  className="flex items-center gap-1.5 text-base px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
+                                  style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                                  <SparkleIcon spinning={generatingCriteriaSet} />
+                                  {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
+                                </button>
+                              }>
+
+                              <AnimatePresence>
+                                {confirmAutoGenerate && (
+                                  <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                    className="mb-3 p-3 rounded-xl flex items-center gap-3"
+                                    style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid var(--border-hover)' }}>
+                                    <SparkleIcon spinning={false} />
+                                    <span className="text-base flex-1" style={{ color: 'var(--text-secondary)' }}>
+                                      Replace {criteria.length} existing criteria with AI-generated ones?
+                                    </span>
+                                    <button onClick={() => generateCriteriaSet(true)}
+                                      className="text-base px-3 py-1 rounded-lg font-medium"
+                                      style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                                      Replace
+                                    </button>
+                                    <button onClick={() => setConfirmAutoGenerate(false)} className="text-base" style={{ color: 'var(--text-muted)' }}>
+                                      Cancel
+                                    </button>
+                                  </motion.div>
+                                )}
+                                {confirmReplaceTemplate && (
+                                  <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                    className="mb-3 p-3 rounded-xl flex items-center gap-3"
+                                    style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
+                                    <span className="text-base flex-1" style={{ color: '#fbbf24' }}>
+                                      Replace {criteria.length} existing criteria?
+                                    </span>
+                                    <button onClick={() => applyTemplate(confirmReplaceTemplate)}
+                                      className="text-base px-3 py-1 rounded-lg font-medium"
+                                      style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
+                                      Replace
+                                    </button>
+                                    <button onClick={() => setConfirmReplaceTemplate(null)} className="text-base" style={{ color: 'var(--text-muted)' }}>
+                                      Cancel
+                                    </button>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+
+                              {/* Templates */}
+                              <div className="flex items-center gap-2 flex-wrap mb-3">
+                                <span className="text-base" style={{ color: 'var(--text-muted)' }}>
+                                  {criteria.length === 0 ? 'Quick start:' : 'Template:'}
+                                </span>
+                                {TEMPLATES.map(t => (
+                                  <button key={t.id} onClick={() => handleTemplateClick(t)}
+                                    className="flex items-center gap-1.5 text-base px-2.5 py-1 rounded-lg font-medium transition-all"
+                                    style={{
+                                      background: appliedTemplate === t.id ? 'var(--accent-dim)' : 'transparent',
+                                      color: appliedTemplate === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                                      border: `1px solid ${appliedTemplate === t.id ? 'var(--border-hover)' : 'var(--border)'}`,
+                                    }}>
+                                    {t.icon} {t.name}
+                                    {appliedTemplate === t.id && (
+                                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <polyline points="20 6 9 17 4 12" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Criteria list */}
+                              <Reorder.Group as="div" axis="y" values={criteria} onReorder={handleReorder} className="space-y-0.5">
+                                {criteria.map((c) => (
+                                  <Reorder.Item as="div" key={c.id} value={c} layout="position">
+                                    {editingCriteria?.id === c.id ? (
+                                      <div className="p-4 rounded-xl space-y-3 my-1"
+                                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-hover)' }}>
+                                        <Input value={editingCriteria.name}
+                                          onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
+                                          placeholder="Name" autoFocus />
+                                        {editingCriteria.name.trim() && (
+                                          <div className="flex justify-end">
+                                            <button onClick={generateEditCriteriaDesc} disabled={generatingEditDesc}
+                                              className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
+                                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                                              <SparkleIcon spinning={generatingEditDesc} />
+                                              {generatingEditDesc ? 'Generating…' : 'AI fill description'}
+                                            </button>
+                                          </div>
+                                        )}
+                                        <Textarea value={editingCriteria.description}
+                                          onChange={v => setEditingCriteria(p => p ? { ...p, description: v } : null)}
+                                          rows={3} placeholder="Scoring guide" />
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-40"><WeightSelect value={editingCriteria.weight}
+                                            onChange={v => setEditingCriteria(p => p ? { ...p, weight: v } : null)} /></div>
+                                          <div className="flex-1" />
+                                          <Btn onClick={() => setEditingCriteria(null)} variant="ghost" size="sm">Cancel</Btn>
+                                          <Btn onClick={saveCriteriaEdit} size="sm" disabled={!editingCriteria.name.trim()}>Save</Btn>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="group/row -mx-2 px-2 py-3 rounded-xl flex items-start gap-3 transition-colors"
+                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card)' }}
+                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                                        <div className="shrink-0 self-center cursor-grab active:cursor-grabbing touch-none py-1"
+                                          style={{ color: 'var(--text-muted)' }}>
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                            <circle cx="9" cy="5" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="9" cy="19" r="1.5" />
+                                            <circle cx="15" cy="5" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="15" cy="19" r="1.5" />
+                                          </svg>
+                                        </div>
+                                        <div className="flex-1 min-w-0 cursor-pointer"
+                                          onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
+                                          <div className="flex items-center gap-2 mb-0.5">
+                                            <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
+                                            {c.weight !== 1 && (
+                                              <span className="text-base px-1.5 py-0.5 rounded font-medium"
+                                                style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                                                ×{c.weight}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {c.description && (
+                                            <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>{c.description}</p>
+                                          )}
+                                        </div>
+                                        <InlineDeleteBtn
+                                          isConfirming={confirmDelete?.id === c.id && confirmDelete.type === 'criteria'}
+                                          onRequest={() => setConfirmDelete({ type: 'criteria', id: c.id })}
+                                          onConfirm={() => deleteCriteria(c.id)}
+                                          onCancel={() => setConfirmDelete(null)}
+                                        />
+                                      </div>
+                                    )}
+                                  </Reorder.Item>
+                                ))}
+                              </Reorder.Group>
+
+                              {/* Add criterion */}
+                              <div className="mt-4 pt-4 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
+                                <Input value={newCritName} onChange={setNewCritName}
+                                  placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
+                                {newCritName.trim() && (
+                                  <>
+                                    <div className="flex justify-end">
+                                      <button onClick={generateNewCriteriaDesc} disabled={generatingNewDesc}
+                                        className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
+                                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                                        <SparkleIcon spinning={generatingNewDesc} />
+                                        {generatingNewDesc ? 'Generating…' : 'AI fill description'}
+                                      </button>
+                                    </div>
+                                    <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3}
+                                      placeholder="Scoring guide — the more specific the better." />
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-40"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} /></div>
+                                      <Btn onClick={createCriteria} disabled={!newCritName.trim()}>
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                                        </svg>
+                                        Add
+                                      </Btn>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </Section>
+
+                            {/* API Keys */}
+                            <div className="pt-6 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+                              <div className="flex items-center justify-between">
+                                <p className="text-base font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>API Keys</p>
+                                {apiKeySettings.length > 0 && (
+                                  <span className="text-base px-1.5 py-0.5 rounded font-medium"
+                                    style={{
+                                      background: keysSet === keysTotal ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
+                                      color: keysSet === keysTotal ? '#4ade80' : '#f87171',
+                                    }}>
+                                    {keysSet}/{keysTotal} set
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ borderTop: '1px solid var(--border)' }}>
+                                {apiKeySettings.length === 0 ? (
+                                  <p className="text-base py-4" style={{ color: 'var(--text-muted)' }}>Loading…</p>
+                                ) : apiKeySettings.map((setting) => (
+                                  <div key={setting.key} style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <div className="py-3 flex items-center gap-3">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                          <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>{setting.label}</p>
+                                          <span className="text-base px-1.5 py-0.5 rounded font-medium"
+                                            style={{
+                                              background: setting.isSet ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
+                                              color: setting.isSet ? '#4ade80' : '#f87171',
+                                            }}>
+                                            {setting.isSet ? 'saved' : 'not set'}
+                                          </span>
+                                        </div>
+                                        <p className="text-base font-mono truncate" style={{ color: 'var(--text-muted)' }}>
+                                          {setting.isSet ? setting.preview : setting.hint}
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() => { setEditingKey(setting.key === editingKey ? null : setting.key); setKeyDraft('') }}
+                                        className="text-base px-3 py-1.5 rounded-lg shrink-0 transition-all"
+                                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                                        {editingKey === setting.key ? 'Cancel' : setting.isSet ? 'Update' : 'Set'}
+                                      </button>
+                                    </div>
+                                    <AnimatePresence>
+                                      {editingKey === setting.key && (
+                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                                          exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                          <div className="pb-3 flex gap-2">
+                                            <input
+                                              type="password" value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
+                                              placeholder={`Paste ${setting.label}…`} autoFocus
+                                              className="flex-1 text-base px-4 py-2.5 rounded-xl font-mono"
+                                              style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }}
+                                              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+                                              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                                              onKeyDown={async e => { if (e.key === 'Enter' && keyDraft.trim()) await saveApiKey(setting.key) }}
+                                            />
+                                            <button onClick={() => saveApiKey(setting.key)} disabled={keySaving || !keyDraft.trim()}
+                                              className="text-base px-4 py-2.5 rounded-xl font-medium shrink-0"
+                                              style={{ background: keyDraft.trim() ? 'var(--accent)' : 'var(--bg-card)', color: keyDraft.trim() ? 'white' : 'var(--text-muted)', opacity: keySaving ? 0.6 : 1 }}>
+                                              {keySaving ? 'Saving…' : 'Save'}
+                                            </button>
+                                            {setting.isSet && (
+                                              <button onClick={() => removeApiKey(setting.key)}
+                                                className="text-base px-3 py-2.5 rounded-xl shrink-0"
+                                                style={{ color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                                Remove
+                                              </button>
+                                            )}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex items-center gap-5 flex-wrap pt-1 pb-8">
+                                {[
+                                  { label: 'Anthropic Console', url: 'https://console.anthropic.com' },
+                                  { label: 'Deepgram Console', url: 'https://console.deepgram.com' },
+                                ].map(({ label, url }) => (
+                                  <a key={url} href={url} target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-base transition-colors"
+                                    style={{ color: 'var(--text-muted)' }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                                    {label}
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                      <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                                    </svg>
+                                  </a>
+                                ))}
+                                <button onClick={() => setShowEnvVars(v => !v)}
+                                  className="flex items-center gap-1 text-base transition-colors"
+                                  style={{ color: 'var(--text-muted)' }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                                  Env vars
+                                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                    style={{ transform: showEnvVars ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                                    <polyline points="6 9 12 15 18 9" />
+                                  </svg>
+                                </button>
+                                <AnimatePresence>
+                                  {showEnvVars && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }} className="overflow-hidden w-full">
+                                      <div className="rounded-xl overflow-hidden divide-y" style={{ border: '1px solid var(--border)' }}>
+                                        {[
+                                          { key: 'NEXT_PUBLIC_SUPABASE_URL', hint: 'Project Settings → API' },
+                                          { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', hint: 'Public key, safe for browser' },
+                                          { key: 'SUPABASE_SERVICE_ROLE_KEY', hint: 'Server-only, never in browser' },
+                                          { key: 'DEEPGRAM_API_KEY', hint: 'console.deepgram.com' },
+                                          { key: 'DEEPGRAM_PROJECT_ID', hint: 'Optional — enables temporary keys' },
+                                          { key: 'ANTHROPIC_API_KEY', hint: 'console.anthropic.com' },
+                                        ].map(({ key, hint }) => (
+                                          <div key={key} className="px-4 py-3 flex items-center justify-between gap-4">
+                                            <p className="text-base" style={{ color: 'var(--text-muted)' }}>{hint}</p>
+                                            <code className="text-base px-2 py-1 rounded font-mono shrink-0"
+                                              style={{ background: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                                              {key}
+                                            </code>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </div>
+                          </div>
+
+                        )}
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </>
             )}
           </main>
 
