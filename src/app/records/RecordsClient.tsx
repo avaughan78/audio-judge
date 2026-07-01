@@ -45,8 +45,9 @@ function OverallScore({ teams, criteria }: { teams: (Team & { scores: Score[] })
   )
 }
 
-function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] }; criteria: Criteria[]; index: number }) {
+function TeamCard({ team, criteria, index, onDelete }: { team: Team & { scores: Score[] }; criteria: Criteria[]; index: number; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const scoredCriteria = criteria.filter(c => (team.scores.find(s => s.criteria_id === c.id)?.score ?? 0) > 0)
 
   const weighted = scoredCriteria.length > 0
@@ -111,12 +112,44 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
           ) : (
             <span className="text-base" style={{ color: 'var(--text-muted)' }}>No scores</span>
           )}
+          <button
+            onClick={e => { e.stopPropagation(); setConfirmDelete(v => !v) }}
+            className="p-1.5 rounded-lg transition-all"
+            style={{ color: 'var(--score-low)', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.14)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.06)' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+            </svg>
+          </button>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
             style={{ color: 'var(--text-muted)', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </div>
       </button>
+
+      {/* Delete confirm */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden">
+            <div className="flex items-center gap-3 px-5 py-2.5 text-sm"
+              style={{ background: 'rgba(239,68,68,0.06)', borderTop: '1px solid rgba(239,68,68,0.15)', color: '#f87171' }}>
+              <span className="flex-1">Delete <strong>{team.name}</strong> and all its scores?</span>
+              <button onClick={async () => {
+                const res = await fetch(`/api/teams/${team.id}`, { method: 'DELETE' })
+                if (res.ok) onDelete(team.id)
+                else console.error('Delete failed:', await res.text())
+              }} className="px-3 py-1 rounded-lg font-medium"
+                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                Delete
+              </button>
+              <button onClick={() => setConfirmDelete(false)} style={{ color: 'var(--text-muted)' }}>Cancel</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Expanded detail */}
       <AnimatePresence>
@@ -234,6 +267,14 @@ export default function RecordsClient() {
     }
     load()
   }, [])
+
+  const deleteTeam = (sessionId: string, teamId: string) => {
+    setRecords(prev => prev.map(r =>
+      r.session.id === sessionId
+        ? { ...r, teams: r.teams.filter(t => t.id !== teamId) }
+        : r
+    ))
+  }
 
   const toggleSession = (id: string) => {
     setExpandedSessions(prev => {
@@ -368,7 +409,7 @@ export default function RecordsClient() {
                                   </div>
                                 )}
                                 {teams.map((team, i) => (
-                                  <TeamCard key={team.id} team={team} criteria={criteria} index={i} />
+                                  <TeamCard key={team.id} team={team} criteria={criteria} index={i} onDelete={(id) => deleteTeam(session.id, id)} />
                                 ))}
                               </>
                             )}
