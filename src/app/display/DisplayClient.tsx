@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSpring } from 'framer-motion'
+import { QRCodeSVG } from 'qrcode.react'
 import { createClient } from '@/lib/supabase'
 import { Event, Session, Criteria, Score } from '@/lib/types'
 import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
@@ -169,18 +170,8 @@ export default function DisplayClient() {
           <img src="/app-icon.svg" alt="Audio Judge" className="w-8 h-8" />
           <span className="text-base font-bold" style={{ color: 'var(--text-muted)' }}>{event?.name || 'Audio Judge'}</span>
         </div>
-        {collectorCode && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
-            style={{ background: 'var(--accent-dim)', border: '1px solid var(--border-hover)' }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--accent)' }}>
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
-            </svg>
-            <span className="text-sm font-mono font-bold" style={{ color: 'var(--accent)' }}>
-              {typeof window !== 'undefined' ? window.location.host : ''}/collect/<span style={{ letterSpacing: '0.05em' }}>{collectorCode}</span>
-            </span>
-          </div>
-        )}
+        {/* spacer */}
+        <span />
         <div className="flex items-center gap-5">
           <ThemeSelector />
           <span className="text-base tabular-nums" style={{ color: 'var(--text-muted)' }}>
@@ -328,6 +319,23 @@ export default function DisplayClient() {
               </motion.p>
             </AnimatePresence>
           </div>
+        </div>
+      )}
+      {/* QR code — fixed bottom-left, always visible for room scanning */}
+      {collectorCode && typeof window !== 'undefined' && (
+        <div className="fixed bottom-6 left-8 z-20 flex flex-col items-center gap-2">
+          <div className="p-3 rounded-2xl" style={{ background: 'white' }}>
+            <QRCodeSVG
+              value={`${window.location.origin}/collect/${collectorCode}`}
+              size={128}
+              bgColor="white"
+              fgColor="#0f172a"
+              level="M"
+            />
+          </div>
+          <span className="text-xs font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
+            Scan to collect audio
+          </span>
         </div>
       )}
     </div>
