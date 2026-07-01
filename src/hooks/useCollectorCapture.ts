@@ -13,7 +13,6 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const stoppedRef = useRef(false)
   const wakeLockRef = useRef<any>(null)
-  const audioCtxRef = useRef<AudioContext | null>(null)
 
   const [isRecording, setIsRecording] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -92,7 +91,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       })
       connectionRef.current = conn
 
-      conn.on('open', async () => {
+      conn.on('open', () => {
         if (stoppedRef.current) return
         if (mediaRecorderRef.current) return
         setIsConnecting(false)
@@ -100,20 +99,10 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
         acquireWakeLock()
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
-        let recordingStream: MediaStream = stream
-        if (stream.getVideoTracks().length > 0) {
-          try {
-            const ctx = new AudioContext()
-            audioCtxRef.current = ctx
-            await ctx.resume()
-            const src = ctx.createMediaStreamSource(stream)
-            const dest = ctx.createMediaStreamDestination()
-            src.connect(dest)
-            recordingStream = dest.stream
-          } catch (e) {
-            console.error('[collector recorder] AudioContext failed, falling back to raw stream:', e)
-          }
-        }
+        const audioTracks = stream.getAudioTracks()
+        const recordingStream = audioTracks.length > 0 && stream.getVideoTracks().length > 0
+          ? new MediaStream(audioTracks)
+          : stream
 
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? 'audio/webm;codecs=opus'
@@ -130,8 +119,6 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
           stoppedRef.current = true
           setIsRecording(false)
           setIsConnecting(false)
-          audioCtxRef.current?.close().catch(() => {})
-          audioCtxRef.current = null
           try { (conn as any).sendCloseStream({}) } catch (_) {}
           return
         }
@@ -143,8 +130,6 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
             stoppedRef.current = true
             try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
             streamRef.current?.getTracks().forEach((t) => t.stop())
-            audioCtxRef.current?.close().catch(() => {})
-            audioCtxRef.current = null
             mediaRecorderRef.current = null
             connectionRef.current = null
             streamRef.current = null
@@ -195,8 +180,6 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
     mediaRecorderRef.current?.stop()
     try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
     streamRef.current?.getTracks().forEach((t) => t.stop())
-    audioCtxRef.current?.close().catch(() => {})
-    audioCtxRef.current = null
     mediaRecorderRef.current = null
     connectionRef.current = null
     streamRef.current = null

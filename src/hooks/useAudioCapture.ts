@@ -22,7 +22,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const stoppedRef = useRef(false)
   const collectorChannelRef = useRef<any>(null)
   const isStartingRef = useRef(false)
-  const audioCtxRef = useRef<AudioContext | null>(null)
 
   const runCycle = useCallback(async (options?: { final?: boolean }) => {
     if (isJudgingRef.current) return
@@ -166,32 +165,19 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       })
       connectionRef.current = conn
 
-      conn.on('open', async () => {
+      conn.on('open', () => {
         if (stoppedRef.current) return
         setConnecting(false)
         setRecording(true)
         if (mediaRecorderRef.current) return
         setRecordingStartedAt(Date.now())
 
-        // For getDisplayMedia streams (video + audio), route audio through
-        // Web Audio API to produce a clean audio-only stream. Recording the
-        // raw video/webm container sends video data Deepgram can't transcribe.
-        // AudioContext starts suspended when created outside a user gesture, so
-        // resume() must be awaited before audio flows through the graph.
-        let recordingStream: MediaStream = stream
-        if (stream.getVideoTracks().length > 0) {
-          try {
-            const ctx = new AudioContext()
-            audioCtxRef.current = ctx
-            await ctx.resume()
-            const src = ctx.createMediaStreamSource(stream)
-            const dest = ctx.createMediaStreamDestination()
-            src.connect(dest)
-            recordingStream = dest.stream
-          } catch (e) {
-            console.error('[recorder] AudioContext failed, falling back to raw stream:', e)
-          }
-        }
+        // For getDisplayMedia streams strip video tracks so MediaRecorder gets
+        // a clean audio-only stream — required for audio/webm;codecs=opus mimeType.
+        const audioTracks = stream.getAudioTracks()
+        const recordingStream = audioTracks.length > 0 && stream.getVideoTracks().length > 0
+          ? new MediaStream(audioTracks)
+          : stream
 
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? 'audio/webm;codecs=opus'
@@ -208,8 +194,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           stoppedRef.current = true
           setRecording(false)
           setConnecting(false)
-          audioCtxRef.current?.close().catch(() => {})
-          audioCtxRef.current = null
           try { (conn as any).sendCloseStream({}) } catch (_) {}
           return
         }
@@ -222,8 +206,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
             stoppedRef.current = true
             if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
             try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
-            audioCtxRef.current?.close().catch(() => {})
-            audioCtxRef.current = null
             mediaRecorderRef.current = null
             connectionRef.current = null
             streamRef.current = null
@@ -330,8 +312,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     mediaRecorderRef.current?.stop()
     try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
     streamRef.current?.getTracks().forEach((t) => t.stop())
-    audioCtxRef.current?.close().catch(() => {})
-    audioCtxRef.current = null
     mediaRecorderRef.current = null
     connectionRef.current = null
     streamRef.current = null
