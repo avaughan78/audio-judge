@@ -116,7 +116,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
           stoppedRef.current = true
           setIsRecording(false)
           setIsConnecting(false)
-          try { conn.sendCloseStream({}) } catch (_) {}
+          try { (conn as any).sendCloseStream({}) } catch (_) {}
           return
         }
         mediaRecorderRef.current = mr
