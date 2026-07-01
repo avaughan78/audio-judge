@@ -4,7 +4,9 @@ import { useRef, useCallback, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { getDeviceId } from '@/lib/deviceId'
 
-export function useCollectorCapture(sessionId: string | null, activeTeamId: string | null) {
+export type CaptureMode = 'local' | 'online'
+
+export function useCollectorCapture(sessionId: string | null, activeTeamId: string | null, mode: CaptureMode = 'local') {
   const deviceId = useRef(getDeviceId())
   const connectionRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -43,10 +45,23 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
     setIsConnecting(true)
 
     try {
-      const [tokenData, stream] = await Promise.all([
-        fetch('/api/deepgram-token').then((r) => r.json()),
-        navigator.mediaDevices.getUserMedia({ audio: true, video: false }),
-      ])
+      // For online meeting mode, call getDisplayMedia first (requires user activation),
+      // then fetch the token while the user is choosing their tab in the picker.
+      let stream: MediaStream
+      let tokenData: any
+      if (mode === 'online') {
+        ;[stream, tokenData] = await Promise.all([
+          navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }),
+          fetch('/api/deepgram-token').then((r) => r.json()),
+        ])
+        // We only need the audio track — drop video immediately
+        stream.getVideoTracks().forEach((t) => t.stop())
+      } else {
+        ;[tokenData, stream] = await Promise.all([
+          fetch('/api/deepgram-token').then((r) => r.json()),
+          navigator.mediaDevices.getUserMedia({ audio: true, video: false }),
+        ])
+      }
 
       if (tokenData.error) throw new Error(`Deepgram token error: ${tokenData.error}`)
       const key: string = tokenData.key

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase'
 import { Session, Team, Criteria, Score, ThemeId } from '@/lib/types'
 import { applyTheme, themeMap } from '@/lib/themes'
 import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
+import { useAppStore } from '@/lib/store'
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
   const [display, setDisplay] = useState(0)
@@ -27,6 +28,7 @@ function getBarStyle(score: number) {
 
 export default function DisplayClient() {
   const supabase = createClient()
+  const setThemeId = useAppStore((s) => s.setThemeId)
   const [session, setSession] = useState<Session | null>(null)
   const [activeTeam, setActiveTeam] = useState<Team | null>(null)
   const [criteria, setCriteria] = useState<Criteria[]>([])
@@ -44,8 +46,8 @@ export default function DisplayClient() {
   }, [])
 
   const applySessionTheme = useCallback((themeId: ThemeId | null) => {
-    if (themeId && themeMap[themeId]) applyTheme(themeMap[themeId])
-  }, [])
+    if (themeId && themeMap[themeId]) { applyTheme(themeMap[themeId]); setThemeId(themeId) }
+  }, [setThemeId])
 
   // Initialise display for a given session (called on load and when session goes live mid-display)
   const initSession = useCallback(async (sess: Session) => {
