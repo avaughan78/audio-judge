@@ -152,7 +152,7 @@ export default function DisplayClient() {
 
   return (
   <ThemeProvider>
-    <div className="fixed inset-0 overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
+    <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
       {/* Ambient */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -165,7 +165,8 @@ export default function DisplayClient() {
       </div>
 
       {/* Header */}
-      <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-12 pt-6">
+      <div className="relative z-10 flex items-center justify-between px-12 py-5 shrink-0"
+        style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3">
           <img src="/app-icon.svg" alt="Audio Judge" className="w-8 h-8" />
           <span className="text-base font-bold" style={{ color: 'var(--text-muted)' }}>{session?.name || 'Audio Judge'}</span>
@@ -198,14 +199,14 @@ export default function DisplayClient() {
       </div>
 
       {!activeTeam ? (
-        <div className="flex items-center justify-center h-full">
+        <div className="relative z-0 flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="text-7xl">🎯</div>
             <p className="text-2xl font-light" style={{ color: 'var(--text-muted)' }}>Waiting for presentation...</p>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col h-full pt-20 pb-16 px-12">
+        <div className="relative z-0 flex-1 flex flex-col min-h-0 pb-16 px-12 pt-6">
 
           {/* Team name */}
           <AnimatePresence mode="wait">
