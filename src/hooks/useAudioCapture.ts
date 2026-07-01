@@ -21,6 +21,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const wordCountAtLastJudgeRef = useRef(0)
   const stoppedRef = useRef(false)
   const collectorChannelRef = useRef<any>(null)
+  const isStartingRef = useRef(false)
 
   const runCycle = useCallback(async (options?: { final?: boolean }) => {
     if (isJudgingRef.current) return
@@ -86,11 +87,14 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   }, [])
 
   const start = useCallback(async () => {
+    if (isStartingRef.current) return
+    isStartingRef.current = true
+
     const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt, setActiveTeam } =
       useAppStore.getState()
     const { session } = useAppStore.getState()
 
-    if (!session) return
+    if (!session) { isStartingRef.current = false; return }
 
     // Initiate media acquisition synchronously — getDisplayMedia must be called
     // within the user-activation window (the click), before any awaited fetches
@@ -110,6 +114,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     if (!transitionData.transition || !transitionData.team) {
       rawStreamPromise.then(s => s.getTracks().forEach(t => t.stop())).catch(() => {})
       console.error('[audio] Failed to create session slot')
+      isStartingRef.current = false
       return
     }
     setActiveTeam(transitionData.team)
@@ -167,18 +172,48 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         if (mediaRecorderRef.current) return
         setRecordingStartedAt(Date.now())
 
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : MediaRecorder.isTypeSupported('audio/webm')
-          ? 'audio/webm'
-          : ''
+        // getDisplayMedia streams include video tracks; specifying an audio-only
+        // mimeType throws NotSupportedError in Chrome — omit it for video streams
+        // and let the browser choose a compatible container.
+        const hasVideo = stream.getVideoTracks().length > 0
+        const mimeType = hasVideo ? '' : (
+          MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
+        )
 
         const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
         mr.ondataavailable = (e) => {
           if (e.data.size > 0 && conn.readyState === 1) conn.sendMedia(e.data)
         }
-        mr.start(250)
+        try {
+          mr.start(250)
+        } catch (err) {
+          console.error('[recorder] MediaRecorder.start failed:', err)
+          stoppedRef.current = true
+          setRecording(false)
+          setConnecting(false)
+          try { conn.sendCloseStream({}) } catch (_) {}
+          return
+        }
         mediaRecorderRef.current = mr
+
+        // When screen share ends externally, clean up so state stays in sync
+        stream.getTracks().forEach((track) => {
+          track.addEventListener('ended', () => {
+            if (stoppedRef.current) return
+            stoppedRef.current = true
+            if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+            try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
+            mediaRecorderRef.current = null
+            connectionRef.current = null
+            streamRef.current = null
+            useAppStore.getState().setRecording(false)
+            useAppStore.getState().setConnecting(false)
+            useAppStore.getState().setInterimTranscript('')
+            useAppStore.getState().setRecordingStartedAt(null)
+          })
+        })
 
         timerRef.current = setInterval(runCycle, CYCLE_INTERVAL_MS)
 
@@ -255,16 +290,19 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         useAppStore.getState().setRecording(false)
       })
 
+      isStartingRef.current = false
       conn.connect()
     } catch (e: any) {
       console.error('Start recording error:', e)
       useAppStore.getState().setConnecting(false)
       useAppStore.getState().setJudgeError(e?.message ?? 'Failed to start recording')
+      isStartingRef.current = false
     }
   }, [runCycle, clearBuffer, captureMode])
 
   const stop = useCallback(async () => {
     stoppedRef.current = true
+    isStartingRef.current = false
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
     if (collectorChannelRef.current) {
       try { createSupabaseClient().removeChannel(collectorChannelRef.current) } catch (_) {}

@@ -99,15 +99,43 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
         acquireWakeLock()
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
+        const hasVideo = stream.getVideoTracks().length > 0
+        const mimeType = hasVideo ? '' : (
+          MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
+        )
         const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
         mr.ondataavailable = (e) => {
           if (e.data.size > 0 && conn.readyState === 1) conn.sendMedia(e.data)
         }
-        mr.start(250)
+        try {
+          mr.start(250)
+        } catch (err) {
+          console.error('[collector recorder] MediaRecorder.start failed:', err)
+          stoppedRef.current = true
+          setIsRecording(false)
+          setIsConnecting(false)
+          try { conn.sendCloseStream({}) } catch (_) {}
+          return
+        }
         mediaRecorderRef.current = mr
+
+        stream.getTracks().forEach((track) => {
+          track.addEventListener('ended', () => {
+            if (stoppedRef.current) return
+            stoppedRef.current = true
+            try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
+            streamRef.current?.getTracks().forEach((t) => t.stop())
+            mediaRecorderRef.current = null
+            connectionRef.current = null
+            streamRef.current = null
+            releaseWakeLock()
+            setIsRecording(false)
+            setIsConnecting(false)
+            setInterimTranscript('')
+          })
+        })
       })
 
       conn.on('message', (message: any) => {
