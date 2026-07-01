@@ -147,7 +147,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       }
 
       const { DeepgramClient } = await import('@deepgram/sdk')
-      const dg = new DeepgramClient({ apiKey: key, global: { url: 'api.eu.deepgram.com' } })
+      const dg = new DeepgramClient({ apiKey: key, baseUrl: 'https://api.eu.deepgram.com' })
       const supabase = createSupabaseClient()
 
       const conn = await dg.listen.v1.connect({

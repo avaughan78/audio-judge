@@ -79,7 +79,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       const supabase = createClient()
 
       const { DeepgramClient } = await import('@deepgram/sdk')
-      const dg = new DeepgramClient({ apiKey: key, global: { url: 'api.eu.deepgram.com' } })
+      const dg = new DeepgramClient({ apiKey: key, baseUrl: 'https://api.eu.deepgram.com' })
 
       const conn = await dg.listen.v1.connect({
         model: 'nova-2' as any,
