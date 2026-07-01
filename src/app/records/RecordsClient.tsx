@@ -277,9 +277,9 @@ export default function RecordsClient() {
                     style={{ border: '1px solid var(--border)' }}>
 
                     {/* Session header */}
-                    <button
+                    <div
                       onClick={() => toggleSession(session.id)}
-                      className="w-full flex items-center gap-4 px-6 py-5 text-left transition-all"
+                      className="w-full flex items-center gap-4 px-6 py-5 text-left transition-all cursor-pointer"
                       style={{ background: isExpanded ? 'var(--bg-card)' : 'rgba(255,255,255,0.01)' }}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
@@ -321,7 +321,7 @@ export default function RecordsClient() {
                           <polyline points="9 18 15 12 9 6" />
                         </svg>
                       </div>
-                    </button>
+                    </div>
 
                     {/* Delete confirm */}
                     <AnimatePresence>
