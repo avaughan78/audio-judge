@@ -573,8 +573,8 @@ export default function AdminClient() {
                             onClick={e => { e.stopPropagation(); activateSession(sess) }}
                             className="shrink-0 text-xs px-1.5 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity"
                             style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}
-                            title="Set live">
-                            Set live
+                            title="Make active">
+                            Make active
                           </button>
                         )}
                       </div>
@@ -669,7 +669,7 @@ export default function AdminClient() {
                         style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLElement).style.color = 'white' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-dim)'; (e.currentTarget as HTMLElement).style.color = 'var(--accent)' }}>
-                        Set live
+                        Make active
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" />
                         </svg>
