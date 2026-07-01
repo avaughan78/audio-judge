@@ -172,17 +172,9 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         if (mediaRecorderRef.current) return
         setRecordingStartedAt(Date.now())
 
-        // getDisplayMedia streams include video tracks; specifying an audio-only
-        // mimeType throws NotSupportedError in Chrome — omit it for video streams
-        // and let the browser choose a compatible container.
-        const hasVideo = stream.getVideoTracks().length > 0
-        const mimeType = hasVideo ? '' : (
-          MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-            ? 'audio/webm;codecs=opus'
-            : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
-        )
-
-        const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+        // Always let the browser choose its native container — explicit mimeTypes
+        // cause NotSupportedError on some browsers/OS combinations.
+        const mr = new MediaRecorder(stream)
         mr.ondataavailable = (e) => {
           if (e.data.size > 0 && conn.readyState === 1) conn.sendMedia(e.data)
         }
