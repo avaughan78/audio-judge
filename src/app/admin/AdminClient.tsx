@@ -47,12 +47,6 @@ const WEIGHT_OPTIONS = [
   { label: 'Critical ×2', value: 2 },
 ]
 
-const tabVariants = {
-  enter: (dir: number) => ({ x: `${dir * 100}%`, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: `${-dir * 100}%`, opacity: 0 }),
-}
-
 // ── Primitives ───────────────────────────────────────────────────────────────
 
 function Input({ value, onChange, placeholder, className = '', onEnter, autoFocus, type = 'text' }: {
@@ -179,9 +173,6 @@ export default function AdminClient() {
   const [showEnvVars, setShowEnvVars] = useState(false)
   const [showOverflow, setShowOverflow] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [activeTab, setActiveTab] = useState(0)
-  const [tabDir, setTabDir] = useState(1)
-  const goToTab = (idx: number) => { setTabDir(idx > activeTab ? 1 : -1); setActiveTab(idx) }
   const overflowRef = useRef<HTMLDivElement>(null)
 
   type ApiKeySetting = { key: string; label: string; hint: string; isSet: boolean; source: string; preview: string; updatedAt: string | null }
@@ -308,7 +299,6 @@ export default function AdminClient() {
     setAppliedTemplate(null)
     setEditingEventName(false)
     setEditingCriteria(null)
-    setActiveTab(0)
   }
 
   const activateEvent = async (ev: Event) => {
@@ -515,7 +505,7 @@ export default function AdminClient() {
 
         <AppHeader
           back
-          section="Setup"
+          section="Events"
           items={[
             { label: 'Records', href: '/records', icon: 'archive', hideOnMobile: true },
             { label: 'Settings', onClick: () => setShowSettings(true), icon: 'settings' },
@@ -636,11 +626,34 @@ export default function AdminClient() {
           {/* ── Main content ──────────────────────────────────────────── */}
           <main className="flex-1 flex flex-col overflow-hidden">
             {!viewedEvent ? (
-              <div className="flex items-center justify-center flex-1">
-                <div className="text-center space-y-3">
-                  <div className="text-5xl">📋</div>
-                  <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>No events yet</p>
-                  <p className="text-base" style={{ color: 'var(--text-muted)' }}>Create an event in the sidebar to get started</p>
+              <div className="flex items-center justify-center flex-1 px-6">
+                <div className="w-full max-w-md space-y-6 text-center">
+                  <div>
+                    <p className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Create your first event</p>
+                    <p className="text-base" style={{ color: 'var(--text-muted)' }}>Give it a name to get started — you can rename it any time.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={newEventName} onChange={e => setNewEventName(e.target.value)}
+                      placeholder="e.g. Q3 Hackathon, YC Interview Round…"
+                      autoFocus
+                      onKeyDown={e => { if (e.key === 'Enter') createEvent() }}
+                      className="flex-1 px-4 py-3 rounded-xl text-base placeholder:text-[color:var(--text-muted)] focus:outline-none"
+                      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                      onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+                      onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                    />
+                    <button onClick={createEvent} disabled={!newEventName.trim() || !userId}
+                      className="px-5 py-3 rounded-xl text-base font-semibold disabled:opacity-40 transition-all"
+                      style={{ background: 'var(--accent)', color: 'white' }}>
+                      Create
+                    </button>
+                  </div>
+                  {dbError && (
+                    <p className="text-sm px-4 py-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                      {dbError}
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -791,299 +804,295 @@ export default function AdminClient() {
 
                 </div>
 
-                {/* ── Card panels ── */}
-                <div className="flex-1 flex flex-col min-h-0 py-5 gap-3">
-                  <div className="flex-1 flex items-stretch min-h-0 gap-3 px-4 max-w-3xl mx-auto w-full">
+                {/* ── Setup sections ── */}
+                <div className="flex-1 overflow-y-auto">
+                  <div className="max-w-2xl mx-auto px-10 py-8 space-y-10 pb-24">
 
-                    {/* Left nav */}
-                    <button
-                      onClick={() => goToTab(0)}
-                      disabled={activeTab === 0}
-                      className="shrink-0 self-center w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
-                      onMouseEnter={e => { if (activeTab !== 0) { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' } }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="15 18 9 12 15 6" />
-                      </svg>
-                    </button>
-
-                    <div className="flex-1 relative overflow-hidden min-h-0">
-                    <AnimatePresence mode="wait" custom={tabDir} initial={false}>
-                      <motion.div
-                        key={activeTab}
-                        custom={tabDir}
-                        variants={tabVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-                        drag="x"
-                        dragConstraints={{ left: 0, right: 0 }}
-                        dragElastic={0.1}
-                        onDragEnd={(_, info) => {
-                          if (info.offset.x < -80 && activeTab < 1) goToTab(1)
-                          else if (info.offset.x > 80 && activeTab > 0) goToTab(0)
-                        }}
-                        className="absolute inset-0 flex flex-col rounded-2xl overflow-hidden"
-                        style={{
-                          background: 'var(--bg-card)',
-                          border: '1px solid var(--border-hover)',
-                          boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
-                        }}
-                      >
-                        {/* Card header */}
-                        <div className="shrink-0 flex items-center justify-between px-6 py-4"
-                          style={{ borderBottom: '1px solid var(--border)' }}>
-                          <p className="text-sm font-semibold tracking-widest uppercase"
-                            style={{ color: 'var(--text-muted)' }}>
-                            {activeTab === 0 ? 'Context' : `Scoring Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
-                          </p>
-                          {activeTab === 0 ? (
-                            briefStatus !== 'saved' && (
-                              <span className="text-sm font-medium px-2 py-1 rounded-md"
-                                style={{
-                                  background: briefStatus === 'saving' ? 'rgba(99,102,241,0.12)' : 'rgba(251,191,36,0.12)',
-                                  color: briefStatus === 'saving' ? 'var(--accent)' : '#fbbf24',
-                                }}>
-                                {briefStatus === 'saving' ? 'Saving…' : 'Unsaved'}
-                              </span>
-                            )
-                          ) : (
-                            <button
-                              onClick={() => generateCriteriaSet()}
-                              disabled={!brief.trim() || generatingCriteriaSet}
-                              title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context first'}
-                              className="flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
-                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                              <SparkleIcon spinning={generatingCriteriaSet} />
-                              {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Card body */}
-                        <div className="flex-1 overflow-y-auto">
-                          <div className="max-w-2xl mx-auto px-6 py-5 pb-16">
-                            {activeTab === 0 ? (
-
-                              /* ── Panel 0: Context ── */
-                              <div className="space-y-3">
-                                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                                  What are you evaluating and what does good look like? The more specific, the more accurate the AI scoring.
-                                </p>
-                                <Textarea value={brief} onChange={setBrief} rows={10}
-                                  placeholder={`Describe what you're evaluating and what good looks like.\n\ne.g. "5-minute investor pitch. We want a clear problem, evidence of market size, and a working prototype. Strong teams will demonstrate real traction."`} />
-                              </div>
-
-                            ) : (
-
-                              /* ── Panel 1: Scoring Criteria + API Keys ── */
-                              <div className="space-y-8">
-                                <div className="space-y-3">
-                                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                                    What the AI scores on. Specific descriptions produce more reliable scores.
-                                  </p>
-
-                                  <AnimatePresence>
-                                    {confirmAutoGenerate && (
-                                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                                        className="mb-3 p-3 rounded-xl flex items-center gap-3"
-                                        style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid var(--border-hover)' }}>
-                                        <SparkleIcon spinning={false} />
-                                        <span className="text-base flex-1" style={{ color: 'var(--text-secondary)' }}>
-                                          Replace {criteria.length} existing criteria with AI-generated ones?
-                                        </span>
-                                        <button onClick={() => generateCriteriaSet(true)}
-                                          className="text-base px-3 py-1 rounded-lg font-medium"
-                                          style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                                          Replace
-                                        </button>
-                                        <button onClick={() => setConfirmAutoGenerate(false)} className="text-base" style={{ color: 'var(--text-muted)' }}>
-                                          Cancel
-                                        </button>
-                                      </motion.div>
-                                    )}
-                                    {confirmReplaceTemplate && (
-                                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                                        className="mb-3 p-3 rounded-xl flex items-center gap-3"
-                                        style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
-                                        <span className="text-base flex-1" style={{ color: '#fbbf24' }}>
-                                          Replace {criteria.length} existing criteria?
-                                        </span>
-                                        <button onClick={() => applyTemplate(confirmReplaceTemplate)}
-                                          className="text-base px-3 py-1 rounded-lg font-medium"
-                                          style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
-                                          Replace
-                                        </button>
-                                        <button onClick={() => setConfirmReplaceTemplate(null)} className="text-base" style={{ color: 'var(--text-muted)' }}>
-                                          Cancel
-                                        </button>
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-
-                                  {/* Templates */}
-                                  <div className="flex items-center gap-2 flex-wrap mb-3">
-                                    <span className="text-base" style={{ color: 'var(--text-muted)' }}>
-                                      {criteria.length === 0 ? 'Quick start:' : 'Template:'}
-                                    </span>
-                                    {TEMPLATES.map(t => (
-                                      <button key={t.id} onClick={() => handleTemplateClick(t)}
-                                        className="flex items-center gap-1.5 text-base px-2.5 py-1 rounded-lg font-medium transition-all"
-                                        style={{
-                                          background: appliedTemplate === t.id ? 'var(--accent-dim)' : 'transparent',
-                                          color: appliedTemplate === t.id ? 'var(--accent)' : 'var(--text-muted)',
-                                          border: `1px solid ${appliedTemplate === t.id ? 'var(--border-hover)' : 'var(--border)'}`,
-                                        }}>
-                                        {t.icon} {t.name}
-                                        {appliedTemplate === t.id && (
-                                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                            <polyline points="20 6 9 17 4 12" />
-                                          </svg>
-                                        )}
-                                      </button>
-                                    ))}
-                                  </div>
-
-                                  {/* Criteria list */}
-                                  <Reorder.Group as="div" axis="y" values={criteria} onReorder={handleReorder} className="space-y-0.5">
-                                    {criteria.map((c) => (
-                                      <Reorder.Item as="div" key={c.id} value={c} layout="position">
-                                        {editingCriteria?.id === c.id ? (
-                                          <div className="p-4 rounded-xl space-y-3 my-1"
-                                            style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border-hover)' }}>
-                                            <Input value={editingCriteria.name}
-                                              onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
-                                              placeholder="Name" autoFocus />
-                                            {editingCriteria.name.trim() && (
-                                              <div className="flex justify-end">
-                                                <button onClick={generateEditCriteriaDesc} disabled={generatingEditDesc}
-                                                  className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
-                                                  style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                                                  <SparkleIcon spinning={generatingEditDesc} />
-                                                  {generatingEditDesc ? 'Generating…' : 'AI fill description'}
-                                                </button>
-                                              </div>
-                                            )}
-                                            <Textarea value={editingCriteria.description}
-                                              onChange={v => setEditingCriteria(p => p ? { ...p, description: v } : null)}
-                                              rows={3} placeholder="Scoring guide" />
-                                            <div className="flex items-center gap-3">
-                                              <div className="w-40"><WeightSelect value={editingCriteria.weight}
-                                                onChange={v => setEditingCriteria(p => p ? { ...p, weight: v } : null)} /></div>
-                                              <div className="flex-1" />
-                                              <Btn onClick={() => setEditingCriteria(null)} variant="ghost" size="sm">Cancel</Btn>
-                                              <Btn onClick={saveCriteriaEdit} size="sm" disabled={!editingCriteria.name.trim()}>Save</Btn>
-                                            </div>
-                                          </div>
-                                        ) : (
-                                          <div className="group/row -mx-2 px-2 py-3 rounded-xl flex items-start gap-3 transition-colors"
-                                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
-                                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                                            <div className="shrink-0 self-center cursor-grab active:cursor-grabbing touch-none py-1"
-                                              style={{ color: 'var(--text-muted)' }}>
-                                              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                                <circle cx="9" cy="5" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="9" cy="19" r="1.5" />
-                                                <circle cx="15" cy="5" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="15" cy="19" r="1.5" />
-                                              </svg>
-                                            </div>
-                                            <div className="flex-1 min-w-0 cursor-pointer"
-                                              onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
-                                              <div className="flex items-center gap-2 mb-0.5">
-                                                <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
-                                                {c.weight !== 1 && (
-                                                  <span className="text-base px-1.5 py-0.5 rounded font-medium"
-                                                    style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
-                                                    ×{c.weight}
-                                                  </span>
-                                                )}
-                                              </div>
-                                              {c.description && (
-                                                <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>{c.description}</p>
-                                              )}
-                                            </div>
-                                            <InlineDeleteBtn
-                                              isConfirming={confirmDelete?.id === c.id && confirmDelete.type === 'criteria'}
-                                              onRequest={() => setConfirmDelete({ type: 'criteria', id: c.id })}
-                                              onConfirm={() => deleteCriteria(c.id)}
-                                              onCancel={() => setConfirmDelete(null)}
-                                            />
-                                          </div>
-                                        )}
-                                      </Reorder.Item>
-                                    ))}
-                                  </Reorder.Group>
-
-                                  {/* Add criterion */}
-                                  <div className="mt-4 pt-4 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
-                                    <Input value={newCritName} onChange={setNewCritName}
-                                      placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
-                                    {newCritName.trim() && (
-                                      <>
-                                        <div className="flex justify-end">
-                                          <button onClick={generateNewCriteriaDesc} disabled={generatingNewDesc}
-                                            className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
-                                            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                                            <SparkleIcon spinning={generatingNewDesc} />
-                                            {generatingNewDesc ? 'Generating…' : 'AI fill description'}
-                                          </button>
-                                        </div>
-                                        <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3}
-                                          placeholder="Scoring guide — the more specific the better." />
-                                        <div className="flex items-center gap-3">
-                                          <div className="w-40"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} /></div>
-                                          <Btn onClick={createCriteria} disabled={!newCritName.trim()}>
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                                            </svg>
-                                            Add
-                                          </Btn>
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
+                    {/* Step indicator */}
+                    {(() => {
+                      const steps = [
+                        { label: 'Context', done: brief.trim().length > 0 },
+                        { label: 'Criteria', done: criteria.length > 0 },
+                        { label: 'Go live', done: viewedEvent.is_active },
+                      ]
+                      return (
+                        <div className="flex items-center gap-0">
+                          {steps.map((step, i) => (
+                            <div key={step.label} className="flex items-center">
+                              {i > 0 && (
+                                <div className="w-8 h-px mx-1" style={{ background: steps[i - 1].done ? 'var(--accent)' : 'var(--border)' }} />
+                              )}
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                                  style={{
+                                    background: step.done ? 'var(--accent)' : 'var(--border)',
+                                    color: step.done ? 'white' : 'var(--text-muted)',
+                                  }}>
+                                  {step.done ? (
+                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                                  ) : i + 1}
                                 </div>
-
+                                <span className="text-xs font-medium" style={{ color: step.done ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+                                  {step.label}
+                                </span>
                               </div>
-
-                            )}
-                          </div>
+                            </div>
+                          ))}
                         </div>
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
+                      )
+                    })()}
 
-                    {/* Right nav */}
-                    <button
-                      onClick={() => goToTab(1)}
-                      disabled={activeTab === 1}
-                      className="shrink-0 self-center w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
-                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
-                      onMouseEnter={e => { if (activeTab !== 1) { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' } }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
-                  </div>
+                    {/* Context */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Context</p>
+                        {briefStatus !== 'saved' && (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-md"
+                            style={{
+                              background: briefStatus === 'saving' ? 'rgba(99,102,241,0.12)' : 'rgba(251,191,36,0.12)',
+                              color: briefStatus === 'saving' ? 'var(--accent)' : '#fbbf24',
+                            }}>
+                            {briefStatus === 'saving' ? 'Saving…' : 'Unsaved'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                        What are you evaluating and what does good look like? The more specific, the more accurate the AI scoring.
+                      </p>
+                      <Textarea value={brief} onChange={setBrief} rows={8}
+                        placeholder={`Describe what you're evaluating and what good looks like.\n\ne.g. "5-minute investor pitch. We want a clear problem, evidence of market size, and a working prototype. Strong teams will demonstrate real traction."`} />
+                    </div>
 
-                  {/* Navigation tabs */}
-                  <div className="shrink-0 flex items-center justify-center gap-1">
-                    {['Context', 'Criteria'].map((label, i) => (
-                      <button
-                        key={i}
-                        onClick={() => goToTab(i)}
-                        className="px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200"
-                        style={{
-                          background: activeTab === i ? 'var(--accent-dim)' : 'transparent',
-                          color: activeTab === i ? 'var(--accent)' : 'var(--text-muted)',
-                          border: `1px solid ${activeTab === i ? 'var(--border-hover)' : 'transparent'}`,
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                    <div style={{ borderTop: '1px solid var(--border)' }} />
+
+                    {/* Scoring Criteria */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+                          Scoring Criteria{criteria.length ? ` (${criteria.length})` : ''}
+                        </p>
+                        <button
+                          onClick={() => generateCriteriaSet()}
+                          disabled={!brief.trim() || generatingCriteriaSet}
+                          title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context first'}
+                          className="flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
+                          style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                          <SparkleIcon spinning={generatingCriteriaSet} />
+                          {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
+                        </button>
+                      </div>
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                        What the AI scores on. Specific descriptions produce more reliable scores.
+                      </p>
+
+                      <AnimatePresence>
+                        {confirmAutoGenerate && (
+                          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                            className="p-3 rounded-xl flex items-center gap-3"
+                            style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid var(--border-hover)' }}>
+                            <SparkleIcon spinning={false} />
+                            <span className="text-base flex-1" style={{ color: 'var(--text-secondary)' }}>
+                              Replace {criteria.length} existing criteria with AI-generated ones?
+                            </span>
+                            <button onClick={() => generateCriteriaSet(true)}
+                              className="text-base px-3 py-1 rounded-lg font-medium"
+                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                              Replace
+                            </button>
+                            <button onClick={() => setConfirmAutoGenerate(false)} className="text-base" style={{ color: 'var(--text-muted)' }}>
+                              Cancel
+                            </button>
+                          </motion.div>
+                        )}
+                        {confirmReplaceTemplate && (
+                          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                            className="p-3 rounded-xl flex items-center gap-3"
+                            style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
+                            <span className="text-base flex-1" style={{ color: '#fbbf24' }}>
+                              Replace {criteria.length} existing criteria?
+                            </span>
+                            <button onClick={() => applyTemplate(confirmReplaceTemplate)}
+                              className="text-base px-3 py-1 rounded-lg font-medium"
+                              style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
+                              Replace
+                            </button>
+                            <button onClick={() => setConfirmReplaceTemplate(null)} className="text-base" style={{ color: 'var(--text-muted)' }}>
+                              Cancel
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Templates */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-base" style={{ color: 'var(--text-muted)' }}>
+                          {criteria.length === 0 ? 'Quick start:' : 'Template:'}
+                        </span>
+                        {TEMPLATES.map(t => (
+                          <button key={t.id} onClick={() => handleTemplateClick(t)}
+                            className="flex items-center gap-1.5 text-base px-2.5 py-1 rounded-lg font-medium transition-all"
+                            style={{
+                              background: appliedTemplate === t.id ? 'var(--accent-dim)' : 'transparent',
+                              color: appliedTemplate === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                              border: `1px solid ${appliedTemplate === t.id ? 'var(--border-hover)' : 'var(--border)'}`,
+                            }}>
+                            {t.icon} {t.name}
+                            {appliedTemplate === t.id && (
+                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Criteria list */}
+                      <Reorder.Group as="div" axis="y" values={criteria} onReorder={handleReorder} className="space-y-0.5">
+                        {criteria.map((c) => (
+                          <Reorder.Item as="div" key={c.id} value={c} layout="position">
+                            {editingCriteria?.id === c.id ? (
+                              <div className="p-4 rounded-xl space-y-3 my-1"
+                                style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border-hover)' }}>
+                                <Input value={editingCriteria.name}
+                                  onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
+                                  placeholder="Name" autoFocus />
+                                {editingCriteria.name.trim() && (
+                                  <div className="flex justify-end">
+                                    <button onClick={generateEditCriteriaDesc} disabled={generatingEditDesc}
+                                      className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
+                                      style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                                      <SparkleIcon spinning={generatingEditDesc} />
+                                      {generatingEditDesc ? 'Generating…' : 'AI fill description'}
+                                    </button>
+                                  </div>
+                                )}
+                                <Textarea value={editingCriteria.description}
+                                  onChange={v => setEditingCriteria(p => p ? { ...p, description: v } : null)}
+                                  rows={3} placeholder="Scoring guide" />
+                                <div className="flex items-center gap-3">
+                                  <div className="w-40"><WeightSelect value={editingCriteria.weight}
+                                    onChange={v => setEditingCriteria(p => p ? { ...p, weight: v } : null)} /></div>
+                                  <div className="flex-1" />
+                                  <Btn onClick={() => setEditingCriteria(null)} variant="ghost" size="sm">Cancel</Btn>
+                                  <Btn onClick={saveCriteriaEdit} size="sm" disabled={!editingCriteria.name.trim()}>Save</Btn>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="group/row -mx-2 px-2 py-3 rounded-xl flex items-start gap-3 transition-colors"
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                                <div className="shrink-0 self-center cursor-grab active:cursor-grabbing touch-none py-1"
+                                  style={{ color: 'var(--text-muted)' }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="9" cy="5" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="9" cy="19" r="1.5" />
+                                    <circle cx="15" cy="5" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="15" cy="19" r="1.5" />
+                                  </svg>
+                                </div>
+                                <div className="flex-1 min-w-0 cursor-pointer"
+                                  onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
+                                    {c.weight !== 1 && (
+                                      <span className="text-base px-1.5 py-0.5 rounded font-medium"
+                                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                                        ×{c.weight}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {c.description && (
+                                    <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>{c.description}</p>
+                                  )}
+                                </div>
+                                <InlineDeleteBtn
+                                  isConfirming={confirmDelete?.id === c.id && confirmDelete.type === 'criteria'}
+                                  onRequest={() => setConfirmDelete({ type: 'criteria', id: c.id })}
+                                  onConfirm={() => deleteCriteria(c.id)}
+                                  onCancel={() => setConfirmDelete(null)}
+                                />
+                              </div>
+                            )}
+                          </Reorder.Item>
+                        ))}
+                      </Reorder.Group>
+
+                      {/* Add criterion */}
+                      <div className="pt-3 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
+                        <Input value={newCritName} onChange={setNewCritName}
+                          placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
+                        {newCritName.trim() && (
+                          <>
+                            <div className="flex justify-end">
+                              <button onClick={generateNewCriteriaDesc} disabled={generatingNewDesc}
+                                className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
+                                style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                                <SparkleIcon spinning={generatingNewDesc} />
+                                {generatingNewDesc ? 'Generating…' : 'AI fill description'}
+                              </button>
+                            </div>
+                            <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3}
+                              placeholder="Scoring guide — the more specific the better." />
+                            <div className="flex items-center gap-3">
+                              <div className="w-40"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} /></div>
+                              <Btn onClick={createCriteria} disabled={!newCritName.trim()}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                                Add
+                              </Btn>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Go live CTA — shown at bottom when not yet active */}
+                    {!viewedEvent.is_active && (
+                      <div className="pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Ready to start judging?</p>
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Going live makes this the active event and enables scoring.</p>
+                          </div>
+                          <button
+                            onClick={() => activateEvent(viewedEvent)}
+                            disabled={!brief.trim() || criteria.length === 0}
+                            title={!brief.trim() ? 'Add context first' : criteria.length === 0 ? 'Add at least one criterion' : 'Go live'}
+                            className="flex items-center gap-2 text-base font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}
+                            onMouseEnter={e => { if (!e.currentTarget.disabled) (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.18)' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" />
+                            </svg>
+                            Go live
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Start evaluating CTA — shown when live */}
+                    {viewedEvent.is_active && (
+                      <div className="pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
+                              <p className="text-sm font-medium" style={{ color: '#4ade80' }}>Live now</p>
+                            </div>
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Collectors can join and scoring is active.</p>
+                          </div>
+                          <Link href="/"
+                            className="flex items-center gap-2 text-base font-semibold px-5 py-2.5 rounded-xl"
+                            style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                            Start evaluating
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 </div>
               </>
