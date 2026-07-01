@@ -494,85 +494,82 @@ export default function AdminClient() {
           ]}
         />
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden">
 
-          {/* ── Sidebar — same bg as main, lighter ──────────────────── */}
-          <aside className="w-72 shrink-0 flex flex-col overflow-y-auto"
-            style={{ borderRight: '1px solid var(--border)', background: 'var(--bg)', height: 'calc(100vh - 56px)', position: 'sticky', top: '56px' }}>
+          {/* ── Session card picker ─────────────────────────────────── */}
+          <div className="shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
 
-            <div className="p-4 space-y-2">
-              <p className="text-base font-semibold tracking-widest uppercase px-1 mb-3" style={{ color: 'var(--text-muted)' }}>Events</p>
-
-              <div className="flex gap-2">
-                <input
-                  value={newSessionName} onChange={e => setNewSessionName(e.target.value)}
-                  placeholder="New event…"
-                  onKeyDown={e => { if (e.key === 'Enter') createSession() }}
-                  className="flex-1 px-3 py-2 rounded-lg text-base placeholder:text-[color:var(--text-muted)] focus:outline-none"
-                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
-                />
-                <button onClick={createSession} disabled={!newSessionName.trim()}
-                  className="px-3 py-2 rounded-lg text-base font-medium shrink-0 disabled:opacity-40"
-                  style={{ background: 'var(--accent)', color: 'white' }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </button>
-              </div>
-
-              {dbError && (
-                <div className="text-base p-3 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                  {dbError}
-                </div>
-              )}
-
-              <div className="space-y-0.5 pt-1">
-                {sessions.length === 0 && !dbError && (
-                  <p className="text-base px-1 py-2" style={{ color: 'var(--text-muted)' }}>No events yet</p>
-                )}
-                {sessions.map(sess => {
-                  const isViewed = sess.id === viewedSession?.id
-                  const isLive = sess.is_active
-                  return (
-                    <div key={sess.id}
-                      className="group relative rounded-lg transition-all cursor-pointer"
-                      style={{ background: isViewed ? 'var(--accent-dim)' : 'transparent' }}
-                      onClick={() => selectEvent(sess)}>
-                      <div className="flex items-center gap-2 px-3 py-2">
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0"
-                          style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
-                        <span className="text-base flex-1 truncate"
-                          style={{ color: isViewed ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                          {sess.name}
-                        </span>
-                        <button
-                          onClick={e => { e.stopPropagation(); isLive ? deactivateSession(sess) : activateSession(sess) }}
-                          className="shrink-0 text-base px-1.5 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={isLive
-                            ? { color: '#4ade80', border: '1px solid rgba(74,222,128,0.35)' }
-                            : { color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                          {isLive ? 'Live' : 'Go live'}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+            {/* New session row */}
+            <div className="px-6 pt-4 pb-3 flex items-center gap-3">
+              <span className="text-sm font-semibold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>Events</span>
+              <input
+                value={newSessionName} onChange={e => setNewSessionName(e.target.value)}
+                placeholder="New event name…"
+                onKeyDown={e => { if (e.key === 'Enter') createSession() }}
+                className="flex-1 max-w-xs px-3 py-1.5 rounded-lg text-sm placeholder:text-[color:var(--text-muted)] focus:outline-none"
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+                onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+              />
+              <button onClick={createSession} disabled={!newSessionName.trim()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 disabled:opacity-40"
+                style={{ background: 'var(--accent)', color: 'white' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Create
+              </button>
             </div>
 
-            <div className="flex-1" />
-          </aside>
+            {dbError && (
+              <div className="mx-6 mb-3 text-sm p-3 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                {dbError}
+              </div>
+            )}
+
+            {/* Session cards */}
+            <div className="px-6 pb-4 flex gap-3 overflow-x-auto">
+              {sessions.length === 0 && !dbError && (
+                <p className="text-sm py-2" style={{ color: 'var(--text-muted)' }}>No events yet — create one above</p>
+              )}
+              {sessions.map(sess => {
+                const isViewed = sess.id === viewedSession?.id
+                const isLive = sess.is_active
+                return (
+                  <motion.button
+                    key={sess.id}
+                    onClick={() => selectEvent(sess)}
+                    whileTap={{ scale: 0.97 }}
+                    className="shrink-0 min-w-[140px] rounded-2xl px-4 py-3 text-left transition-colors"
+                    style={{
+                      background: isViewed ? 'var(--accent-dim)' : 'var(--bg-card)',
+                      border: `1px solid ${isViewed ? 'var(--accent)' : 'var(--border)'}`,
+                    }}>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
+                      <span className="text-xs font-semibold"
+                        style={{ color: isLive ? '#4ade80' : 'var(--text-muted)' }}>
+                        {isLive ? 'Live' : 'Inactive'}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold leading-snug"
+                      style={{ color: isViewed ? 'var(--accent)' : 'var(--text-primary)' }}>
+                      {sess.name}
+                    </p>
+                  </motion.button>
+                )
+              })}
+            </div>
+          </div>
 
           {/* ── Main content ──────────────────────────────────────────── */}
           <main className="flex-1 flex flex-col overflow-hidden">
             {!viewedSession ? (
               <div className="flex items-center justify-center flex-1">
-                <div className="text-center space-y-3">
-                  <div className="text-5xl">📋</div>
-                  <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>No events yet</p>
-                  <p className="text-base" style={{ color: 'var(--text-muted)' }}>Create an event in the sidebar to get started</p>
+                <div className="text-center space-y-2">
+                  <p className="text-base font-semibold" style={{ color: 'var(--text-secondary)' }}>Select an event above</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Or create a new one to get started</p>
                 </div>
               </div>
             ) : (
