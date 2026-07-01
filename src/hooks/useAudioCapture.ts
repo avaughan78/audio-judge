@@ -88,46 +88,59 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const start = useCallback(async () => {
     const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt, setActiveTeam } =
       useAppStore.getState()
-    let { activeTeam, session } = useAppStore.getState()
+    const { session } = useAppStore.getState()
 
     if (!session) return
 
-    // Always create a fresh session slot when Record is pressed
-    const res = await fetch('/api/auto-transition', {
+    // Initiate media acquisition synchronously — getDisplayMedia must be called
+    // within the user-activation window (the click), before any awaited fetches
+    // that would expire it.
+    const rawStreamPromise: Promise<MediaStream> = captureMode === 'online'
+      ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+      : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+
+    // Create fresh session slot — runs in parallel while the user is picking
+    // a screen/tab in the browser's share picker
+    const transitionRes = await fetch('/api/auto-transition', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: session.id, manual: true }),
     })
-    const data = await res.json()
-    if (!data.transition || !data.team) {
+    const transitionData = await transitionRes.json()
+    if (!transitionData.transition || !transitionData.team) {
+      rawStreamPromise.then(s => s.getTracks().forEach(t => t.stop())).catch(() => {})
       console.error('[audio] Failed to create session slot')
       return
     }
-    setActiveTeam(data.team)
-    useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
-    activeTeam = data.team
+    setActiveTeam(transitionData.team)
+    useAppStore.setState((s: any) => ({ teams: [...s.teams, transitionData.team] }))
 
     stoppedRef.current = false
     setConnecting(true)
     try {
-      let stream: MediaStream
-      let tokenData: any
-      if (captureMode === 'online') {
-        ;[stream, tokenData] = await Promise.all([
-          navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }),
-          fetch('/api/deepgram-token').then((r) => r.json()),
-        ])
-        stream.getVideoTracks().forEach((t) => t.stop())
-      } else {
-        ;[tokenData, stream] = await Promise.all([
-          fetch('/api/deepgram-token').then((r) => r.json()),
-          navigator.mediaDevices.getUserMedia({ audio: true, video: false }),
-        ])
-      }
+      const [tokenData, rawStream] = await Promise.all([
+        fetch('/api/deepgram-token').then((r) => r.json()),
+        rawStreamPromise,
+      ])
 
       if (tokenData.error) throw new Error(`Deepgram token error: ${tokenData.error}`)
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing from response')
+
+      // For online mode: extract audio tracks before stopping video, then build
+      // an audio-only stream. Chrome can terminate the capture session when video
+      // tracks are stopped if we leave them in the stream.
+      let stream: MediaStream
+      if (captureMode === 'online') {
+        const audioTracks = rawStream.getAudioTracks()
+        rawStream.getVideoTracks().forEach((t) => t.stop())
+        if (!audioTracks.length) {
+          throw new Error('No audio captured — share a browser tab and tick "Share tab audio"')
+        }
+        stream = new MediaStream(audioTracks)
+      } else {
+        stream = rawStream
+      }
 
       streamRef.current = stream
 

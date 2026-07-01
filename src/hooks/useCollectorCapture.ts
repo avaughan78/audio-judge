@@ -45,27 +45,33 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
     setIsConnecting(true)
 
     try {
-      // For online meeting mode, call getDisplayMedia first (requires user activation),
-      // then fetch the token while the user is choosing their tab in the picker.
-      let stream: MediaStream
-      let tokenData: any
-      if (mode === 'online') {
-        ;[stream, tokenData] = await Promise.all([
-          navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }),
-          fetch('/api/deepgram-token').then((r) => r.json()),
-        ])
-        // We only need the audio track — drop video immediately
-        stream.getVideoTracks().forEach((t) => t.stop())
-      } else {
-        ;[tokenData, stream] = await Promise.all([
-          fetch('/api/deepgram-token').then((r) => r.json()),
-          navigator.mediaDevices.getUserMedia({ audio: true, video: false }),
-        ])
-      }
+      // Initiate media acquisition synchronously in the user-activation context
+      // before any awaited network calls that would expire the activation window.
+      const rawStreamPromise: Promise<MediaStream> = mode === 'online'
+        ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+        : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+
+      const [tokenData, rawStream] = await Promise.all([
+        fetch('/api/deepgram-token').then((r) => r.json()),
+        rawStreamPromise,
+      ])
 
       if (tokenData.error) throw new Error(`Deepgram token error: ${tokenData.error}`)
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing')
+
+      // For online mode: extract audio tracks, stop video, build audio-only stream
+      let stream: MediaStream
+      if (mode === 'online') {
+        const audioTracks = rawStream.getAudioTracks()
+        rawStream.getVideoTracks().forEach((t) => t.stop())
+        if (!audioTracks.length) {
+          throw new Error('No audio captured — share a browser tab and tick "Share tab audio"')
+        }
+        stream = new MediaStream(audioTracks)
+      } else {
+        stream = rawStream
+      }
 
       streamRef.current = stream
       const supabase = createClient()
