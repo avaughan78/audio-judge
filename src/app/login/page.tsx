@@ -100,31 +100,29 @@ function LoginForm() {
       </div>
 
       {/* Nav */}
-      <nav style={{ position: 'relative', zIndex: 10, display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '18px 40px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div />
+      <nav style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 40px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
           <img src="/app-icon.svg" alt="" style={{ width: '26px', height: '26px', borderRadius: '7px' }} />
           <span style={{ fontWeight: 700, fontSize: '14px', letterSpacing: '-0.01em' }}>Audio Judge</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={handleGitHubSignIn} disabled={loading}
-            style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 15px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.09)', cursor: 'pointer', transition: 'all 0.15s' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.09)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.09)' }}>
-            {GITHUB_ICON}
-            {loading ? 'Redirecting…' : 'Sign in'}
-          </button>
-        </div>
+        <button onClick={handleGitHubSignIn} disabled={loading}
+          style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 15px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.09)', cursor: 'pointer', transition: 'all 0.15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.09)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.09)' }}>
+          {GITHUB_ICON}
+          {loading ? 'Redirecting…' : 'Sign in'}
+        </button>
       </nav>
 
       {/* Hero */}
       <section style={{ position: 'relative', zIndex: 10, maxWidth: '720px', margin: '0 auto', padding: '80px 40px 72px', textAlign: 'center' }}>
 
-        <img src="/app-icon.svg" alt="Audio Judge" style={{ width: '80px', height: '80px', borderRadius: '20px', marginBottom: '28px', boxShadow: '0 0 80px rgba(101,163,13,0.2), 0 0 24px rgba(101,163,13,0.1)' }} />
-
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginBottom: '28px', padding: '5px 13px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#86efac', background: 'rgba(101,163,13,0.1)', border: '1px solid rgba(101,163,13,0.25)' }}>
-          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#65A30D', display: 'inline-block', boxShadow: '0 0 6px #65A30D' }} />
-          Real-time AI judging
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '28px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '5px 13px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#86efac', background: 'rgba(101,163,13,0.1)', border: '1px solid rgba(101,163,13,0.25)' }}>
+            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#65A30D', display: 'inline-block', boxShadow: '0 0 6px #65A30D' }} />
+            Real-time AI judging
+          </div>
+          <img src="/app-icon.svg" alt="Audio Judge" style={{ width: '80px', height: '80px', borderRadius: '20px', boxShadow: '0 0 80px rgba(101,163,13,0.2), 0 0 24px rgba(101,163,13,0.1)' }} />
         </div>
 
         <h1 style={{ fontSize: 'clamp(36px, 6vw, 58px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', color: '#f8fafc', marginBottom: '20px' }}>
