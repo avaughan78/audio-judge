@@ -86,28 +86,26 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   }, [])
 
   const start = useCallback(async () => {
-    const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt, setActiveTeam, setScores } =
+    const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt, setActiveTeam } =
       useAppStore.getState()
     let { activeTeam, session } = useAppStore.getState()
 
     if (!session) return
 
-    // Auto-create Session 1 if no active segment yet
-    if (!activeTeam) {
-      const res = await fetch('/api/auto-transition', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, manual: true }),
-      })
-      const data = await res.json()
-      if (!data.transition || !data.team) {
-        console.error('[audio] Failed to create initial session')
-        return
-      }
-      setActiveTeam(data.team)
-      useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
-      activeTeam = data.team
+    // Always create a fresh session slot when Record is pressed
+    const res = await fetch('/api/auto-transition', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: session.id, manual: true }),
+    })
+    const data = await res.json()
+    if (!data.transition || !data.team) {
+      console.error('[audio] Failed to create session slot')
+      return
     }
+    setActiveTeam(data.team)
+    useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
+    activeTeam = data.team
 
     // Restore transcript buffer from sessionStorage after page refresh mid-session
     try {
@@ -281,21 +279,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
 
     await runCycle({ final: true })
     clearBuffer()
-
-    // Auto-advance to a fresh session slot so the next Record starts clean
-    const { session, setActiveTeam } = useAppStore.getState()
-    if (session) {
-      const res = await fetch('/api/auto-transition', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, manual: true }),
-      })
-      const data = await res.json()
-      if (data.transition && data.team) {
-        setActiveTeam(data.team)
-        useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
-      }
-    }
   }, [runCycle, clearBuffer])
 
   // Snapshot the current session: run a final scoring cycle, create the next
