@@ -476,7 +476,7 @@ export default function AdminClient() {
             <img src="/app-icon.svg" alt="Audio Judge" className="w-7 h-7 shrink-0" />
             <span className="font-bold gradient-text">Audio Judge</span>
             <span style={{ color: 'var(--border-hover)' }}>·</span>
-            <span className="text-base" style={{ color: 'var(--text-muted)' }}>Setup</span>
+            <span className="text-base small-caps" style={{ color: 'var(--text-muted)' }}>Setup</span>
           </div>
           <div className="flex items-center gap-4">
             {liveSession && (
@@ -486,7 +486,7 @@ export default function AdminClient() {
               </div>
             )}
             <Link href="/records"
-              className="flex items-center gap-1.5 text-base px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-base small-caps px-3 py-1.5 rounded-lg transition-colors"
               style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
@@ -499,7 +499,7 @@ export default function AdminClient() {
             <div className="w-px h-4" style={{ background: 'var(--border)' }} />
             <button
               onClick={async () => { const { createClient } = await import('@/lib/supabase'); await createClient().auth.signOut(); window.location.href = '/login' }}
-              className="text-base px-3 py-1.5 rounded-lg transition-colors"
+              className="text-base small-caps px-3 py-1.5 rounded-lg transition-colors"
               style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>

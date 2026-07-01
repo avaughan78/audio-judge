@@ -89,7 +89,7 @@ export default function CollectPage() {
             <img src="/app-icon.svg" alt="Audio Judge" className="w-6 h-6 shrink-0" />
             <span className="text-base font-bold" style={{ color: 'var(--text-secondary)' }}>Audio Judge</span>
             <span style={{ color: 'var(--text-muted)' }}>·</span>
-            <span className="text-base px-2 py-0.5 rounded-full font-semibold"
+            <span className="text-base small-caps px-2 py-0.5 rounded-full font-semibold"
               style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
               Collector
             </span>
