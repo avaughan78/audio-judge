@@ -188,6 +188,9 @@ export default function RecordsClient() {
 
   const deleteSession = async (id: string) => {
     const supabase = createClient()
+    await supabase.from('scores').delete().eq('session_id', id)
+    await supabase.from('teams').delete().eq('session_id', id)
+    await supabase.from('criteria').delete().eq('session_id', id)
     await supabase.from('sessions').delete().eq('id', id)
     setRecords(prev => prev.filter(r => r.session.id !== id))
     setConfirmDeleteSession(null)
