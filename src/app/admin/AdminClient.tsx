@@ -507,27 +507,7 @@ export default function AdminClient() {
           section="Events"
           items={[
             { label: 'Records', href: '/records', icon: 'archive', hideOnMobile: true },
-            { label: 'Settings', onClick: () => setShowSettings(true), icon: 'settings' },
           ]}
-          rightSlot={
-            <button
-              onClick={async () => {
-                const { createClient } = await import('@/lib/supabase')
-                await createClient().auth.signOut()
-                window.location.href = '/login'
-              }}
-              title="Sign out"
-              className="p-1.5 rounded-lg transition-colors"
-              style={{ color: 'var(--text-muted)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-            </button>
-          }
         />
 
         <div className="flex flex-1 overflow-hidden">
@@ -544,22 +524,23 @@ export default function AdminClient() {
 
           {/* ── Sidebar ──────────────────────────────────────────────── */}
           <aside
-            className={`w-72 shrink-0 flex-col overflow-y-auto z-40 ${showSidebar ? 'flex fixed left-0 bottom-0' : 'hidden md:flex'}`}
+            className={`w-64 shrink-0 flex-col overflow-hidden z-40 ${showSidebar ? 'flex fixed left-0 bottom-0' : 'hidden md:flex'}`}
             style={{ borderRight: '1px solid var(--border)', background: 'var(--bg)', top: '56px', height: 'calc(100dvh - 56px)', position: showSidebar ? 'fixed' : 'sticky' }}>
 
-            <div className="p-4 space-y-2">
-              <div className="flex gap-2">
+            {/* ── Scrollable event list ── */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              <div className="flex gap-1.5 mb-3">
                 <input
                   value={newEventName} onChange={e => setNewEventName(e.target.value)}
                   placeholder="New event…"
                   onKeyDown={e => { if (e.key === 'Enter') createEvent() }}
-                  className="flex-1 px-3 py-2 rounded-lg text-base placeholder:text-[color:var(--text-muted)] focus:outline-none"
+                  className="flex-1 px-3 py-2 rounded-lg text-sm placeholder:text-[color:var(--text-muted)] focus:outline-none"
                   style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
                   onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
                 <button onClick={createEvent} disabled={!newEventName.trim()}
-                  className="px-3 py-2 rounded-lg text-base font-medium shrink-0 disabled:opacity-40"
+                  className="px-3 py-2 rounded-lg text-sm font-medium shrink-0 disabled:opacity-40"
                   style={{ background: 'var(--accent)', color: 'white' }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -574,63 +555,95 @@ export default function AdminClient() {
               </div>
 
               {dbError && (
-                <div className="text-base p-3 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                <div className="text-sm p-3 rounded-lg mb-2" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
                   {dbError}
                 </div>
               )}
 
-              <div className="space-y-0.5 pt-1">
-                {events.length === 0 && !dbError && (
-                  <p className="text-base px-1 py-2" style={{ color: 'var(--text-muted)' }}>No events yet</p>
-                )}
-                {events.map(ev => {
-                  const isViewed = ev.id === viewedEvent?.id
-                  const isLive = ev.is_active
-                  return (
-                    <div key={ev.id}
-                      className="group relative rounded-lg transition-all cursor-pointer"
-                      style={{ background: isViewed ? 'var(--accent-dim)' : 'transparent' }}
-                      onClick={() => selectEvent(ev)}>
-                      <div className="flex items-center gap-2 px-3 py-2">
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0"
-                          style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
-                        <span className="text-base flex-1 truncate"
-                          style={{ color: isViewed ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                          {ev.name}
-                        </span>
-                        <button
-                          onClick={e => { e.stopPropagation(); isLive ? deactivateEvent(ev) : activateEvent(ev) }}
-                          className="shrink-0 text-base px-1.5 py-0.5 rounded font-medium transition-all"
-                          style={isLive
-                            ? { color: '#4ade80', border: '1px solid rgba(74,222,128,0.35)' }
-                            : { color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                          {isLive ? 'Live' : 'Go live'}
-                        </button>
-                      </div>
+              {events.length === 0 && !dbError && (
+                <p className="text-sm px-2 py-1" style={{ color: 'var(--text-muted)' }}>No events yet</p>
+              )}
+              {events.map(ev => {
+                const isViewed = ev.id === viewedEvent?.id
+                const isLive = ev.is_active
+                return (
+                  <div key={ev.id}
+                    className="group relative rounded-lg transition-all cursor-pointer"
+                    style={{ background: isViewed ? 'var(--accent-dim)' : 'transparent' }}
+                    onClick={() => selectEvent(ev)}>
+                    <div className="flex items-center gap-2 px-2.5 py-2">
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
+                      <span className="text-sm flex-1 truncate"
+                        style={{ color: isViewed ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                        {ev.name}
+                      </span>
+                      <button
+                        onClick={e => { e.stopPropagation(); isLive ? deactivateEvent(ev) : activateEvent(ev) }}
+                        className="shrink-0 text-xs px-1.5 py-0.5 rounded font-medium transition-all"
+                        style={isLive
+                          ? { color: '#4ade80', border: '1px solid rgba(74,222,128,0.35)' }
+                          : { color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                        {isLive ? 'Live' : 'Go live'}
+                      </button>
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                )
+              })}
             </div>
 
-            <div className="flex-1" />
-
-            {/* Collector link */}
-            {collectorCode && (
-              <div className="p-4 shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
-                <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Collector Link</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono flex-1 truncate" style={{ color: 'var(--text-secondary)' }}>
-                    /collect/<span style={{ color: 'var(--accent)', fontWeight: 700 }}>{collectorCode}</span>
-                  </span>
-                  <button onClick={copyCollectorLink}
-                    className="shrink-0 px-2 py-1 rounded-lg text-xs font-medium transition-all"
-                    style={{ background: collectorCopied ? 'rgba(74,222,128,0.1)' : 'var(--accent-dim)', color: collectorCopied ? '#4ade80' : 'var(--accent)', border: `1px solid ${collectorCopied ? 'rgba(74,222,128,0.3)' : 'var(--border-hover)'}` }}>
-                    {collectorCopied ? '✓' : 'Copy'}
-                  </button>
+            {/* ── Pinned bottom section ── */}
+            <div className="shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+              {/* Collector link */}
+              {collectorCode && (
+                <div className="px-3 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>Collector link</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono flex-1 truncate" style={{ color: 'var(--text-secondary)' }}>
+                      /collect/<span style={{ color: 'var(--accent)', fontWeight: 700 }}>{collectorCode}</span>
+                    </span>
+                    <button onClick={copyCollectorLink}
+                      className="shrink-0 px-2 py-0.5 rounded-md text-xs font-medium transition-all"
+                      style={{ background: collectorCopied ? 'rgba(74,222,128,0.1)' : 'var(--accent-dim)', color: collectorCopied ? '#4ade80' : 'var(--accent)', border: `1px solid ${collectorCopied ? 'rgba(74,222,128,0.3)' : 'var(--border-hover)'}` }}>
+                      {collectorCopied ? '✓' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
+              )}
+
+              {/* Settings + Sign out */}
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                  style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2" />
+                  </svg>
+                  Settings
+                </button>
+                <button
+                  onClick={async () => {
+                    const { createClient } = await import('@/lib/supabase')
+                    await createClient().auth.signOut()
+                    window.location.href = '/login'
+                  }}
+                  title="Sign out"
+                  className="p-1.5 rounded-lg transition-colors"
+                  style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                </button>
               </div>
-            )}
+            </div>
           </aside>
 
           {/* ── Main content ──────────────────────────────────────────── */}
