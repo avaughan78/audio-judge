@@ -185,7 +185,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           stoppedRef.current = true
           setRecording(false)
           setConnecting(false)
-          try { conn.sendCloseStream({}) } catch (_) {}
+          try { (conn as any).sendCloseStream({}) } catch (_) {}
           return
         }
         mediaRecorderRef.current = mr
