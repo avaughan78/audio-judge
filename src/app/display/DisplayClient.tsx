@@ -4,8 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSpring } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
-import { Session, Team, Criteria, Score, ThemeId } from '@/lib/types'
-import { applyTheme, themeMap } from '@/lib/themes'
+import { Event, Session, Criteria, Score } from '@/lib/types'
 import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
 import { useAppStore } from '@/lib/store'
 
@@ -28,16 +27,15 @@ function getBarStyle(score: number) {
 
 export default function DisplayClient() {
   const supabase = createClient()
-  const setThemeId = useAppStore((s) => s.setThemeId)
-  const [session, setSession] = useState<Session | null>(null)
-  const [activeTeam, setActiveTeam] = useState<Team | null>(null)
+  const [event, setEvent] = useState<Event | null>(null)
+  const [activeSession, setActiveSession] = useState<Session | null>(null)
   const [criteria, setCriteria] = useState<Criteria[]>([])
   const [scores, setScores] = useState<Record<string, Score>>({})
   const [latestTranscript, setLatestTranscript] = useState('')
   const [clock, setClock] = useState(new Date())
   // Ref rather than state because it's read inside the Supabase Realtime callback,
   // which is a closure that would always see the stale initial value if it used state.
-  const activeTeamIdRef = useRef<string | null>(null)
+  const activeSessionIdRef = useRef<string | null>(null)
   const [judgeRecording, setJudgeRecording] = useState(false)
 
   useEffect(() => {
@@ -45,22 +43,17 @@ export default function DisplayClient() {
     return () => clearInterval(t)
   }, [])
 
-  const applySessionTheme = useCallback((themeId: ThemeId | null) => {
-    if (themeId && themeMap[themeId]) { applyTheme(themeMap[themeId]); setThemeId(themeId) }
-  }, [setThemeId])
-
-  // Initialise display for a given session (called on load and when session goes live mid-display)
-  const initSession = useCallback(async (sess: Session) => {
-    setSession(sess)
-    applySessionTheme(sess.theme_id)
+  // Initialise display for a given event (called on load and when event goes live mid-display)
+  const initEvent = useCallback(async (sess: Event) => {
+    setEvent(sess)
 
     const { data: crit } = await supabase.from('criteria').select('*').eq('session_id', sess.id).order('order_index')
     if (crit) setCriteria(crit)
 
     if (sess.active_team_id) {
-      activeTeamIdRef.current = sess.active_team_id
+      activeSessionIdRef.current = sess.active_team_id
       const { data: team } = await supabase.from('teams').select('*').eq('id', sess.active_team_id).single()
-      if (team) setActiveTeam(team)
+      if (team) setActiveSession(team)
 
       const { data: existingScores } = await supabase.from('scores').select('*')
         .eq('session_id', sess.id).eq('team_id', sess.active_team_id)
@@ -71,7 +64,7 @@ export default function DisplayClient() {
       }
     }
 
-    // Score updates for this session
+    // Score updates for this event
     supabase.channel('display-scores')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'scores', filter: `session_id=eq.${sess.id}` },
         (payload: any) => { if (payload.new) setScores((prev) => ({ ...prev, [payload.new.criteria_id]: payload.new })) })
@@ -92,38 +85,37 @@ export default function DisplayClient() {
         setJudgeRecording(recording)
       })
       .subscribe()
-  }, [applySessionTheme])
+  }, [])
 
   useEffect(() => {
-    // Always subscribe to ALL session updates so we detect:
-    //  - a session becoming active after the display page loads
+    // Always subscribe to ALL event updates so we detect:
+    //  - an event becoming active after the display page loads
     //  - active_team_id changing (presenter switch)
     //  - theme changes
-    const sessionChannel = supabase.channel('display-session')
+    const eventChannel = supabase.channel('display-session')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions' },
         async (payload: any) => {
-          const updated = payload.new as Session
-          // If a session just became active and we have no session yet, initialise
+          const updated = payload.new as Event
+          // If an event just became active and we have no event yet, initialise
           if (updated.is_active) {
-            setSession(prev => {
+            setEvent(prev => {
               if (!prev || prev.id !== updated.id) {
-                // New active session — do a full init
-                initSession(updated)
-                return prev // initSession will call setSession again
+                // New active event — do a full init
+                initEvent(updated)
+                return prev // initEvent will call setEvent again
               }
               return updated
             })
-            applySessionTheme(updated.theme_id)
             // Handle presenter switch
-            if (updated.active_team_id !== activeTeamIdRef.current) {
-              activeTeamIdRef.current = updated.active_team_id ?? null
+            if (updated.active_team_id !== activeSessionIdRef.current) {
+              activeSessionIdRef.current = updated.active_team_id ?? null
               setScores({})
               setLatestTranscript('')
               if (updated.active_team_id) {
                 const { data: t } = await supabase.from('teams').select('*').eq('id', updated.active_team_id).single()
-                if (t) setActiveTeam(t)
+                if (t) setActiveSession(t)
               } else {
-                setActiveTeam(null)
+                setActiveSession(null)
               }
             }
           }
@@ -133,12 +125,12 @@ export default function DisplayClient() {
     // Initial load
     async function load() {
       const { data: sess } = await supabase.from('sessions').select('*').eq('is_active', true).maybeSingle()
-      if (sess) await initSession(sess)
+      if (sess) await initEvent(sess)
     }
     load()
 
-    return () => { supabase.removeChannel(sessionChannel) }
-  }, [initSession, applySessionTheme])
+    return () => { supabase.removeChannel(eventChannel) }
+  }, [initEvent])
 
   const overall = (() => {
     const scored = criteria.filter((c) => (scores[c.id]?.score ?? 0) > 0)
@@ -169,7 +161,7 @@ export default function DisplayClient() {
         style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3">
           <img src="/app-icon.svg" alt="Audio Judge" className="w-8 h-8" />
-          <span className="text-base font-bold" style={{ color: 'var(--text-muted)' }}>{session?.name || 'Audio Judge'}</span>
+          <span className="text-base font-bold" style={{ color: 'var(--text-muted)' }}>{event?.name || 'Audio Judge'}</span>
         </div>
         <div className="flex items-center gap-5">
           <ThemeSelector />
@@ -198,7 +190,7 @@ export default function DisplayClient() {
         </div>
       </div>
 
-      {!activeTeam ? (
+      {!activeSession ? (
         <div className="relative z-0 flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="text-7xl">🎯</div>
@@ -210,14 +202,14 @@ export default function DisplayClient() {
 
           {/* Team name */}
           <AnimatePresence mode="wait">
-            <motion.div key={activeTeam.id} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+            <motion.div key={activeSession.id} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }} className="mb-8 shrink-0">
               <p className="text-base font-bold tracking-[0.35em] uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
                 Now Presenting
               </p>
-              <h1 className="text-6xl font-black tracking-tight gradient-text">{activeTeam.name}</h1>
-              {activeTeam.description && (
-                <p className="text-lg mt-2" style={{ color: 'var(--text-muted)' }}>{activeTeam.description}</p>
+              <h1 className="text-6xl font-black tracking-tight gradient-text">{activeSession.name}</h1>
+              {activeSession.description && (
+                <p className="text-lg mt-2" style={{ color: 'var(--text-muted)' }}>{activeSession.description}</p>
               )}
             </motion.div>
           </AnimatePresence>

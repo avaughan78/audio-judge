@@ -12,20 +12,20 @@ interface ScorePanelProps {
 function ScoreOverrideInput({ criteriaId, current, onClose }: { criteriaId: string; current: number; onClose: () => void }) {
   const [value, setValue] = useState(String(current || ''))
   const [saving, setSaving] = useState(false)
-  const { session, activeTeam, updateScore } = useAppStore.getState()
+  const { event, activeSession, updateScore } = useAppStore.getState()
 
   const save = async () => {
     const num = parseInt(value, 10)
     if (isNaN(num) || num < 0 || num > 100) return
-    if (!session || !activeTeam) return
+    if (!event || !activeSession) return
     setSaving(true)
     const res = await fetch('/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: session.id, teamId: activeTeam.id, criteriaId, score: num, reasoning: 'Manual override' }),
+      body: JSON.stringify({ sessionId: event.id, teamId: activeSession.id, criteriaId, score: num, reasoning: 'Manual override' }),
     })
     if (res.ok) {
-      updateScore({ criteria_id: criteriaId, score: num, reasoning: 'Manual override', team_id: activeTeam.id, session_id: session.id, id: '', updated_at: '' })
+      updateScore({ criteria_id: criteriaId, score: num, reasoning: 'Manual override', team_id: activeSession.id, session_id: event.id, id: '', updated_at: '' })
     }
     setSaving(false)
     onClose()
@@ -57,7 +57,7 @@ function ScoreOverrideInput({ criteriaId, current, onClose }: { criteriaId: stri
 export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
   const criteria = useAppStore((s) => s.criteria)
   const scores = useAppStore((s) => s.scores)
-  const activeTeam = useAppStore((s) => s.activeTeam)
+  const activeSession = useAppStore((s) => s.activeSession)
   const isSummarising = useAppStore((s) => s.isSummarising)
   const isRecording = useAppStore((s) => s.isRecording)
   const [editingCriteriaId, setEditingCriteriaId] = useState<string | null>(null)
@@ -81,7 +81,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
   if (fullscreen) {
     return (
       <div className="flex flex-col h-full">
-        {!activeTeam ? (
+        {!activeSession ? (
           <div className="flex-1 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>
             Press Record to begin
           </div>
@@ -172,7 +172,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
         </span>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-5 min-h-0">
-        {!activeTeam ? (
+        {!activeSession ? (
           <div className="flex items-center justify-center h-full text-sm" style={{ color: 'var(--text-muted)' }}>
             Press Record to begin
           </div>

@@ -33,8 +33,8 @@ export function RecordingControl({ compact = false, onStart, onStop }: Recording
   const isRecording = useAppStore((s) => s.isRecording)
   const isConnecting = useAppStore((s) => s.isConnecting)
   const isSummarising = useAppStore((s) => s.isSummarising)
-  const activeTeam = useAppStore((s) => s.activeTeam)
-  const session = useAppStore((s) => s.session)
+  const activeSession = useAppStore((s) => s.activeSession)
+  const event = useAppStore((s) => s.event)
   const lastJudgedAt = useAppStore((s) => s.lastJudgedAt)
   const recordingStartedAt = useAppStore((s) => s.recordingStartedAt)
   const elapsed = useElapsedTime(recordingStartedAt)
@@ -42,7 +42,7 @@ export function RecordingControl({ compact = false, onStart, onStop }: Recording
   const start = onStart ?? hookStart
   const stop = onStop ?? hookStop
 
-  const canRecord = !!session && !isConnecting
+  const canRecord = !!event && !isConnecting
 
   if (compact) {
     return (
@@ -147,7 +147,7 @@ export function RecordingControl({ compact = false, onStart, onStop }: Recording
                   <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: 'var(--score-low)' }} />
                 </span>
                 <span className="text-xs font-medium" style={{ color: 'var(--score-low)' }}>
-                  {activeTeam ? activeTeam.name : 'Recording'}
+                  {activeSession ? activeSession.name : 'Recording'}
                 </span>
                 <span className="text-xs font-mono tabular-nums px-2 py-0.5 rounded"
                   style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)' }}>
@@ -160,7 +160,7 @@ export function RecordingControl({ compact = false, onStart, onStop }: Recording
             ) : (
               <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {activeTeam ? `Ready · ${activeTeam.name}` : 'Ready'}
+                  {activeSession ? `Ready · ${activeSession.name}` : 'Ready'}
                 </span>
               </motion.div>
             )}

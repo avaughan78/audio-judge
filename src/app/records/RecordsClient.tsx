@@ -6,11 +6,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { ThemeProvider } from '@/components/ThemeSelector'
 import AppHeader from '@/components/AppHeader'
-import type { Session, Team, Criteria, Score } from '@/lib/types'
+import type { Event, Session, Criteria, Score } from '@/lib/types'
 
-interface SessionRecord {
-  session: Session
-  teams: (Team & { scores: Score[] })[]
+interface EventRecord {
+  event: Event
+  sessions: (Session & { scores: Score[] })[]
   criteria: Criteria[]
 }
 
@@ -21,23 +21,23 @@ function getScoreStyle(score: number) {
   return { color: 'var(--score-low)' }
 }
 
-function OverallScore({ teams, criteria }: { teams: (Team & { scores: Score[] })[]; criteria: Criteria[] }) {
-  const allScores = teams.flatMap(t => t.scores)
+function OverallScore({ sessions, criteria }: { sessions: (Session & { scores: Score[] })[]; criteria: Criteria[] }) {
+  const allScores = sessions.flatMap(t => t.scores)
   if (!allScores.length) return null
 
   const scored = criteria.filter(c => allScores.some(s => s.criteria_id === c.id && s.score > 0))
   if (!scored.length) return null
 
-  // Average across teams, weighted
-  const teamAverages = teams.map(team => {
-    const teamScored = scored.filter(c => (team.scores.find(s => s.criteria_id === c.id)?.score ?? 0) > 0)
-    if (!teamScored.length) return null
-    const w = teamScored.reduce((s, c) => s + c.weight, 0)
-    return teamScored.reduce((s, c) => s + (team.scores.find(sc => sc.criteria_id === c.id)?.score ?? 0) * c.weight, 0) / w
+  // Average across sessions, weighted
+  const sessionAverages = sessions.map(session => {
+    const sessionScored = scored.filter(c => (session.scores.find(s => s.criteria_id === c.id)?.score ?? 0) > 0)
+    if (!sessionScored.length) return null
+    const w = sessionScored.reduce((s, c) => s + c.weight, 0)
+    return sessionScored.reduce((s, c) => s + (session.scores.find(sc => sc.criteria_id === c.id)?.score ?? 0) * c.weight, 0) / w
   }).filter(Boolean) as number[]
 
-  if (!teamAverages.length) return null
-  const avg = Math.round(teamAverages.reduce((a, b) => a + b, 0) / teamAverages.length)
+  if (!sessionAverages.length) return null
+  const avg = Math.round(sessionAverages.reduce((a, b) => a + b, 0) / sessionAverages.length)
   const style = getScoreStyle(avg)
 
   return (
@@ -45,20 +45,20 @@ function OverallScore({ teams, criteria }: { teams: (Team & { scores: Score[] })
   )
 }
 
-function TeamCard({ team, criteria, index, onDelete }: { team: Team & { scores: Score[] }; criteria: Criteria[]; index: number; onDelete: (id: string) => void }) {
+function SessionCard({ session, criteria, index, onDelete }: { session: Session & { scores: Score[] }; criteria: Criteria[]; index: number; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const scoredCriteria = criteria.filter(c => (team.scores.find(s => s.criteria_id === c.id)?.score ?? 0) > 0)
+  const scoredCriteria = criteria.filter(c => (session.scores.find(s => s.criteria_id === c.id)?.score ?? 0) > 0)
 
   const weighted = scoredCriteria.length > 0
     ? (() => {
         const w = scoredCriteria.reduce((s, c) => s + c.weight, 0)
-        return Math.round(scoredCriteria.reduce((s, c) => s + (team.scores.find(sc => sc.criteria_id === c.id)?.score ?? 0) * c.weight, 0) / w)
+        return Math.round(scoredCriteria.reduce((s, c) => s + (session.scores.find(sc => sc.criteria_id === c.id)?.score ?? 0) * c.weight, 0) / w)
       })()
     : 0
 
   const overallStyle = getScoreStyle(weighted)
-  const createdAt = team.created_at ? new Date(team.created_at) : null
+  const createdAt = session.created_at ? new Date(session.created_at) : null
 
   return (
     <motion.div
@@ -68,22 +68,22 @@ function TeamCard({ team, criteria, index, onDelete }: { team: Team & { scores: 
       className="rounded-xl overflow-hidden"
       style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
 
-      {/* Team header */}
+      {/* Session header */}
       <button
         onClick={() => setExpanded(v => !v)}
         className="w-full flex items-center gap-4 px-5 py-4 text-left transition-all"
         style={{ background: expanded ? 'var(--bg-card-hover)' : 'transparent' }}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
-            <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{team.name}</span>
+            <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{session.name}</span>
             {createdAt && (
               <span className="text-base" style={{ color: 'var(--text-muted)' }}>
                 {createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </div>
-          {team.summary && !expanded && (
-            <p className="text-base mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{team.summary}</p>
+          {session.summary && !expanded && (
+            <p className="text-base mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{session.summary}</p>
           )}
         </div>
 
@@ -92,7 +92,7 @@ function TeamCard({ team, criteria, index, onDelete }: { team: Team & { scores: 
           {scoredCriteria.length > 0 ? (
             <div className="flex items-center gap-2">
               {scoredCriteria.slice(0, 3).map(c => {
-                const score = team.scores.find(s => s.criteria_id === c.id)?.score ?? 0
+                const score = session.scores.find(s => s.criteria_id === c.id)?.score ?? 0
                 return (
                   <div key={c.id} className="text-center">
                     <div className="text-base font-bold tabular-nums" style={getScoreStyle(score)}>{score}</div>
@@ -136,10 +136,10 @@ function TeamCard({ team, criteria, index, onDelete }: { team: Team & { scores: 
             className="overflow-hidden">
             <div className="flex items-center gap-3 px-5 py-2.5 text-sm"
               style={{ background: 'rgba(239,68,68,0.06)', borderTop: '1px solid rgba(239,68,68,0.15)', color: '#f87171' }}>
-              <span className="flex-1">Delete <strong>{team.name}</strong> and all its scores?</span>
+              <span className="flex-1">Delete <strong>{session.name}</strong> and all its scores?</span>
               <button onClick={async () => {
-                const res = await fetch(`/api/teams/${team.id}`, { method: 'DELETE' })
-                if (res.ok) onDelete(team.id)
+                const res = await fetch(`/api/teams/${session.id}`, { method: 'DELETE' })
+                if (res.ok) onDelete(session.id)
                 else console.error('Delete failed:', await res.text())
               }} className="px-3 py-1 rounded-lg font-medium"
                 style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
@@ -162,10 +162,10 @@ function TeamCard({ team, criteria, index, onDelete }: { team: Team & { scores: 
             <div className="px-5 pb-5 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
 
               {/* Summary */}
-              {team.summary && (
+              {session.summary && (
                 <div className="pt-4">
                   <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Summary</p>
-                  <p className="text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{team.summary}</p>
+                  <p className="text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{session.summary}</p>
                 </div>
               )}
 
@@ -175,7 +175,7 @@ function TeamCard({ team, criteria, index, onDelete }: { team: Team & { scores: 
                   <p className="text-base font-bold tracking-widest uppercase mb-3 pt-2" style={{ color: 'var(--text-muted)' }}>Scores</p>
                   <div className="space-y-3">
                     {criteria.map(c => {
-                      const scoreEntry = team.scores.find(s => s.criteria_id === c.id)
+                      const scoreEntry = session.scores.find(s => s.criteria_id === c.id)
                       const score = scoreEntry?.score ?? 0
                       const style = getScoreStyle(score)
                       return (
@@ -214,70 +214,70 @@ function TeamCard({ team, criteria, index, onDelete }: { team: Team & { scores: 
 }
 
 export default function RecordsClient() {
-  const [records, setRecords] = useState<SessionRecord[]>([])
+  const [records, setRecords] = useState<EventRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set())
-  const [confirmDeleteSession, setConfirmDeleteSession] = useState<string | null>(null)
+  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
+  const [confirmDeleteEvent, setConfirmDeleteEvent] = useState<string | null>(null)
 
-  const deleteSession = async (id: string) => {
+  const deleteEvent = async (id: string) => {
     const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
     if (!res.ok) {
       console.error('Delete failed:', await res.text())
       return
     }
-    setRecords(prev => prev.filter(r => r.session.id !== id))
-    setConfirmDeleteSession(null)
+    setRecords(prev => prev.filter(r => r.event.id !== id))
+    setConfirmDeleteEvent(null)
   }
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
 
-      const { data: sessions } = await supabase
+      const { data: events } = await supabase
         .from('sessions')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (!sessions?.length) { setLoading(false); return }
+      if (!events?.length) { setLoading(false); return }
 
-      const sessionIds = sessions.map(s => s.id)
+      const eventIds = events.map(s => s.id)
 
       const [{ data: allTeams }, { data: allCriteria }, { data: allScores }] = await Promise.all([
-        supabase.from('teams').select('*').in('session_id', sessionIds).order('order_index'),
-        supabase.from('criteria').select('*').in('session_id', sessionIds).order('order_index'),
-        supabase.from('scores').select('*').in('session_id', sessionIds),
+        supabase.from('teams').select('*').in('session_id', eventIds).order('order_index'),
+        supabase.from('criteria').select('*').in('session_id', eventIds).order('order_index'),
+        supabase.from('scores').select('*').in('session_id', eventIds),
       ])
 
-      const built: SessionRecord[] = sessions.map(session => {
-        const criteria = (allCriteria ?? []).filter(c => c.session_id === session.id)
-        const teams = (allTeams ?? [])
-          .filter(t => t.session_id === session.id)
-          .map(team => ({
-            ...team,
-            scores: (allScores ?? []).filter(s => s.team_id === team.id),
+      const built: EventRecord[] = events.map(event => {
+        const criteria = (allCriteria ?? []).filter(c => c.session_id === event.id)
+        const sessions = (allTeams ?? [])
+          .filter(t => t.session_id === event.id)
+          .map(session => ({
+            ...session,
+            scores: (allScores ?? []).filter(s => s.team_id === session.id),
           }))
-        return { session, teams, criteria }
+        return { event, sessions, criteria }
       })
 
       setRecords(built)
-      // Auto-expand the most recent session that has data
-      const firstWithData = built.find(r => r.teams.length > 0)
-      if (firstWithData) setExpandedSessions(new Set([firstWithData.session.id]))
+      // Auto-expand the most recent event that has data
+      const firstWithData = built.find(r => r.sessions.length > 0)
+      if (firstWithData) setExpandedEvents(new Set([firstWithData.event.id]))
       setLoading(false)
     }
     load()
   }, [])
 
-  const deleteTeam = (sessionId: string, teamId: string) => {
+  const deleteSession = (eventId: string, sessionId: string) => {
     setRecords(prev => prev.map(r =>
-      r.session.id === sessionId
-        ? { ...r, teams: r.teams.filter(t => t.id !== teamId) }
+      r.event.id === eventId
+        ? { ...r, sessions: r.sessions.filter(s => s.id !== sessionId) }
         : r
     ))
   }
 
-  const toggleSession = (id: string) => {
-    setExpandedSessions(prev => {
+  const toggleEvent = (id: string) => {
+    setExpandedEvents(prev => {
       const next = new Set(prev)
       if (next.has(id)) { next.delete(id) } else { next.add(id) }
       return next
@@ -312,46 +312,46 @@ export default function RecordsClient() {
           ) : (
             <div className="space-y-6">
               {records.map((record) => {
-                const isExpanded = expandedSessions.has(record.session.id)
-                const { session, teams, criteria } = record
-                const hasData = teams.length > 0
+                const isExpanded = expandedEvents.has(record.event.id)
+                const { event, sessions, criteria } = record
+                const hasData = sessions.length > 0
 
                 return (
-                  <div key={session.id} className="rounded-2xl overflow-hidden"
+                  <div key={event.id} className="rounded-2xl overflow-hidden"
                     style={{ border: '1px solid var(--border)' }}>
 
-                    {/* Session header */}
+                    {/* Event header */}
                     <div
-                      onClick={() => toggleSession(session.id)}
+                      onClick={() => toggleEvent(event.id)}
                       className="w-full flex items-center gap-4 px-6 py-5 text-left transition-all cursor-pointer"
                       style={{ background: isExpanded ? 'var(--bg-card)' : 'rgba(255,255,255,0.01)' }}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
-                          {session.is_active && (
+                          {event.is_active && (
                             <span className="h-2 w-2 rounded-full animate-pulse shrink-0" style={{ background: '#4ade80' }} />
                           )}
-                          <h2 className="text-base font-bold truncate" style={{ color: 'var(--text-primary)' }}>{session.name}</h2>
-                          {session.is_active && (
+                          <h2 className="text-base font-bold truncate" style={{ color: 'var(--text-primary)' }}>{event.name}</h2>
+                          {event.is_active && (
                             <span className="text-base font-bold shrink-0" style={{ color: '#4ade80' }}>LIVE</span>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-base" style={{ color: 'var(--text-muted)' }}>
-                            {new Date(session.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {new Date(event.created_at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
                           </span>
                           {hasData && (
                             <span className="text-base px-1.5 py-0.5 rounded font-medium"
                               style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                              {teams.length} participant{teams.length !== 1 ? 's' : ''}
+                              {sessions.length} participant{sessions.length !== 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3 shrink-0">
-                        {hasData && <OverallScore teams={teams} criteria={criteria} />}
+                        {hasData && <OverallScore sessions={sessions} criteria={criteria} />}
                         <button
-                          onClick={e => { e.stopPropagation(); setConfirmDeleteSession(confirmDeleteSession === session.id ? null : session.id) }}
+                          onClick={e => { e.stopPropagation(); setConfirmDeleteEvent(confirmDeleteEvent === event.id ? null : event.id) }}
                           className="flex items-center gap-1.5 text-base px-2.5 py-1 rounded-lg transition-all"
                           style={{ color: 'var(--score-low)', border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)' }}
                           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.12)' }}
@@ -370,24 +370,24 @@ export default function RecordsClient() {
 
                     {/* Delete confirm */}
                     <AnimatePresence>
-                      {confirmDeleteSession === session.id && (
+                      {confirmDeleteEvent === event.id && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                           className="overflow-hidden">
                           <div className="flex items-center gap-3 px-6 py-3 text-sm"
                             style={{ background: 'rgba(239,68,68,0.06)', borderTop: '1px solid rgba(239,68,68,0.15)', color: '#f87171' }}>
-                            <span className="flex-1">Delete <strong>{session.name}</strong> and all its data?</span>
-                            <button onClick={() => deleteSession(session.id)}
+                            <span className="flex-1">Delete <strong>{event.name}</strong> and all its data?</span>
+                            <button onClick={() => deleteEvent(event.id)}
                               className="px-3 py-1 rounded-lg font-medium"
                               style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
                               Delete
                             </button>
-                            <button onClick={() => setConfirmDeleteSession(null)} style={{ color: 'var(--text-muted)' }}>Cancel</button>
+                            <button onClick={() => setConfirmDeleteEvent(null)} style={{ color: 'var(--text-muted)' }}>Cancel</button>
                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
 
-                    {/* Session segments */}
+                    {/* Event segments */}
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
@@ -402,14 +402,14 @@ export default function RecordsClient() {
                               </p>
                             ) : (
                               <>
-                                {session.brief && (
+                                {event.brief && (
                                   <div className="px-1 py-3">
                                     <p className="text-base font-bold tracking-widest uppercase mb-1.5" style={{ color: 'var(--text-muted)' }}>Context</p>
-                                    <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>{session.brief}</p>
+                                    <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>{event.brief}</p>
                                   </div>
                                 )}
-                                {teams.map((team, i) => (
-                                  <TeamCard key={team.id} team={team} criteria={criteria} index={i} onDelete={(id) => deleteTeam(session.id, id)} />
+                                {sessions.map((session, i) => (
+                                  <SessionCard key={session.id} session={session} criteria={criteria} index={i} onDelete={(id) => deleteSession(event.id, id)} />
                                 ))}
                               </>
                             )}

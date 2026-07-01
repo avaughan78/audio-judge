@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
-import { Session, Criteria } from '@/lib/types'
+import { Event, Criteria } from '@/lib/types'
 import { ThemeProvider } from '@/components/ThemeSelector'
 import AppHeader from '@/components/AppHeader'
 import { useAppStore } from '@/lib/store'
@@ -145,11 +145,11 @@ export default function AdminClient() {
   const supabase = createClient()
 
   const [dbError, setDbError] = useState<string | null>(null)
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [viewedSession, setViewedSession] = useState<Session | null>(null)
-  const [editingSessionName, setEditingSessionName] = useState(false)
-  const [sessionNameDraft, setSessionNameDraft] = useState('')
-  const [newSessionName, setNewSessionName] = useState('')
+  const [events, setEvents] = useState<Event[]>([])
+  const [viewedEvent, setViewedEvent] = useState<Event | null>(null)
+  const [editingEventName, setEditingEventName] = useState(false)
+  const [eventNameDraft, setEventNameDraft] = useState('')
+  const [newEventName, setNewEventName] = useState('')
 
   const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -165,7 +165,7 @@ export default function AdminClient() {
 
   const [appliedTemplate, setAppliedTemplate] = useState<string | null>(null)
   const [confirmReplaceTemplate, setConfirmReplaceTemplate] = useState<Template | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<{ type: 'criteria' | 'session'; id: string } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'criteria' | 'event'; id: string } | null>(null)
   const [showEnvVars, setShowEnvVars] = useState(false)
   const [showOverflow, setShowOverflow] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -197,19 +197,19 @@ export default function AdminClient() {
 
   // ── Auto-save brief ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!viewedSession) return
+    if (!viewedEvent) return
     if (brief === savedBriefRef.current) { setBriefStatus('saved'); return }
     setBriefStatus('unsaved')
     const t = setTimeout(async () => {
       setBriefStatus('saving')
-      await supabase.from('sessions').update({ brief: brief.trim() || null }).eq('id', viewedSession.id)
-      setViewedSession(p => p ? { ...p, brief: brief.trim() || null } : null)
-      setSessions(p => p.map(s => s.id === viewedSession.id ? { ...s, brief: brief.trim() || null } : s))
+      await supabase.from('sessions').update({ brief: brief.trim() || null }).eq('id', viewedEvent.id)
+      setViewedEvent(p => p ? { ...p, brief: brief.trim() || null } : null)
+      setEvents(p => p.map(s => s.id === viewedEvent.id ? { ...s, brief: brief.trim() || null } : s))
       savedBriefRef.current = brief
       setBriefStatus('saved')
     }, 1200)
     return () => clearTimeout(t)
-  }, [brief, viewedSession?.id])
+  }, [brief, viewedEvent?.id])
 
   const loadApiKeys = async () => {
     const res = await fetch('/api/settings')
@@ -229,10 +229,10 @@ export default function AdminClient() {
       }
       setDbError(null)
       if (data) {
-        setSessions(data)
+        setEvents(data)
         const toView = data.find(s => s.is_active) ?? data[0] ?? null
         if (toView) {
-          setViewedSession(toView)
+          setViewedEvent(toView)
           setBrief(toView.brief || '')
           savedBriefRef.current = toView.brief || ''
           if (toView.is_active) setThemeId(toView.theme_id || 'midnight')
@@ -243,9 +243,9 @@ export default function AdminClient() {
   }, [])
 
   useEffect(() => {
-    if (!viewedSession) return
+    if (!viewedEvent) return
     setCriteria([]); setAppliedTemplate(null)
-    supabase.from('criteria').select('*').eq('session_id', viewedSession.id).order('order_index')
+    supabase.from('criteria').select('*').eq('session_id', viewedEvent.id).order('order_index')
       .then(({ data: c }) => {
         if (c) {
           setCriteria(c)
@@ -257,28 +257,28 @@ export default function AdminClient() {
           if (match) setAppliedTemplate(match.id)
         }
       })
-  }, [viewedSession?.id])
+  }, [viewedEvent?.id])
 
   // ── Event management ───────────────────────────────────────────────────────
 
-  const selectEvent = (sess: Session) => {
-    if (sess.id === viewedSession?.id) return
-    setViewedSession(sess)
-    setBrief(sess.brief || '')
-    savedBriefRef.current = sess.brief || ''
+  const selectEvent = (ev: Event) => {
+    if (ev.id === viewedEvent?.id) return
+    setViewedEvent(ev)
+    setBrief(ev.brief || '')
+    savedBriefRef.current = ev.brief || ''
     setBriefStatus('saved')
     setAppliedTemplate(null)
-    setEditingSessionName(false)
+    setEditingEventName(false)
     setEditingCriteria(null)
     setActiveTab(0)
   }
 
-  const activateSession = async (sess: Session) => {
-    await supabase.from('sessions').update({ is_active: false }).neq('id', sess.id)
-    const { data } = await supabase.from('sessions').update({ is_active: true }).eq('id', sess.id).select().single()
+  const activateEvent = async (ev: Event) => {
+    await supabase.from('sessions').update({ is_active: false }).neq('id', ev.id)
+    const { data } = await supabase.from('sessions').update({ is_active: true }).eq('id', ev.id).select().single()
     if (data) {
-      setSessions(p => p.map(s => ({ ...s, is_active: s.id === sess.id })))
-      setViewedSession(data)
+      setEvents(p => p.map(s => ({ ...s, is_active: s.id === ev.id })))
+      setViewedEvent(data)
       setBrief(data.brief || '')
       savedBriefRef.current = data.brief || ''
       setBriefStatus('saved')
@@ -286,35 +286,35 @@ export default function AdminClient() {
     }
   }
 
-  const deactivateSession = async (sess: Session) => {
-    await supabase.from('sessions').update({ is_active: false }).eq('id', sess.id)
-    setSessions(p => p.map(s => s.id === sess.id ? { ...s, is_active: false } : s))
-    setViewedSession(p => p?.id === sess.id ? { ...p, is_active: false } : p)
+  const deactivateEvent = async (ev: Event) => {
+    await supabase.from('sessions').update({ is_active: false }).eq('id', ev.id)
+    setEvents(p => p.map(s => s.id === ev.id ? { ...s, is_active: false } : s))
+    setViewedEvent(p => p?.id === ev.id ? { ...p, is_active: false } : p)
   }
 
-  const createSession = async () => {
-    if (!newSessionName.trim()) return
-    const { data, error } = await supabase.from('sessions').insert({ name: newSessionName.trim(), is_active: false, theme_id: currentThemeId }).select().single()
+  const createEvent = async () => {
+    if (!newEventName.trim()) return
+    const { data, error } = await supabase.from('sessions').insert({ name: newEventName.trim(), is_active: false, theme_id: currentThemeId }).select().single()
     if (error) { setDbError(`Create failed: ${error.message}`); return }
-    if (data) { setSessions(p => [data, ...p]); selectEvent(data); setNewSessionName(''); setDbError(null) }
+    if (data) { setEvents(p => [data, ...p]); selectEvent(data); setNewEventName(''); setDbError(null) }
   }
 
-  const saveSessionName = async () => {
-    if (!viewedSession || !sessionNameDraft.trim()) return
-    const name = sessionNameDraft.trim()
-    await supabase.from('sessions').update({ name }).eq('id', viewedSession.id)
-    setViewedSession(p => p ? { ...p, name } : null)
-    setSessions(p => p.map(s => s.id === viewedSession.id ? { ...s, name } : s))
-    setEditingSessionName(false)
+  const saveEventName = async () => {
+    if (!viewedEvent || !eventNameDraft.trim()) return
+    const name = eventNameDraft.trim()
+    await supabase.from('sessions').update({ name }).eq('id', viewedEvent.id)
+    setViewedEvent(p => p ? { ...p, name } : null)
+    setEvents(p => p.map(s => s.id === viewedEvent.id ? { ...s, name } : s))
+    setEditingEventName(false)
   }
 
-  const deleteSession = async (id: string) => {
+  const deleteEvent = async (id: string) => {
     await supabase.from('sessions').delete().eq('id', id)
-    const remaining = sessions.filter(s => s.id !== id)
-    setSessions(remaining)
-    if (viewedSession?.id === id) {
+    const remaining = events.filter(s => s.id !== id)
+    setEvents(remaining)
+    if (viewedEvent?.id === id) {
       const next = remaining[0] ?? null
-      if (next) { selectEvent(next) } else { setViewedSession(null); setBrief(''); savedBriefRef.current = ''; setCriteria([]) }
+      if (next) { selectEvent(next) } else { setViewedEvent(null); setBrief(''); savedBriefRef.current = ''; setCriteria([]) }
     }
     setConfirmDelete(null)
   }
@@ -322,9 +322,9 @@ export default function AdminClient() {
   // ── Criteria ───────────────────────────────────────────────────────────────
 
   const createCriteria = async () => {
-    if (!newCritName.trim() || !viewedSession) return
+    if (!newCritName.trim() || !viewedEvent) return
     const { data } = await supabase.from('criteria').insert({
-      session_id: viewedSession.id, name: newCritName.trim(),
+      session_id: viewedEvent.id, name: newCritName.trim(),
       description: newCritDesc.trim() || null, weight: newCritWeight, order_index: criteria.length,
     }).select().single()
     if (data) { setCriteria(p => [...p, data]); setNewCritName(''); setNewCritDesc(''); setNewCritWeight(1) }
@@ -353,14 +353,14 @@ export default function AdminClient() {
   }
 
   const applyTemplate = async (template: Template) => {
-    if (!viewedSession) return
+    if (!viewedEvent) return
     setBrief(template.brief); savedBriefRef.current = template.brief; setBriefStatus('saved')
-    await supabase.from('sessions').update({ brief: template.brief }).eq('id', viewedSession.id)
-    setViewedSession(p => p ? { ...p, brief: template.brief } : null)
-    if (criteria.length > 0) await supabase.from('criteria').delete().eq('session_id', viewedSession.id)
+    await supabase.from('sessions').update({ brief: template.brief }).eq('id', viewedEvent.id)
+    setViewedEvent(p => p ? { ...p, brief: template.brief } : null)
+    if (criteria.length > 0) await supabase.from('criteria').delete().eq('session_id', viewedEvent.id)
     setCriteria([])
     const rows = template.criteria.map((c, i) => ({
-      session_id: viewedSession.id, name: c.name, description: c.description, weight: c.weight, order_index: i,
+      session_id: viewedEvent.id, name: c.name, description: c.description, weight: c.weight, order_index: i,
     }))
     const { data } = await supabase.from('criteria').insert(rows).select()
     if (data) setCriteria(data)
@@ -414,7 +414,7 @@ export default function AdminClient() {
   }
 
   const generateCriteriaSet = async (force = false) => {
-    if (!brief.trim() || !viewedSession) return
+    if (!brief.trim() || !viewedEvent) return
     if (criteria.length > 0 && !force) { setConfirmAutoGenerate(true); return }
     setGeneratingCriteriaSet(true)
     setConfirmAutoGenerate(false)
@@ -426,11 +426,11 @@ export default function AdminClient() {
       const data = await res.json()
       if (!data.criteria?.length) return
       if (criteria.length > 0) {
-        await supabase.from('criteria').delete().eq('session_id', viewedSession.id)
+        await supabase.from('criteria').delete().eq('session_id', viewedEvent.id)
         setCriteria([])
       }
       const rows = data.criteria.map((c: { name: string; description: string; weight: number }, i: number) => ({
-        session_id: viewedSession.id, name: c.name, description: c.description, weight: c.weight, order_index: i,
+        session_id: viewedEvent.id, name: c.name, description: c.description, weight: c.weight, order_index: i,
       }))
       const { data: inserted } = await supabase.from('criteria').insert(rows).select()
       if (inserted) setCriteria(inserted)
@@ -441,10 +441,10 @@ export default function AdminClient() {
   }
 
   const exportCsv = async () => {
-    if (!viewedSession) return
-    const { data: scores } = await supabase.from('scores').select('*').eq('session_id', viewedSession.id)
+    if (!viewedEvent) return
+    const { data: scores } = await supabase.from('scores').select('*').eq('session_id', viewedEvent.id)
     if (!scores?.length) return
-    const { data: teams } = await supabase.from('teams').select('*').eq('session_id', viewedSession.id)
+    const { data: teams } = await supabase.from('teams').select('*').eq('session_id', viewedEvent.id)
     const headers = ['Session', 'Criterion', 'Score', 'Reasoning', 'Updated At']
     const rows = scores.map((s: any) => {
       const team = teams?.find((t: any) => t.id === s.team_id)
@@ -461,11 +461,11 @@ export default function AdminClient() {
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = `${viewedSession.name.replace(/[^a-z0-9]/gi, '-')}-scores.csv`; a.click()
+    a.href = url; a.download = `${viewedEvent.name.replace(/[^a-z0-9]/gi, '-')}-scores.csv`; a.click()
     URL.revokeObjectURL(url)
   }
 
-  const liveSession = sessions.find(s => s.is_active) ?? null
+  const liveEvent = events.find(s => s.is_active) ?? null
   const keysSet = apiKeySettings.filter(k => k.isSet).length
   const keysTotal = apiKeySettings.length
 
@@ -499,15 +499,15 @@ export default function AdminClient() {
 
               <div className="flex gap-2">
                 <input
-                  value={newSessionName} onChange={e => setNewSessionName(e.target.value)}
+                  value={newEventName} onChange={e => setNewEventName(e.target.value)}
                   placeholder="New event…"
-                  onKeyDown={e => { if (e.key === 'Enter') createSession() }}
+                  onKeyDown={e => { if (e.key === 'Enter') createEvent() }}
                   className="flex-1 px-3 py-2 rounded-lg text-base placeholder:text-[color:var(--text-muted)] focus:outline-none"
                   style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
                   onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
-                <button onClick={createSession} disabled={!newSessionName.trim()}
+                <button onClick={createEvent} disabled={!newEventName.trim()}
                   className="px-3 py-2 rounded-lg text-base font-medium shrink-0 disabled:opacity-40"
                   style={{ background: 'var(--accent)', color: 'white' }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -523,26 +523,26 @@ export default function AdminClient() {
               )}
 
               <div className="space-y-0.5 pt-1">
-                {sessions.length === 0 && !dbError && (
+                {events.length === 0 && !dbError && (
                   <p className="text-base px-1 py-2" style={{ color: 'var(--text-muted)' }}>No events yet</p>
                 )}
-                {sessions.map(sess => {
-                  const isViewed = sess.id === viewedSession?.id
-                  const isLive = sess.is_active
+                {events.map(ev => {
+                  const isViewed = ev.id === viewedEvent?.id
+                  const isLive = ev.is_active
                   return (
-                    <div key={sess.id}
+                    <div key={ev.id}
                       className="group relative rounded-lg transition-all cursor-pointer"
                       style={{ background: isViewed ? 'var(--accent-dim)' : 'transparent' }}
-                      onClick={() => selectEvent(sess)}>
+                      onClick={() => selectEvent(ev)}>
                       <div className="flex items-center gap-2 px-3 py-2">
                         <span className="h-1.5 w-1.5 rounded-full shrink-0"
                           style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
                         <span className="text-base flex-1 truncate"
                           style={{ color: isViewed ? 'var(--accent)' : 'var(--text-secondary)' }}>
-                          {sess.name}
+                          {ev.name}
                         </span>
                         <button
-                          onClick={e => { e.stopPropagation(); isLive ? deactivateSession(sess) : activateSession(sess) }}
+                          onClick={e => { e.stopPropagation(); isLive ? deactivateEvent(ev) : activateEvent(ev) }}
                           className="shrink-0 text-base px-1.5 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity"
                           style={isLive
                             ? { color: '#4ade80', border: '1px solid rgba(74,222,128,0.35)' }
@@ -561,7 +561,7 @@ export default function AdminClient() {
 
           {/* ── Main content ──────────────────────────────────────────── */}
           <main className="flex-1 flex flex-col overflow-hidden">
-            {!viewedSession ? (
+            {!viewedEvent ? (
               <div className="flex items-center justify-center flex-1">
                 <div className="text-center space-y-3">
                   <div className="text-5xl">📋</div>
@@ -578,24 +578,24 @@ export default function AdminClient() {
                     {/* Event header */}
                     <div className="flex items-start justify-between gap-4 mb-5">
                       <div className="min-w-0">
-                        {editingSessionName ? (
+                        {editingEventName ? (
                           <div className="flex items-center gap-2">
                             <input
-                              value={sessionNameDraft} onChange={e => setSessionNameDraft(e.target.value)}
+                              value={eventNameDraft} onChange={e => setEventNameDraft(e.target.value)}
                               autoFocus
-                              onKeyDown={e => { if (e.key === 'Enter') saveSessionName(); if (e.key === 'Escape') setEditingSessionName(false) }}
+                              onKeyDown={e => { if (e.key === 'Enter') saveEventName(); if (e.key === 'Escape') setEditingEventName(false) }}
                               className="text-2xl font-bold bg-transparent border-b-2 focus:outline-none w-64"
                               style={{ color: 'var(--text-primary)', borderColor: 'var(--accent)' }}
                             />
-                            <button onClick={saveSessionName} className="text-base px-3 py-1 rounded-lg font-medium"
+                            <button onClick={saveEventName} className="text-base px-3 py-1 rounded-lg font-medium"
                               style={{ background: 'var(--accent)', color: 'white' }}>Save</button>
-                            <button onClick={() => setEditingSessionName(false)} className="text-base px-3 py-1 rounded-lg"
+                            <button onClick={() => setEditingEventName(false)} className="text-base px-3 py-1 rounded-lg"
                               style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Cancel</button>
                           </div>
                         ) : (
                           <button className="group flex items-center gap-2 text-left"
-                            onClick={() => { setSessionNameDraft(viewedSession.name); setEditingSessionName(true) }}>
-                            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{viewedSession.name}</h1>
+                            onClick={() => { setEventNameDraft(viewedEvent.name); setEditingEventName(true) }}>
+                            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{viewedEvent.name}</h1>
                             <svg className="opacity-0 group-hover:opacity-40 transition-opacity shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -606,9 +606,9 @@ export default function AdminClient() {
 
                       {/* Primary action + overflow */}
                       <div className="flex items-center gap-2 shrink-0 pt-1">
-                        {viewedSession.is_active ? (
+                        {viewedEvent.is_active ? (
                           <>
-                            <button onClick={() => deactivateSession(viewedSession)}
+                            <button onClick={() => deactivateEvent(viewedEvent)}
                               className="flex items-center gap-1.5 text-base font-semibold px-3 py-1.5 rounded-xl transition-all"
                               style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}
                               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)'; (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.3)' }}
@@ -625,7 +625,7 @@ export default function AdminClient() {
                             </Link>
                           </>
                         ) : (
-                          <button onClick={() => activateSession(viewedSession)}
+                          <button onClick={() => activateEvent(viewedEvent)}
                             className="flex items-center gap-1.5 text-base font-semibold px-3 py-1.5 rounded-xl transition-all"
                             style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
                             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)'; (e.currentTarget as HTMLElement).style.color = '#4ade80'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(74,222,128,0.25)' }}
@@ -668,7 +668,7 @@ export default function AdminClient() {
                                   Export CSV
                                 </button>
                                 <button
-                                  onClick={() => { setConfirmDelete({ type: 'session', id: viewedSession.id }); setShowOverflow(false) }}
+                                  onClick={() => { setConfirmDelete({ type: 'event', id: viewedEvent.id }); setShowOverflow(false) }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2 text-base text-left"
                                   style={{ color: '#f87171' }}
                                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
@@ -687,12 +687,12 @@ export default function AdminClient() {
 
                     {/* Banners */}
                     <AnimatePresence>
-                      {confirmDelete?.type === 'session' && confirmDelete.id === viewedSession.id && (
+                      {confirmDelete?.type === 'event' && confirmDelete.id === viewedEvent.id && (
                         <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                           className="flex items-center gap-3 px-4 py-3 rounded-xl text-base mb-4"
                           style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
-                          <span className="flex-1">Delete <strong>{viewedSession.name}</strong> and all its data?</span>
-                          <button onClick={() => deleteSession(viewedSession.id)}
+                          <span className="flex-1">Delete <strong>{viewedEvent.name}</strong> and all its data?</span>
+                          <button onClick={() => deleteEvent(viewedEvent.id)}
                             className="px-3 py-1 rounded-lg font-medium text-base"
                             style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
                             Delete
@@ -701,14 +701,14 @@ export default function AdminClient() {
                         </motion.div>
                       )}
                     </AnimatePresence>
-                    {!viewedSession.is_active && liveSession && (
+                    {!viewedEvent.is_active && liveEvent && (
                       <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-base mb-4"
                         style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
                           <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
-                        You're editing <strong className="font-semibold mx-0.5">{viewedSession.name}</strong> — not live.
-                        <strong className="font-semibold mx-0.5">{liveSession.name}</strong> is currently live.
+                        You're editing <strong className="font-semibold mx-0.5">{viewedEvent.name}</strong> — not live.
+                        <strong className="font-semibold mx-0.5">{liveEvent.name}</strong> is currently live.
                       </div>
                     )}
                   </div>

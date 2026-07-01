@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Session, Team, Criteria, Score, ThemeId } from './types'
+import { Event, Session, Criteria, Score, ThemeId } from './types'
 
 interface AppState {
-  session: Session | null
-  teams: Team[]
+  event: Event | null
+  sessions: Session[]
   criteria: Criteria[]
-  activeTeam: Team | null
+  activeSession: Session | null
   scores: Record<string, Score>
   transcript: string
   interimTranscript: string
@@ -19,16 +19,16 @@ interface AppState {
   themeId: ThemeId
   judgeError: string | null
 
-  setSession: (s: Session | null) => void
-  setTeams: (t: Team[]) => void
+  setEvent: (s: Event | null) => void
+  setSessions: (t: Session[]) => void
   setCriteria: (c: Criteria[]) => void
-  setActiveTeam: (t: Team | null) => void
+  setActiveSession: (t: Session | null) => void
   setScores: (scores: Record<string, Score>) => void
   updateScore: (score: Score) => void
   appendTranscript: (text: string) => void
   setInterimTranscript: (text: string) => void
   setSummary: (s: string) => void
-  clearTeamState: () => void
+  clearSessionState: () => void
   setRecording: (v: boolean) => void
   setConnecting: (v: boolean) => void
   setSummarising: (v: boolean) => void
@@ -41,10 +41,10 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      session: null,
-      teams: [],
+      event: null,
+      sessions: [],
       criteria: [],
-      activeTeam: null,
+      activeSession: null,
       scores: {},
       transcript: '',
       interimTranscript: '',
@@ -57,11 +57,11 @@ export const useAppStore = create<AppState>()(
       themeId: 'midnight',
       judgeError: null,
 
-      setSession: (session) => set({ session }),
-      setTeams: (teams) => set({ teams }),
+      setEvent: (event) => set({ event }),
+      setSessions: (sessions) => set({ sessions }),
       setCriteria: (criteria) => set({ criteria }),
-      setActiveTeam: (activeTeam) =>
-        set({ activeTeam, scores: {}, transcript: '', interimTranscript: '', summary: '' }),
+      setActiveSession: (activeSession) =>
+        set({ activeSession, scores: {}, transcript: '', interimTranscript: '', summary: '' }),
       setScores: (scores) => set({ scores }),
       updateScore: (score) =>
         set((state) => ({
@@ -73,7 +73,7 @@ export const useAppStore = create<AppState>()(
         })),
       setInterimTranscript: (interimTranscript) => set({ interimTranscript }),
       setSummary: (summary) => set({ summary }),
-      clearTeamState: () => set({ scores: {}, transcript: '', interimTranscript: '', summary: '' }),
+      clearSessionState: () => set({ scores: {}, transcript: '', interimTranscript: '', summary: '' }),
       setRecording: (isRecording) => set({ isRecording }),
       setConnecting: (isConnecting) => set({ isConnecting }),
       setSummarising: (isSummarising) => set({ isSummarising }),

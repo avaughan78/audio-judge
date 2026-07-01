@@ -8,29 +8,28 @@ import { useSessionPresence } from '@/hooks/useSessionPresence'
 import { getDeviceId } from '@/lib/deviceId'
 import { ThemeProvider } from '@/components/ThemeSelector'
 import AppHeader from '@/components/AppHeader'
-import { applyTheme, themeMap } from '@/lib/themes'
 import { useAppStore } from '@/lib/store'
-import type { Session, Team, ThemeId } from '@/lib/types'
+import type { Event, Session } from '@/lib/types'
 
 export default function CollectPage() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [activeTeam, setActiveTeam] = useState<Team | null>(null)
+  const [event, setEvent] = useState<Event | null>(null)
+  const [activeSession, setActiveSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const setThemeId = useAppStore((s) => s.setThemeId)
+
   const [captureMode, setCaptureMode] = useState<CaptureMode>(() => {
     try { return (localStorage.getItem('aj_capture_mode') as CaptureMode) ?? 'local' } catch { return 'local' }
   })
   const deviceId = getDeviceId()
 
   const { start, stop, isRecording, isConnecting, transcript, interimTranscript, hasWakeLock } =
-    useCollectorCapture(session?.id ?? null, activeTeam?.id ?? null, captureMode)
+    useCollectorCapture(event?.id ?? null, activeSession?.id ?? null, captureMode)
 
   const setMode = (m: CaptureMode) => {
     setCaptureMode(m)
     try { localStorage.setItem('aj_capture_mode', m) } catch {}
   }
 
-  const { peers } = useSessionPresence(session?.id ?? null, deviceId, 'collector', isRecording)
+  const { peers } = useSessionPresence(event?.id ?? null, deviceId, 'collector', isRecording)
   const judgeOnline = peers.some((p) => p.role === 'judge')
   const judgeRecording = peers.some((p) => p.role === 'judge' && p.isRecording)
   const otherCollectors = peers.filter((p) => p.role === 'collector')
@@ -42,11 +41,10 @@ export default function CollectPage() {
       const { data: sess } = await supabase
         .from('sessions').select('*').eq('is_active', true).maybeSingle()
       if (!sess) { setLoading(false); return }
-      setSession(sess)
-      if (sess.theme_id && themeMap[sess.theme_id as ThemeId]) { applyTheme(themeMap[sess.theme_id as ThemeId]); setThemeId(sess.theme_id as ThemeId) }
+      setEvent(sess)
       if (sess.active_team_id) {
         const { data: team } = await supabase.from('teams').select('*').eq('id', sess.active_team_id).single()
-        if (team) setActiveTeam(team)
+        if (team) setActiveSession(team)
       }
       setLoading(false)
     }
@@ -54,15 +52,14 @@ export default function CollectPage() {
 
     const channel = supabase.channel('collect-session')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions' }, async (payload: any) => {
-        const updated = payload.new as Session
+        const updated = payload.new as Event
         if (!updated.is_active) return
-        setSession(updated)
-        if (updated.theme_id && themeMap[updated.theme_id as ThemeId]) applyTheme(themeMap[updated.theme_id as ThemeId])
+        setEvent(updated)
         if (updated.active_team_id) {
           const { data: team } = await supabase.from('teams').select('*').eq('id', updated.active_team_id).single()
-          if (team) setActiveTeam(team)
+          if (team) setActiveSession(team)
         } else {
-          setActiveTeam(null)
+          setActiveSession(null)
         }
       })
       .subscribe()
@@ -86,8 +83,8 @@ export default function CollectPage() {
         <AppHeader
           back
           section="Collector"
-          rightSlot={session && (
-            <span className="hidden sm:inline text-sm truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
+          rightSlot={event && (
+            <span className="hidden sm:inline text-sm truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{event.name}</span>
           )}
         />
 
@@ -97,7 +94,7 @@ export default function CollectPage() {
             <div className="w-5 h-5 rounded-full border-2 animate-spin"
               style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
           </div>
-        ) : !session ? (
+        ) : !event ? (
           <div className="relative z-10 flex-1 flex items-center justify-center text-center px-8">
             <div className="space-y-3">
               <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>No active session</p>
@@ -114,12 +111,12 @@ export default function CollectPage() {
               </p>
               <AnimatePresence mode="wait">
                 <motion.p
-                  key={activeTeam?.id ?? 'none'}
+                  key={activeSession?.id ?? 'none'}
                   initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
                   className="text-2xl font-black"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  {activeTeam?.name ?? 'Waiting…'}
+                  {activeSession?.name ?? 'Waiting…'}
                 </motion.p>
               </AnimatePresence>
             </div>
@@ -186,7 +183,7 @@ export default function CollectPage() {
 
             <motion.button
               onClick={isRecording ? stop : start}
-              disabled={isConnecting || !activeTeam || (!isRecording && !judgeRecording)}
+              disabled={isConnecting || !activeSession || (!isRecording && !judgeRecording)}
               whileTap={{ scale: 0.94 }}
               className="relative w-28 h-28 rounded-full flex flex-col items-center justify-center gap-2 font-semibold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{

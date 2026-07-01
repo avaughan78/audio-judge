@@ -1,6 +1,6 @@
 export type ThemeId = 'midnight' | 'aurora' | 'daylight'
 
-export interface Session {
+export interface Event {
   id: string
   name: string
   brief: string | null
@@ -12,7 +12,7 @@ export interface Session {
   created_at: string
 }
 
-export interface Team {
+export interface Session {
   id: string
   session_id: string
   name: string

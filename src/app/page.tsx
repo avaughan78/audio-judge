@@ -17,13 +17,13 @@ import type { CaptureMode } from '@/hooks/useCollectorCapture'
 import { getDeviceId } from '@/lib/deviceId'
 
 export default function JudgePage() {
-  const { session, setSession, setTeams, setCriteria, updateScore, setActiveTeam, setScores } = useAppStore()
-  const activeTeam = useAppStore((s) => s.activeTeam)
-  const teams = useAppStore((s) => s.teams)
+  const { event, setEvent, setSessions, setCriteria, updateScore, setActiveSession, setScores } = useAppStore()
+  const activeSession = useAppStore((s) => s.activeSession)
+  const sessions = useAppStore((s) => s.sessions)
   const isRecording = useAppStore((s) => s.isRecording)
   const isSummarising = useAppStore((s) => s.isSummarising)
   const judgeError = useAppStore((s) => s.judgeError)
-  const [prevTeamName, setPrevTeamName] = useState<string | null>(null)
+  const [prevSessionName, setPrevSessionName] = useState<string | null>(null)
   const [showTransition, setShowTransition] = useState(false)
   const [missingKeys, setMissingKeys] = useState<string[]>([])
   const [confirmPunctuate, setConfirmPunctuate] = useState(false)
@@ -39,22 +39,22 @@ export default function JudgePage() {
     try { localStorage.setItem('aj_capture_mode', m) } catch {}
   }
   const deviceId = getDeviceId()
-  const { peers } = useSessionPresence(session?.id ?? null, deviceId, 'judge', isRecording)
+  const { peers } = useSessionPresence(event?.id ?? null, deviceId, 'judge', isRecording)
   const collectors = peers.filter((p) => p.role === 'collector' && p.isRecording)
 
   useEffect(() => {
-    if (!activeTeam) return
-    if (prevTeamName && prevTeamName !== activeTeam.name) {
+    if (!activeSession) return
+    if (prevSessionName && prevSessionName !== activeSession.name) {
       setShowTransition(true)
       const t = setTimeout(() => setShowTransition(false), 1800)
       return () => clearTimeout(t)
     }
-    setPrevTeamName(activeTeam.name)
-  }, [activeTeam?.id])
+    setPrevSessionName(activeSession.name)
+  }, [activeSession?.id])
 
   useEffect(() => {
-    if (activeTeam) setPrevTeamName(activeTeam.name)
-  }, [activeTeam?.name])
+    if (activeSession) setPrevSessionName(activeSession.name)
+  }, [activeSession?.name])
 
   useEffect(() => {
     fetch('/api/settings/check')
@@ -74,23 +74,23 @@ export default function JudgePage() {
         .maybeSingle()
 
       if (!sess) return
-      setSession(sess)
+      setEvent(sess)
 
-      const [{ data: loadedTeams }, { data: criteria }] = await Promise.all([
+      const [{ data: loadedSessions }, { data: criteria }] = await Promise.all([
         supabase.from('teams').select('*').eq('session_id', sess.id).order('order_index'),
         supabase.from('criteria').select('*').eq('session_id', sess.id).order('order_index'),
       ])
 
-      if (loadedTeams) setTeams(loadedTeams)
+      if (loadedSessions) setSessions(loadedSessions)
       if (criteria) setCriteria(criteria)
 
-      // Restore active team and its existing scores
-      if (sess.active_team_id && loadedTeams) {
-        const activeT = loadedTeams.find((t: any) => t.id === sess.active_team_id)
-        if (activeT) {
-          setActiveTeam(activeT)
+      // Restore active session and its existing scores
+      if (sess.active_team_id && loadedSessions) {
+        const activeS = loadedSessions.find((t: any) => t.id === sess.active_team_id)
+        if (activeS) {
+          setActiveSession(activeS)
           const { data: existingScores } = await supabase.from('scores').select('*')
-            .eq('session_id', sess.id).eq('team_id', activeT.id)
+            .eq('session_id', sess.id).eq('team_id', activeS.id)
           if (existingScores?.length) {
             const map: Record<string, any> = {}
             existingScores.forEach((s: any) => { map[s.criteria_id] = s })
@@ -108,17 +108,17 @@ export default function JudgePage() {
     const sessionChannel = rt.channel('session-watch')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions' }, (payload: any) => {
         if (payload.new?.is_active) {
-          setSession(payload.new)
+          setEvent(payload.new)
         }
       })
       .subscribe()
 
     const unsub = useAppStore.subscribe((state) => {
-      if (state.session && !scoreChannel) {
+      if (state.event && !scoreChannel) {
         scoreChannel = rt.channel('scores-live')
           .on('postgres_changes', {
             event: '*', schema: 'public', table: 'scores',
-            filter: `session_id=eq.${state.session.id}`,
+            filter: `session_id=eq.${state.event.id}`,
           }, (payload: any) => { if (payload.new) updateScore(payload.new) })
           .subscribe()
       }
@@ -152,7 +152,7 @@ export default function JudgePage() {
 
         {/* Header */}
         <AppHeader
-          section={session?.name}
+          section={event?.name}
           sectionHiddenOnMobile
           items={[
             { label: 'Display', href: '/display', icon: 'external', target: '_blank', hideOnMobile: true },
@@ -193,7 +193,7 @@ export default function JudgePage() {
           </div>
         )}
 
-        {!session ? (
+        {!event ? (
           <div className="relative z-10 flex-1 flex items-center justify-center">
             <div className="text-center space-y-4">
               <div className="text-6xl">🎯</div>
@@ -217,14 +217,14 @@ export default function JudgePage() {
                 Session
               </span>
               <span className="h-1.5 w-1.5 rounded-full shrink-0"
-                style={{ background: activeTeam ? 'var(--accent)' : 'var(--text-muted)' }} />
+                style={{ background: activeSession ? 'var(--accent)' : 'var(--text-muted)' }} />
               <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {activeTeam?.name ?? 'Press Record to begin'}
+                {activeSession?.name ?? 'Press Record to begin'}
               </span>
 
               {/* Punctuate button — visible only while recording */}
               <AnimatePresence>
-                {isRecording && activeTeam && (
+                {isRecording && activeSession && (
                   <motion.div
                     key="punctuate-zone"
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -322,7 +322,7 @@ export default function JudgePage() {
 
             {/* Session transition flash */}
             <AnimatePresence>
-              {showTransition && activeTeam && (
+              {showTransition && activeSession && (
                 <motion.div
                   key="transition"
                   initial={{ opacity: 0, y: -8 }}
@@ -335,7 +335,7 @@ export default function JudgePage() {
                   <div className="flex items-center gap-3 px-6 py-3 rounded-2xl"
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border-hover)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
                     <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Now recording</span>
-                    <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{activeTeam.name}</span>
+                    <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{activeSession.name}</span>
                   </div>
                 </motion.div>
               )}

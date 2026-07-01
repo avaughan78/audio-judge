@@ -26,9 +26,9 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const runCycle = useCallback(async (options?: { final?: boolean }) => {
     if (isJudgingRef.current) return
     const state = useAppStore.getState()
-    const { activeTeam, session, setSummarising, setSummary, setLastJudgedAt, setJudgeError } = state
+    const { activeSession, event, setSummarising, setSummary, setLastJudgedAt, setJudgeError } = state
     const transcript = bufferRef.current.trim()
-    if (!transcript || !activeTeam || !session) return
+    if (!transcript || !activeSession || !event) return
 
     isJudgingRef.current = true
     wordCountAtLastJudgeRef.current = transcript.split(/\s+/).filter(Boolean).length
@@ -40,9 +40,9 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             transcript,
-            teamId: activeTeam.id,
-            sessionId: session.id,
-            brief: session.brief,
+            teamId: activeSession.id,
+            sessionId: event.id,
+            brief: event.brief,
             final: options?.final ?? false,
           }),
         }).then(async (r) => {
@@ -53,7 +53,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         fetch('/api/summarise', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transcript, brief: session.brief, teamId: activeTeam.id }),
+          body: JSON.stringify({ transcript, brief: event.brief, teamId: activeSession.id }),
         }).then((r) => r.json()),
       ])
 
@@ -90,11 +90,11 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     if (isStartingRef.current) return
     isStartingRef.current = true
 
-    const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt, setActiveTeam } =
+    const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt, setActiveSession } =
       useAppStore.getState()
-    const { session } = useAppStore.getState()
+    const { event } = useAppStore.getState()
 
-    if (!session) { isStartingRef.current = false; return }
+    if (!event) { isStartingRef.current = false; return }
 
     // Initiate media acquisition synchronously — getDisplayMedia must be called
     // within the user-activation window (the click), before any awaited fetches
@@ -110,7 +110,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     const transitionRes = await fetch('/api/auto-transition', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: session.id, manual: true }),
+      body: JSON.stringify({ sessionId: event.id, manual: true }),
     })
     const transitionData = await transitionRes.json()
     if (!transitionData.transition || !transitionData.team) {
@@ -119,8 +119,8 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       isStartingRef.current = false
       return
     }
-    setActiveTeam(transitionData.team)
-    useAppStore.setState((s: any) => ({ teams: [...s.teams, transitionData.team] }))
+    setActiveSession(transitionData.team)
+    useAppStore.setState((s: any) => ({ sessions: [...s.sessions, transitionData.team] }))
 
     stoppedRef.current = false
     setConnecting(true)
@@ -212,18 +212,18 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
 
         timerRef.current = setInterval(runCycle, CYCLE_INTERVAL_MS)
 
-        // Subscribe to transcript chunks from collector devices on the same session
-        const { session: currentSess } = useAppStore.getState()
-        if (currentSess) {
+        // Subscribe to transcript chunks from collector devices on the same event
+        const { event: currentEvent } = useAppStore.getState()
+        if (currentEvent) {
           collectorChannelRef.current = supabase
             .channel('collector-chunks')
             .on('postgres_changes', {
               event: 'INSERT', schema: 'public', table: 'transcript_chunks',
-              filter: `session_id=eq.${currentSess.id}`,
+              filter: `session_id=eq.${currentEvent.id}`,
             }, (payload: any) => {
               if (!payload.new?.content) return
               if (payload.new.device_id === deviceId.current) return
-              const { activeTeam: team } = useAppStore.getState()
+              const { activeSession: team } = useAppStore.getState()
               if (payload.new.team_id !== team?.id) return
               bufferRef.current += ' ' + payload.new.content
               const words = bufferRef.current.split(/\s+/).filter(Boolean)
@@ -253,7 +253,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           bufferRef.current = words.slice(-MAX_BUFFER_WORDS).join(' ')
         }
 
-        const { activeTeam: team, session: sess } = useAppStore.getState()
+        const { activeSession: team, event: currentEvt } = useAppStore.getState()
         try {
           if (team) {
             sessionStorage.setItem('aj_transcript_buffer', bufferRef.current)
@@ -261,9 +261,9 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           }
         } catch (_) {}
 
-        if (team && sess) {
+        if (team && currentEvt) {
           supabase.from('transcript_chunks')
-            .insert({ session_id: sess.id, team_id: team.id, content: alt.transcript, device_id: deviceId.current })
+            .insert({ session_id: currentEvt.id, team_id: team.id, content: alt.transcript, device_id: deviceId.current })
             .then(() => {})
         }
 
@@ -324,22 +324,22 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   // session slot on the server, then reset the buffer. The Deepgram connection
   // stays open so audio capture is seamless.
   const punctuate = useCallback(async () => {
-    const { session, setActiveTeam } = useAppStore.getState()
-    if (!session) return
+    const { event, setActiveSession } = useAppStore.getState()
+    if (!event) return
 
     await runCycle({ final: true })
 
     const res = await fetch('/api/auto-transition', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: session.id, manual: true }),
+      body: JSON.stringify({ sessionId: event.id, manual: true }),
     })
     const data = await res.json()
     if (!data.transition || !data.team) return
 
-    // setActiveTeam clears scores/transcript/summary in the store
-    setActiveTeam(data.team)
-    useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
+    // setActiveSession clears scores/transcript/summary in the store
+    setActiveSession(data.team)
+    useAppStore.setState((s: any) => ({ sessions: [...s.sessions, data.team] }))
     clearBuffer()
   }, [runCycle, clearBuffer])
 
