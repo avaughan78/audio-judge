@@ -70,9 +70,8 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
     return Math.round(weightedSum / totalWeight)
   }, [criteria, scores])
 
-  const overallColor = overall >= 80 ? 'var(--score-high)'
-    : overall >= 60 ? 'var(--score-mid)'
-    : overall >= 40 ? 'var(--accent)'
+  const overallColor = overall >= 70 ? 'var(--score-high)'
+    : overall >= 40 ? 'var(--score-mid)'
     : overall > 0 ? 'var(--score-low)'
     : 'var(--text-muted)'
 

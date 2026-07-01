@@ -89,15 +89,20 @@ function Textarea({ value, onChange, placeholder, rows = 4 }: {
 
 function WeightSelect({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <select value={value} onChange={e => onChange(parseFloat(e.target.value))}
-      className="w-full px-4 py-2.5 rounded-xl text-base focus:outline-none transition-colors"
-      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', appearance: 'none' }}
-      onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
-      onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}>
-      {WEIGHT_OPTIONS.map(o => (
-        <option key={o.value} value={o.value} style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>{o.label}</option>
-      ))}
-    </select>
+    <div className="relative">
+      <select value={value} onChange={e => onChange(parseFloat(e.target.value))}
+        className="w-full px-4 py-2.5 pr-8 rounded-xl text-base focus:outline-none transition-colors appearance-none"
+        style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+        onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+        onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}>
+        {WEIGHT_OPTIONS.map(o => (
+          <option key={o.value} value={o.value} style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>{o.label}</option>
+        ))}
+      </select>
+      <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--text-muted)' }}>
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </div>
   )
 }
 
@@ -188,6 +193,8 @@ export default function AdminClient() {
   const [collectorCode, setCollectorCode] = useState<string | null>(null)
   const [collectorCopied, setCollectorCopied] = useState(false)
   const [regeneratingCode, setRegeneratingCode] = useState(false)
+  const [keySaved, setKeySaved] = useState(false)
+  const [showSidebar, setShowSidebar] = useState(false)
 
   const [generatingNewDesc, setGeneratingNewDesc] = useState(false)
   const [generatingEditDesc, setGeneratingEditDesc] = useState(false)
@@ -409,6 +416,7 @@ export default function AdminClient() {
     setKeySaving(true)
     await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, value: keyDraft.trim() }) })
     setKeySaving(false); setEditingKey(null); setKeyDraft(''); await loadApiKeys()
+    setKeySaved(true); setTimeout(() => setKeySaved(false), 2500)
   }
 
   const removeApiKey = async (key: string) => {
@@ -509,7 +517,7 @@ export default function AdminClient() {
           back
           section="Setup"
           items={[
-            { label: 'Records', href: '/records', icon: 'archive' },
+            { label: 'Records', href: '/records', icon: 'archive', hideOnMobile: true },
             { label: 'Settings', onClick: () => setShowSettings(true), icon: 'settings' },
             { label: 'Sign out', onClick: async () => {
               const { createClient } = await import('@/lib/supabase')
@@ -521,12 +529,30 @@ export default function AdminClient() {
 
         <div className="flex flex-1 overflow-hidden">
 
-          {/* ── Sidebar — same bg as main, lighter ──────────────────── */}
-          <aside className="w-72 shrink-0 flex flex-col overflow-y-auto"
-            style={{ borderRight: '1px solid var(--border)', background: 'var(--bg)', height: 'calc(100vh - 56px)', position: 'sticky', top: '56px' }}>
+          {/* Mobile sidebar backdrop */}
+          <AnimatePresence>
+            {showSidebar && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-30 md:hidden"
+                style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+                onClick={() => setShowSidebar(false)} />
+            )}
+          </AnimatePresence>
+
+          {/* ── Sidebar ──────────────────────────────────────────────── */}
+          <aside
+            className={`w-72 shrink-0 flex-col overflow-y-auto z-40 ${showSidebar ? 'flex fixed left-0 bottom-0' : 'hidden md:flex'}`}
+            style={{ borderRight: '1px solid var(--border)', background: 'var(--bg)', top: '56px', height: 'calc(100dvh - 56px)', position: showSidebar ? 'fixed' : 'sticky' }}>
 
             <div className="p-4 space-y-2">
-              <p className="text-base font-semibold tracking-widest uppercase px-1 mb-3" style={{ color: 'var(--text-muted)' }}>Events</p>
+              <div className="flex items-center justify-between px-1 mb-3">
+                <p className="text-base font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Events</p>
+                <button onClick={() => setShowSidebar(false)} className="md:hidden p-1 rounded-lg" style={{ color: 'var(--text-muted)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
 
               <div className="flex gap-2">
                 <input
@@ -574,7 +600,7 @@ export default function AdminClient() {
                         </span>
                         <button
                           onClick={e => { e.stopPropagation(); isLive ? deactivateEvent(ev) : activateEvent(ev) }}
-                          className="shrink-0 text-base px-1.5 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="shrink-0 text-base px-1.5 py-0.5 rounded font-medium transition-all"
                           style={isLive
                             ? { color: '#4ade80', border: '1px solid rgba(74,222,128,0.35)' }
                             : { color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
@@ -588,6 +614,23 @@ export default function AdminClient() {
             </div>
 
             <div className="flex-1" />
+
+            {/* Collector link */}
+            {collectorCode && (
+              <div className="p-4 shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+                <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Collector Link</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono flex-1 truncate" style={{ color: 'var(--text-secondary)' }}>
+                    /collect/<span style={{ color: 'var(--accent)', fontWeight: 700 }}>{collectorCode}</span>
+                  </span>
+                  <button onClick={copyCollectorLink}
+                    className="shrink-0 px-2 py-1 rounded-lg text-xs font-medium transition-all"
+                    style={{ background: collectorCopied ? 'rgba(74,222,128,0.1)' : 'var(--accent-dim)', color: collectorCopied ? '#4ade80' : 'var(--accent)', border: `1px solid ${collectorCopied ? 'rgba(74,222,128,0.3)' : 'var(--border-hover)'}` }}>
+                    {collectorCopied ? '✓' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            )}
           </aside>
 
           {/* ── Main content ──────────────────────────────────────────── */}
@@ -658,11 +701,13 @@ export default function AdminClient() {
                         ) : (
                           <button onClick={() => activateEvent(viewedEvent)}
                             className="flex items-center gap-1.5 text-base font-semibold px-3 py-1.5 rounded-xl transition-all"
-                            style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)'; (e.currentTarget as HTMLElement).style.color = '#4ade80'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(74,222,128,0.25)' }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                            <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
-                            Inactive
+                            style={{ background: 'rgba(74,222,128,0.08)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.15)' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.08)' }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" />
+                            </svg>
+                            Go live
                           </button>
                         )}
 
@@ -1023,19 +1068,21 @@ export default function AdminClient() {
                     </button>
                   </div>
 
-                  {/* Navigation dots */}
-                  <div className="shrink-0 flex items-center justify-center gap-2">
-                    {[0, 1].map(i => (
+                  {/* Navigation tabs */}
+                  <div className="shrink-0 flex items-center justify-center gap-1">
+                    {['Context', 'Criteria'].map((label, i) => (
                       <button
                         key={i}
                         onClick={() => goToTab(i)}
-                        className="rounded-full transition-all duration-200"
+                        className="px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200"
                         style={{
-                          width: activeTab === i ? '20px' : '6px',
-                          height: '6px',
-                          background: activeTab === i ? 'var(--accent)' : 'var(--border-hover)',
+                          background: activeTab === i ? 'var(--accent-dim)' : 'transparent',
+                          color: activeTab === i ? 'var(--accent)' : 'var(--text-muted)',
+                          border: `1px solid ${activeTab === i ? 'var(--border-hover)' : 'transparent'}`,
                         }}
-                      />
+                      >
+                        {label}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -1045,6 +1092,17 @@ export default function AdminClient() {
 
         </div>
       </div>
+
+      {/* ── Mobile events FAB ── */}
+      <button
+        onClick={() => setShowSidebar(true)}
+        className="md:hidden fixed bottom-5 right-5 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold shadow-lg"
+        style={{ background: 'var(--accent)', color: 'white', boxShadow: '0 4px 24px var(--glow-accent)' }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+        Events
+      </button>
 
       {/* ── Settings drawer ── */}
       <AnimatePresence>
@@ -1066,7 +1124,18 @@ export default function AdminClient() {
               {/* Drawer header */}
               <div className="shrink-0 flex items-center justify-between px-6 py-4"
                 style={{ borderBottom: '1px solid var(--border)' }}>
-                <p className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Settings</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Settings</p>
+                  <AnimatePresence>
+                    {keySaved && (
+                      <motion.span initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                        className="text-xs font-medium px-2 py-0.5 rounded-full"
+                        style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}>
+                        ✓ Saved
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <button onClick={() => setShowSettings(false)}
                   className="p-1.5 rounded-lg transition-colors"
                   style={{ color: 'var(--text-muted)' }}

@@ -15,9 +15,8 @@ interface EventRecord {
 }
 
 function getScoreStyle(score: number) {
-  if (score >= 80) return { color: 'var(--score-high)' }
-  if (score >= 60) return { color: 'var(--score-mid)' }
-  if (score >= 40) return { color: 'var(--accent)' }
+  if (score >= 70) return { color: 'var(--score-high)' }
+  if (score >= 40) return { color: 'var(--score-mid)' }
   return { color: 'var(--score-low)' }
 }
 
@@ -42,6 +41,44 @@ function OverallScore({ sessions, criteria }: { sessions: (Session & { scores: S
 
   return (
     <span className="text-base font-bold tabular-nums" style={style}>{avg}/100</span>
+  )
+}
+
+function TranscriptView({ sessionId, teamId }: { sessionId: string; teamId: string }) {
+  const [chunks, setChunks] = useState<string[] | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('transcript_chunks')
+      .select('content')
+      .eq('session_id', sessionId)
+      .eq('team_id', teamId)
+      .order('created_at')
+    setChunks(data?.map((c: any) => c.content) ?? [])
+    setLoading(false)
+  }
+
+  if (!chunks && !loading) {
+    return (
+      <button onClick={load} className="text-xs font-medium underline underline-offset-2 mt-1"
+        style={{ color: 'var(--accent)' }}>
+        Show transcript
+      </button>
+    )
+  }
+  if (loading) {
+    return <div className="w-3 h-3 rounded-full border animate-spin mt-1" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+  }
+  if (!chunks?.length) {
+    return <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>No transcript recorded.</p>
+  }
+  return (
+    <p className="text-sm leading-relaxed mt-2 whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
+      {chunks.join(' ')}
+    </p>
   )
 }
 
@@ -96,7 +133,7 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
                 return (
                   <div key={c.id} className="text-center">
                     <div className="text-base font-bold tabular-nums" style={getScoreStyle(score)}>{score}</div>
-                    <div className="text-base truncate max-w-[48px]" style={{ color: 'var(--text-muted)' }}>{c.name}</div>
+                    <div className="text-xs truncate max-w-[64px]" style={{ color: 'var(--text-muted)' }}>{c.name}</div>
                   </div>
                 )
               })}
@@ -168,6 +205,12 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
                   <p className="text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{session.summary}</p>
                 </div>
               )}
+
+              {/* Transcript */}
+              <div className="pt-2">
+                <p className="text-base font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Transcript</p>
+                <TranscriptView sessionId={session.session_id} teamId={session.id} />
+              </div>
 
               {/* Criteria scores */}
               {criteria.length > 0 && (
@@ -342,7 +385,7 @@ export default function RecordsClient() {
                           {hasData && (
                             <span className="text-base px-1.5 py-0.5 rounded font-medium"
                               style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                              {sessions.length} participant{sessions.length !== 1 ? 's' : ''}
+                              {sessions.length} session{sessions.length !== 1 ? 's' : ''}
                             </span>
                           )}
                         </div>

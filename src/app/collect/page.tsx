@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
-import { useCollectorCapture, CaptureMode } from '@/hooks/useCollectorCapture'
+import { useCollectorCapture } from '@/hooks/useCollectorCapture'
 import { useSessionPresence } from '@/hooks/useSessionPresence'
 import { getDeviceId } from '@/lib/deviceId'
 import { ThemeProvider } from '@/components/ThemeSelector'
@@ -16,18 +16,10 @@ export default function CollectPage() {
   const [activeSession, setActiveSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const [captureMode, setCaptureMode] = useState<CaptureMode>(() => {
-    try { return (localStorage.getItem('aj_capture_mode') as CaptureMode) ?? 'local' } catch { return 'local' }
-  })
   const deviceId = getDeviceId()
 
   const { start, stop, isRecording, isConnecting, transcript, interimTranscript, hasWakeLock } =
-    useCollectorCapture(event?.id ?? null, activeSession?.id ?? null, captureMode)
-
-  const setMode = (m: CaptureMode) => {
-    setCaptureMode(m)
-    try { localStorage.setItem('aj_capture_mode', m) } catch {}
-  }
+    useCollectorCapture(event?.id ?? null, activeSession?.id ?? null, 'local')
 
   const { peers } = useSessionPresence(event?.id ?? null, deviceId, 'collector', isRecording)
   const judgeOnline = peers.some((p) => p.role === 'judge')
@@ -81,7 +73,6 @@ export default function CollectPage() {
         </div>
 
         <AppHeader
-          back
           section="Collector"
           rightSlot={event && (
             <span className="hidden sm:inline text-sm truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{event.name}</span>
@@ -142,36 +133,6 @@ export default function CollectPage() {
                   +{otherCollectors.length} other mic{otherCollectors.length !== 1 ? 's' : ''}
                 </div>
               )}
-            </div>
-
-            {/* Capture mode toggle */}
-            <div className="flex rounded-xl overflow-hidden text-base font-medium"
-              style={{ border: '1px solid var(--border)', opacity: isRecording ? 0.4 : 1, pointerEvents: isRecording ? 'none' : 'auto' }}>
-              {([
-                { value: 'local', label: 'Local audio', icon: (
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
-                  </svg>
-                )},
-                { value: 'online', label: 'Online meeting', icon: (
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="7" width="15" height="12" rx="2" />
-                    <path d="M17 11l4-3v8l-4-3" />
-                  </svg>
-                )},
-              ] as const).map(({ value, label, icon }) => (
-                <button key={value} onClick={() => setMode(value)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-base transition-all"
-                  style={{
-                    background: captureMode === value ? 'var(--accent-dim)' : 'transparent',
-                    color: captureMode === value ? 'var(--accent)' : 'var(--text-muted)',
-                    borderRight: value === 'local' ? '1px solid var(--border)' : 'none',
-                  }}>
-                  {icon}
-                  {label}
-                </button>
-              ))}
             </div>
 
             {/* Big record button */}

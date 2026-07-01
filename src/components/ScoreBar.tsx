@@ -17,29 +17,23 @@ function AnimatedNumber({ target }: { target: number }) {
 }
 
 function getScoreStyle(score: number): { color: string; glow: string; gradient: string; label: string } {
-  if (score >= 80) return {
+  if (score >= 70) return {
     color: 'var(--score-high)',
     glow: 'var(--glow-high)',
     gradient: `linear-gradient(90deg, color-mix(in srgb, var(--score-high) 70%, transparent), var(--score-high))`,
-    label: 'EXCELLENT',
+    label: 'STRONG',
   }
-  if (score >= 60) return {
+  if (score >= 40) return {
     color: 'var(--score-mid)',
     glow: 'var(--glow-mid)',
     gradient: `linear-gradient(90deg, color-mix(in srgb, var(--score-mid) 70%, transparent), var(--score-mid))`,
-    label: 'GOOD',
-  }
-  if (score >= 40) return {
-    color: 'var(--accent)',
-    glow: 'var(--glow-accent)',
-    gradient: `linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent), var(--accent))`,
     label: 'FAIR',
   }
   return {
     color: 'var(--score-low)',
     glow: 'var(--glow-low)',
     gradient: `linear-gradient(90deg, color-mix(in srgb, var(--score-low) 70%, transparent), var(--score-low))`,
-    label: 'DEVELOPING',
+    label: 'WEAK',
   }
 }
 

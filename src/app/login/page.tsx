@@ -151,7 +151,7 @@ function LoginForm() {
             </p>
           )}
 
-          <p style={{ fontSize: '12px', color: '#1e293b' }}>
+          <p style={{ fontSize: '12px', color: '#475569' }}>
             Free · Private to your account · EU data processing
           </p>
         </div>
@@ -198,14 +198,14 @@ function LoginForm() {
       </section>
 
       {/* Footer */}
-      <footer style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '20px 40px', borderTop: '1px solid rgba(255,255,255,0.04)', fontSize: '12px', color: '#1e293b' }}>
+      <footer style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '20px 40px', borderTop: '1px solid rgba(255,255,255,0.04)', fontSize: '12px', color: '#475569' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <img src="/app-icon.svg" alt="" style={{ width: '16px', height: '16px', borderRadius: '4px', opacity: 0.4 }} />
           Audio Judge · Built with Deepgram and Claude
         </div>
-        <a href="https://awoken.dev" target="_blank" rel="noopener noreferrer" style={{ color: '#1e293b', textDecoration: 'none', transition: 'color 0.15s' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#475569' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#1e293b' }}>
+        <a href="https://awoken.dev" target="_blank" rel="noopener noreferrer" style={{ color: '#475569', textDecoration: 'none', transition: 'color 0.15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#94a3b8' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#475569' }}>
           Powered by awoken.dev
         </a>
       </footer>

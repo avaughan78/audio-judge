@@ -19,9 +19,8 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
 }
 
 function getBarStyle(score: number) {
-  if (score >= 80) return { color: 'var(--score-high)', glow: 'var(--glow-high)' }
-  if (score >= 60) return { color: 'var(--score-mid)', glow: 'var(--glow-mid)' }
-  if (score >= 40) return { color: 'var(--accent)', glow: 'var(--glow-accent)' }
+  if (score >= 70) return { color: 'var(--score-high)', glow: 'var(--glow-high)' }
+  if (score >= 40) return { color: 'var(--score-mid)', glow: 'var(--glow-mid)' }
   return { color: 'var(--score-low)', glow: 'var(--glow-low)' }
 }
 
@@ -31,8 +30,9 @@ export default function DisplayClient() {
   const [activeSession, setActiveSession] = useState<Session | null>(null)
   const [criteria, setCriteria] = useState<Criteria[]>([])
   const [scores, setScores] = useState<Record<string, Score>>({})
-  const [latestTranscript, setLatestTranscript] = useState('')
+  const [transcriptBuffer, setTranscriptBuffer] = useState<string[]>([])
   const [clock, setClock] = useState(new Date())
+  const [collectorCode, setCollectorCode] = useState<string | null>(null)
   // Ref rather than state because it's read inside the Supabase Realtime callback,
   // which is a closure that would always see the stale initial value if it used state.
   const activeSessionIdRef = useRef<string | null>(null)
@@ -41,6 +41,12 @@ export default function DisplayClient() {
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000)
     return () => clearInterval(t)
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/profile').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.collector_code) setCollectorCode(d.collector_code)
+    }).catch(() => {})
   }, [])
 
   // Initialise display for a given event (called on load and when event goes live mid-display)
@@ -73,7 +79,7 @@ export default function DisplayClient() {
     // Transcript chunks for live ticker
     supabase.channel('display-transcript')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transcript_chunks', filter: `session_id=eq.${sess.id}` },
-        (payload: any) => { if (payload.new?.content) setLatestTranscript(payload.new.content) })
+        (payload: any) => { if (payload.new?.content) setTranscriptBuffer(prev => [...prev.slice(-4), payload.new.content]) })
       .subscribe()
 
     // Observe judge/collector presence to show recording state (display page does not track itself)
@@ -110,7 +116,7 @@ export default function DisplayClient() {
             if (updated.active_team_id !== activeSessionIdRef.current) {
               activeSessionIdRef.current = updated.active_team_id ?? null
               setScores({})
-              setLatestTranscript('')
+              setTranscriptBuffer([])
               if (updated.active_team_id) {
                 const { data: t } = await supabase.from('teams').select('*').eq('id', updated.active_team_id).single()
                 if (t) setActiveSession(t)
@@ -163,6 +169,18 @@ export default function DisplayClient() {
           <img src="/app-icon.svg" alt="Audio Judge" className="w-8 h-8" />
           <span className="text-base font-bold" style={{ color: 'var(--text-muted)' }}>{event?.name || 'Audio Judge'}</span>
         </div>
+        {collectorCode && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+            style={{ background: 'var(--accent-dim)', border: '1px solid var(--border-hover)' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--accent)' }}>
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
+            </svg>
+            <span className="text-sm font-mono font-bold" style={{ color: 'var(--accent)' }}>
+              {typeof window !== 'undefined' ? window.location.host : ''}/collect/<span style={{ letterSpacing: '0.05em' }}>{collectorCode}</span>
+            </span>
+          </div>
+        )}
         <div className="flex items-center gap-5">
           <ThemeSelector />
           <span className="text-base tabular-nums" style={{ color: 'var(--text-muted)' }}>
@@ -296,17 +314,17 @@ export default function DisplayClient() {
       )}
 
       {/* Transcript ticker */}
-      {latestTranscript && (
+      {transcriptBuffer.length > 0 && (
         <div className="absolute bottom-0 inset-x-0 px-12 py-3" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-4 overflow-hidden">
             <span className="text-base font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
               Transcript
             </span>
             <AnimatePresence mode="wait">
-              <motion.p key={latestTranscript.slice(-60)}
+              <motion.p key={transcriptBuffer[transcriptBuffer.length - 1]?.slice(-40)}
                 initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 className="text-base truncate font-mono" style={{ color: 'var(--text-secondary)' }}>
-                {latestTranscript}
+                {transcriptBuffer.join(' ')}
               </motion.p>
             </AnimatePresence>
           </div>
