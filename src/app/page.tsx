@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase'
-import { TeamSelector } from '@/components/TeamSelector'
 import { TranscriptSummary } from '@/components/TranscriptSummary'
 import { TranscriptTicker } from '@/components/TranscriptTicker'
 import { ScorePanel } from '@/components/ScorePanel'
@@ -16,7 +15,7 @@ import { useSessionPresence } from '@/hooks/useSessionPresence'
 import { getDeviceId } from '@/lib/deviceId'
 
 export default function JudgePage() {
-  const { session, setSession, setTeams, setCriteria, updateScore, setThemeId } = useAppStore()
+  const { session, setSession, setTeams, setCriteria, updateScore, setThemeId, setActiveTeam, setScores } = useAppStore()
   const activeTeam = useAppStore((s) => s.activeTeam)
   const teams = useAppStore((s) => s.teams)
   const isRecording = useAppStore((s) => s.isRecording)
@@ -25,18 +24,14 @@ export default function JudgePage() {
   const [prevTeamName, setPrevTeamName] = useState<string | null>(null)
   const [showTransition, setShowTransition] = useState(false)
   const [missingKeys, setMissingKeys] = useState<string[]>([])
-  const [confirmNext, setConfirmNext] = useState(false)
-  const [confirmAutoAdvance, setConfirmAutoAdvance] = useState(false)
+  const [confirmPunctuate, setConfirmPunctuate] = useState(false)
+  const [isPunctuating, setIsPunctuating] = useState(false)
   const [mobileTab, setMobileTab] = useState<'scores' | 'summary'>('scores')
-  const [showAddTeamInline, setShowAddTeamInline] = useState(false)
-  const [newTeamNameInline, setNewTeamNameInline] = useState('')
-  const [addingTeamInline, setAddingTeamInline] = useState(false)
-  const { start, stop, advanceToNextTeam, manualAdvanceAutoMode } = useAudioCapture()
+  const { start, stop, punctuate } = useAudioCapture()
   const deviceId = getDeviceId()
   const { peers } = useSessionPresence(session?.id ?? null, deviceId, 'judge', isRecording)
   const collectors = peers.filter((p) => p.role === 'collector')
 
-  // Flash transition banner when team changes
   useEffect(() => {
     if (!activeTeam) return
     if (prevTeamName && prevTeamName !== activeTeam.name) {
@@ -72,13 +67,28 @@ export default function JudgePage() {
       setSession(sess)
       if (sess.theme_id) setThemeId(sess.theme_id)
 
-      const [{ data: teams }, { data: criteria }] = await Promise.all([
+      const [{ data: loadedTeams }, { data: criteria }] = await Promise.all([
         supabase.from('teams').select('*').eq('session_id', sess.id).order('order_index'),
         supabase.from('criteria').select('*').eq('session_id', sess.id).order('order_index'),
       ])
 
-      if (teams) setTeams(teams)
+      if (loadedTeams) setTeams(loadedTeams)
       if (criteria) setCriteria(criteria)
+
+      // Restore active team and its existing scores
+      if (sess.active_team_id && loadedTeams) {
+        const activeT = loadedTeams.find((t: any) => t.id === sess.active_team_id)
+        if (activeT) {
+          setActiveTeam(activeT)
+          const { data: existingScores } = await supabase.from('scores').select('*')
+            .eq('session_id', sess.id).eq('team_id', activeT.id)
+          if (existingScores?.length) {
+            const map: Record<string, any> = {}
+            existingScores.forEach((s: any) => { map[s.criteria_id] = s })
+            setScores(map)
+          }
+        }
+      }
     }
 
     load()
@@ -113,19 +123,11 @@ export default function JudgePage() {
     }
   }, [])
 
-  const addTeamInline = async () => {
-    if (!newTeamNameInline.trim() || !session) return
-    setAddingTeamInline(true)
-    const supabase = createClient()
-    const { data } = await supabase.from('teams').insert({
-      session_id: session.id, name: newTeamNameInline.trim(), order_index: teams.length,
-    }).select().single()
-    if (data) {
-      setTeams([...teams, data])
-      setNewTeamNameInline('')
-      setShowAddTeamInline(false)
-    }
-    setAddingTeamInline(false)
+  const handlePunctuate = async () => {
+    setConfirmPunctuate(false)
+    setIsPunctuating(true)
+    await punctuate()
+    setIsPunctuating(false)
   }
 
   return (
@@ -163,6 +165,7 @@ export default function JudgePage() {
               <div className="w-px h-4" style={{ background: 'var(--border)' }} />
               <NavLink href="/display" target="_blank" label="Display" icon="external" />
               <NavLink href="/collect" target="_blank" label="Collect" icon="mic" />
+              <NavLink href="/records" label="Records" icon="archive" />
             </div>
             <NavLink href="/admin" label="Admin" icon="settings" />
           </div>
@@ -214,133 +217,67 @@ export default function JudgePage() {
         ) : (
           <div className="relative z-10 flex flex-col flex-1 overflow-hidden min-h-0">
 
-            {/* Participant + recording strip */}
+            {/* Session + controls strip */}
             <div className="relative shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5"
               style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
-              {session?.detection_mode === 'automatic' ? (
-                <>
-                  <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
-                    Auto
-                  </span>
-                  <div className="flex-1 flex items-center gap-2 overflow-hidden">
-                    <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
-                    <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
-                      {activeTeam?.name ?? 'Waiting for presenter…'}
-                    </span>
-                  </div>
-                  {/* Manual fallback advance — auto mode only, visible when recording */}
-                  {isRecording && activeTeam && (
-                    confirmAutoAdvance ? (
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Score &amp; next?</span>
+
+              {/* Current session label */}
+              <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
+                Session
+              </span>
+              <span className="h-1.5 w-1.5 rounded-full shrink-0"
+                style={{ background: activeTeam ? 'var(--accent)' : 'var(--text-muted)' }} />
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {activeTeam?.name ?? 'Press Record to begin'}
+              </span>
+
+              {/* Punctuate button — visible only while recording */}
+              <AnimatePresence>
+                {isRecording && activeTeam && (
+                  <motion.div
+                    key="punctuate-zone"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="flex items-center"
+                  >
+                    {confirmPunctuate ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Snapshot &amp; start fresh?</span>
                         <button
-                          onClick={async () => { setConfirmAutoAdvance(false); await manualAdvanceAutoMode() }}
-                          disabled={isSummarising}
+                          onClick={handlePunctuate}
+                          disabled={isSummarising || isPunctuating}
                           className="text-xs px-2.5 py-1 rounded-lg font-medium disabled:opacity-50"
                           style={{ background: 'var(--accent)', color: 'white' }}>
-                          Yes
+                          {isPunctuating ? '…' : 'Yes'}
                         </button>
                         <button
-                          onClick={() => setConfirmAutoAdvance(false)}
+                          onClick={() => setConfirmPunctuate(false)}
                           className="text-xs px-2.5 py-1 rounded-lg"
                           style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                          No
+                          Cancel
                         </button>
                       </div>
                     ) : (
                       <button
-                        onClick={() => setConfirmAutoAdvance(true)}
-                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                        onClick={() => setConfirmPunctuate(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                         style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                        Next presenter
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="9 18 15 12 9 6" />
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="12" y1="2" x2="12" y2="22" />
+                          <polyline points="17 7 12 2 7 7" />
+                          <polyline points="17 17 12 22 7 17" />
                         </svg>
+                        Punctuate
                       </button>
-                    )
-                  )}
-                </>
-              ) : (
-                <>
-                  <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
-                    Evaluating
-                  </span>
-                  <div className="flex-1 overflow-hidden">
-                    <TeamSelector />
-                  </div>
-                  {/* Inline add participant */}
-                  {showAddTeamInline ? (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <input
-                        autoFocus
-                        value={newTeamNameInline}
-                        onChange={e => setNewTeamNameInline(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') addTeamInline(); if (e.key === 'Escape') { setShowAddTeamInline(false); setNewTeamNameInline('') } }}
-                        placeholder="Participant name…"
-                        className="w-36 px-2.5 py-1 rounded-lg text-xs focus:outline-none"
-                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid var(--border-hover)', color: 'var(--text-primary)' }}
-                      />
-                      <button onClick={addTeamInline} disabled={addingTeamInline || !newTeamNameInline.trim()}
-                        className="text-xs px-2.5 py-1 rounded-lg font-medium disabled:opacity-50"
-                        style={{ background: 'var(--accent)', color: 'white' }}>
-                        {addingTeamInline ? '…' : 'Add'}
-                      </button>
-                      <button onClick={() => { setShowAddTeamInline(false); setNewTeamNameInline('') }}
-                        className="text-xs px-2 py-1 rounded-lg"
-                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowAddTeamInline(true)}
-                      className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full transition-all"
-                      style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}
-                      title="Add participant"
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    </button>
-                  )}
-                  {/* Next presenter button — manual mode only */}
-                  {activeTeam && teams.findIndex(t => t.id === activeTeam.id) < teams.length - 1 && (
-                    confirmNext ? (
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Score &amp; advance?</span>
-                        <button
-                          onClick={async () => { setConfirmNext(false); await advanceToNextTeam() }}
-                          disabled={isSummarising}
-                          className="text-xs px-2.5 py-1 rounded-lg font-medium disabled:opacity-50"
-                          style={{ background: 'var(--accent)', color: 'white' }}>
-                          Yes
-                        </button>
-                        <button
-                          onClick={() => setConfirmNext(false)}
-                          className="text-xs px-2.5 py-1 rounded-lg"
-                          style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                          No
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmNext(true)}
-                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                        Next presenter
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </button>
-                    )
-                  )}
-                </>
-              )}
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Collector mics pill */}
               <AnimatePresence>
                 {collectors.length > 0 && (
                   <motion.div
@@ -359,12 +296,13 @@ export default function JudgePage() {
                   </motion.div>
                 )}
               </AnimatePresence>
+
               <div className="ml-auto shrink-0">
                 <RecordingControl compact onStart={start} onStop={stop} />
               </div>
             </div>
 
-            {/* Presenter transition flash */}
+            {/* Session transition flash */}
             <AnimatePresence>
               {showTransition && activeTeam && (
                 <motion.div
@@ -374,21 +312,18 @@ export default function JudgePage() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.25 }}
                   className="absolute left-0 right-0 z-30 flex items-center justify-center py-3 pointer-events-none"
-                  style={{
-                    top: '88px',
-                    background: 'linear-gradient(180deg, var(--bg) 0%, transparent 100%)',
-                  }}
+                  style={{ top: '88px', background: 'linear-gradient(180deg, var(--bg) 0%, transparent 100%)' }}
                 >
                   <div className="flex items-center gap-3 px-6 py-3 rounded-2xl"
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border-hover)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
-                    <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Now evaluating</span>
+                    <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Now recording</span>
                     <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{activeTeam.name}</span>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Mobile tab bar — hidden on desktop */}
+            {/* Mobile tab bar */}
             <div className="flex md:hidden shrink-0" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.15)' }}>
               {(['scores', 'summary'] as const).map(tab => (
                 <button
@@ -405,12 +340,12 @@ export default function JudgePage() {
               ))}
             </div>
 
-            {/* Score bars — hero element; hidden on mobile when summary tab active */}
+            {/* Score bars */}
             <div className={`flex-1 overflow-hidden min-h-0 ${mobileTab === 'summary' ? 'hidden md:flex md:flex-col' : ''}`}>
               <ScorePanel fullscreen />
             </div>
 
-            {/* AI summary — desktop: fixed 130px strip; mobile: fills space in summary tab */}
+            {/* AI summary */}
             <div
               className={`overflow-hidden md:shrink-0 ${mobileTab === 'scores' ? 'hidden md:block' : 'flex-1 min-h-0'}`}
               style={{ borderTop: '1px solid var(--border)' }}
@@ -444,6 +379,12 @@ function NavLink({ href, label, icon, target }: { href: string; label: string; i
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
           <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
+        </svg>
+      ) : icon === 'archive' ? (
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="21 8 21 21 3 21 3 8" />
+          <rect x="1" y="3" width="22" height="5" />
+          <line x1="10" y1="12" x2="14" y2="12" />
         </svg>
       ) : (
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

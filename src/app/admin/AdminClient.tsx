@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
-import { Session, Team, Criteria } from '@/lib/types'
+import { Session, Criteria } from '@/lib/types'
 import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
 import { useAppStore } from '@/lib/store'
 
@@ -149,11 +149,6 @@ export default function AdminClient() {
   const [briefStatus, setBriefStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved')
   const savedBriefRef = useRef('')
 
-  const [teams, setTeams] = useState<Team[]>([])
-  const [newTeamName, setNewTeamName] = useState('')
-  const [newTeamDesc, setNewTeamDesc] = useState('')
-  const [editingTeam, setEditingTeam] = useState<{ id: string; name: string; description: string } | null>(null)
-
   const [criteria, setCriteria] = useState<Criteria[]>([])
   const [newCritName, setNewCritName] = useState('')
   const [newCritDesc, setNewCritDesc] = useState('')
@@ -162,9 +157,9 @@ export default function AdminClient() {
 
   const [appliedTemplate, setAppliedTemplate] = useState<string | null>(null)
   const [confirmReplaceTemplate, setConfirmReplaceTemplate] = useState<Template | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<{ type: 'team' | 'criteria' | 'session'; id: string } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<{ type: 'criteria' | 'session'; id: string } | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
   const [showEnvVars, setShowEnvVars] = useState(false)
-  const [detectionMode, setDetectionMode] = useState<'manual' | 'automatic'>('manual')
 
   type ApiKeySetting = { key: string; label: string; hint: string; isSet: boolean; source: string; preview: string; updatedAt: string | null }
   const [apiKeySettings, setApiKeySettings] = useState<ApiKeySetting[]>([])
@@ -176,7 +171,6 @@ export default function AdminClient() {
   const [generatingEditDesc, setGeneratingEditDesc] = useState(false)
   const [generatingCriteriaSet, setGeneratingCriteriaSet] = useState(false)
   const [confirmAutoGenerate, setConfirmAutoGenerate] = useState(false)
-  const [confirmReset, setConfirmReset] = useState<string | null>(null)
 
   // ── Auto-save brief ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -218,7 +212,6 @@ export default function AdminClient() {
           setViewedSession(toView)
           setBrief(toView.brief || '')
           savedBriefRef.current = toView.brief || ''
-          setDetectionMode(toView.detection_mode || 'manual')
           if (toView.is_active) setThemeId(toView.theme_id || 'midnight')
         }
       }
@@ -228,22 +221,19 @@ export default function AdminClient() {
 
   useEffect(() => {
     if (!viewedSession) return
-    setTeams([]); setCriteria([]); setAppliedTemplate(null)
-    Promise.all([
-      supabase.from('teams').select('*').eq('session_id', viewedSession.id).order('order_index'),
-      supabase.from('criteria').select('*').eq('session_id', viewedSession.id).order('order_index'),
-    ]).then(([{ data: t }, { data: c }]) => {
-      if (t) setTeams(t)
-      if (c) {
-        setCriteria(c)
-        const names = c.map((x: Criteria) => x.name)
-        const match = TEMPLATES.find(tmpl =>
-          tmpl.criteria.length === names.length &&
-          tmpl.criteria.every((tc, i) => tc.name === names[i])
-        )
-        if (match) setAppliedTemplate(match.id)
-      }
-    })
+    setCriteria([]); setAppliedTemplate(null)
+    supabase.from('criteria').select('*').eq('session_id', viewedSession.id).order('order_index')
+      .then(({ data: c }) => {
+        if (c) {
+          setCriteria(c)
+          const names = c.map((x: Criteria) => x.name)
+          const match = TEMPLATES.find(tmpl =>
+            tmpl.criteria.length === names.length &&
+            tmpl.criteria.every((tc, i) => tc.name === names[i])
+          )
+          if (match) setAppliedTemplate(match.id)
+        }
+      })
   }, [viewedSession?.id])
 
   // ── Event management ───────────────────────────────────────────────────────
@@ -254,10 +244,8 @@ export default function AdminClient() {
     setBrief(sess.brief || '')
     savedBriefRef.current = sess.brief || ''
     setBriefStatus('saved')
-    setDetectionMode(sess.detection_mode || 'manual')
     setAppliedTemplate(null)
     setEditingSessionName(false)
-    setEditingTeam(null)
     setEditingCriteria(null)
   }
 
@@ -271,7 +259,6 @@ export default function AdminClient() {
       savedBriefRef.current = data.brief || ''
       setBriefStatus('saved')
       setThemeId(data.theme_id || 'midnight')
-      setDetectionMode(data.detection_mode || 'manual')
     }
   }
 
@@ -303,54 +290,9 @@ export default function AdminClient() {
     setSessions(remaining)
     if (viewedSession?.id === id) {
       const next = remaining[0] ?? null
-      if (next) { selectEvent(next) } else { setViewedSession(null); setBrief(''); savedBriefRef.current = ''; setTeams([]); setCriteria([]) }
+      if (next) { selectEvent(next) } else { setViewedSession(null); setBrief(''); savedBriefRef.current = ''; setCriteria([]) }
     }
     setConfirmDelete(null)
-  }
-
-  const saveDetectionMode = async (mode: 'manual' | 'automatic') => {
-    if (!viewedSession) return
-    setDetectionMode(mode)
-    await supabase.from('sessions').update({ detection_mode: mode }).eq('id', viewedSession.id)
-    setViewedSession(p => p ? { ...p, detection_mode: mode } : null)
-    setSessions(p => p.map(s => s.id === viewedSession.id ? { ...s, detection_mode: mode } : s))
-  }
-
-  // ── Teams ──────────────────────────────────────────────────────────────────
-
-  const createTeam = async () => {
-    if (!newTeamName.trim() || !viewedSession) return
-    const { data } = await supabase.from('teams').insert({
-      session_id: viewedSession.id, name: newTeamName.trim(),
-      description: newTeamDesc.trim() || null, order_index: teams.length,
-    }).select().single()
-    if (data) { setTeams(p => [...p, data]); setNewTeamName(''); setNewTeamDesc('') }
-  }
-
-  const saveTeamEdit = async () => {
-    if (!editingTeam || !editingTeam.name.trim()) return
-    const { id, name, description } = editingTeam
-    await supabase.from('teams').update({ name: name.trim(), description: description.trim() || null }).eq('id', id)
-    setTeams(p => p.map(t => t.id === id ? { ...t, name: name.trim(), description: description.trim() || null } : t))
-    setEditingTeam(null)
-  }
-
-  const deleteTeam = async (id: string) => {
-    await supabase.from('teams').delete().eq('id', id)
-    setTeams(p => p.filter(t => t.id !== id))
-    setConfirmDelete(null)
-  }
-
-  const moveTeam = async (index: number, dir: 'up' | 'down') => {
-    const swap = dir === 'up' ? index - 1 : index + 1
-    if (swap < 0 || swap >= teams.length) return
-    const next = [...teams]
-    ;[next[index], next[swap]] = [next[swap], next[index]]
-    setTeams(next)
-    await Promise.all([
-      supabase.from('teams').update({ order_index: index }).eq('id', next[index].id),
-      supabase.from('teams').update({ order_index: swap }).eq('id', next[swap].id),
-    ])
   }
 
   // ── Criteria ───────────────────────────────────────────────────────────────
@@ -483,9 +425,11 @@ export default function AdminClient() {
     if (!viewedSession) return
     const { data: scores } = await supabase.from('scores').select('*').eq('session_id', viewedSession.id)
     if (!scores?.length) return
-    const headers = ['Team', 'Criterion', 'Score', 'Reasoning', 'Updated At']
+    // Load teams to resolve names
+    const { data: teams } = await supabase.from('teams').select('*').eq('session_id', viewedSession.id)
+    const headers = ['Session', 'Criterion', 'Score', 'Reasoning', 'Updated At']
     const rows = scores.map((s: any) => {
-      const team = teams.find(t => t.id === s.team_id)
+      const team = teams?.find((t: any) => t.id === s.team_id)
       const crit = criteria.find(c => c.id === s.criteria_id)
       return [
         `"${(team?.name ?? s.team_id).replace(/"/g, '""')}"`,
@@ -505,13 +449,9 @@ export default function AdminClient() {
     URL.revokeObjectURL(url)
   }
 
-  const resetTeamScores = async (teamId: string) => {
-    if (!viewedSession) return
-    await supabase.from('scores').delete().eq('team_id', teamId).eq('session_id', viewedSession.id)
-    setConfirmReset(null)
-  }
-
   const liveSession = sessions.find(s => s.is_active) ?? null
+  const keysSet = apiKeySettings.filter(k => k.isSet).length
+  const keysTotal = apiKeySettings.length
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -544,6 +484,16 @@ export default function AdminClient() {
                 <span className="text-sm font-medium" style={{ color: '#4ade80' }}>{liveSession.name} · Live</span>
               </div>
             )}
+            <Link href="/records"
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" />
+              </svg>
+              Records
+            </Link>
             <ThemeSelector />
             <div className="w-px h-4" style={{ background: 'var(--border)' }} />
             <button
@@ -563,7 +513,6 @@ export default function AdminClient() {
           <aside className="w-72 shrink-0 flex flex-col overflow-y-auto"
             style={{ borderRight: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', height: 'calc(100vh - 56px)', position: 'sticky', top: '56px' }}>
 
-            {/* Events section */}
             <div className="p-4 space-y-2">
               <p className="text-sm font-semibold px-1 mb-3" style={{ color: 'var(--text-muted)' }}>Events</p>
 
@@ -649,7 +598,7 @@ export default function AdminClient() {
                 </div>
               </div>
             ) : (
-              <div className="max-w-5xl mx-auto px-10 py-10">
+              <div className="max-w-3xl mx-auto px-10 py-10">
 
                 {/* Event header */}
                 <div className="flex items-start justify-between gap-4 mb-10">
@@ -747,447 +696,376 @@ export default function AdminClient() {
                   </div>
                 )}
 
-                {/* ── Two-column layout ────────────────────────────────── */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-x-16 gap-y-12 items-start">
+                <div className="space-y-12">
 
-                  {/* Left column: Context + Scoring Criteria */}
-                  <div className="col-span-1 lg:col-span-3 space-y-12">
+                  {/* Context */}
+                  <Section
+                    title="Context"
+                    subtitle="What are you evaluating and what does good look like? The more specific, the more accurate the AI scoring."
+                    action={
+                      briefStatus !== 'saved' ? (
+                        <span className="text-xs font-medium px-2 py-1 rounded-md"
+                          style={{
+                            background: briefStatus === 'saving' ? 'rgba(99,102,241,0.12)' : 'rgba(251,191,36,0.12)',
+                            color: briefStatus === 'saving' ? 'var(--accent)' : '#fbbf24',
+                          }}>
+                          {briefStatus === 'saving' ? 'Saving…' : 'Unsaved'}
+                        </span>
+                      ) : null
+                    }>
+                    <Textarea value={brief} onChange={setBrief} rows={7}
+                      placeholder={`Describe what you're evaluating and what good looks like.\n\ne.g. "5-minute investor pitch. We want a clear problem, evidence of market size, and a working prototype. Strong teams will demonstrate real traction."`} />
+                  </Section>
 
-                    {/* Context */}
-                    <Section
-                      title="Context"
-                      subtitle="What are you evaluating and what does good look like? The more specific, the more accurate the AI scoring."
-                      action={
-                        briefStatus !== 'saved' ? (
-                          <span className="text-xs font-medium px-2 py-1 rounded-md"
+                  {/* Scoring Criteria */}
+                  <Section
+                    title={`Scoring Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
+                    subtitle="What the AI scores on. Specific descriptions produce more reliable scores."
+                    action={
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => generateCriteriaSet()}
+                          disabled={!brief.trim() || generatingCriteriaSet}
+                          title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context above first'}
+                          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
+                          style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                          <SparkleIcon spinning={generatingCriteriaSet} />
+                          {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
+                        </button>
+                        <div className="w-px h-4" style={{ background: 'var(--border)' }} />
+                        {TEMPLATES.map(t => (
+                          <button key={t.id} onClick={() => handleTemplateClick(t)}
+                            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
                             style={{
-                              background: briefStatus === 'saving' ? 'rgba(99,102,241,0.12)' : 'rgba(251,191,36,0.12)',
-                              color: briefStatus === 'saving' ? 'var(--accent)' : '#fbbf24',
+                              background: appliedTemplate === t.id ? 'var(--accent-dim)' : 'rgba(255,255,255,0.04)',
+                              color: appliedTemplate === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                              border: `1px solid ${appliedTemplate === t.id ? 'var(--border-hover)' : 'var(--border)'}`,
                             }}>
-                            {briefStatus === 'saving' ? 'Saving…' : 'Unsaved'}
-                          </span>
-                        ) : null
-                      }>
-                      <Textarea value={brief} onChange={setBrief} rows={7}
-                        placeholder={`Describe what you're evaluating and what good looks like.\n\ne.g. "5-minute investor pitch. We want a clear problem, evidence of market size, and a working prototype. Strong teams will demonstrate real traction."`} />
-                    </Section>
-
-                    {/* Scoring Criteria */}
-                    <Section
-                      title={`Scoring Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
-                      subtitle="What the AI scores on. Specific descriptions produce more reliable scores."
-                      action={
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => generateCriteriaSet()}
-                            disabled={!brief.trim() || generatingCriteriaSet}
-                            title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context above first'}
-                            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
-                            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                            <SparkleIcon spinning={generatingCriteriaSet} />
-                            {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
-                          </button>
-                          <div className="w-px h-4" style={{ background: 'var(--border)' }} />
-                          {TEMPLATES.map(t => (
-                            <button key={t.id} onClick={() => handleTemplateClick(t)}
-                              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
-                              style={{
-                                background: appliedTemplate === t.id ? 'var(--accent-dim)' : 'rgba(255,255,255,0.04)',
-                                color: appliedTemplate === t.id ? 'var(--accent)' : 'var(--text-muted)',
-                                border: `1px solid ${appliedTemplate === t.id ? 'var(--border-hover)' : 'var(--border)'}`,
-                              }}>
-                              {t.icon} {t.name}
-                              {appliedTemplate === t.id && (
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      }>
-
-                      <AnimatePresence>
-                        {confirmAutoGenerate && (
-                          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                            className="mb-4 p-3 rounded-xl flex items-center gap-3"
-                            style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid var(--border-hover)' }}>
-                            <SparkleIcon spinning={false} />
-                            <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>
-                              Replace {criteria.length} existing criteria with AI-generated ones?
-                            </span>
-                            <button onClick={() => generateCriteriaSet(true)}
-                              className="text-sm px-3 py-1 rounded-lg font-medium"
-                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                              Replace
-                            </button>
-                            <button onClick={() => setConfirmAutoGenerate(false)} className="text-sm"
-                              style={{ color: 'var(--text-muted)' }}>
-                              Cancel
-                            </button>
-                          </motion.div>
-                        )}
-                        {confirmReplaceTemplate && (
-                          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                            className="mb-4 p-3 rounded-xl flex items-center gap-3"
-                            style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
-                            <span className="text-sm flex-1" style={{ color: '#fbbf24' }}>
-                              Replace {criteria.length} existing criteria?
-                            </span>
-                            <button onClick={() => applyTemplate(confirmReplaceTemplate)}
-                              className="text-sm px-3 py-1 rounded-lg font-medium"
-                              style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
-                              Replace
-                            </button>
-                            <button onClick={() => setConfirmReplaceTemplate(null)} className="text-sm"
-                              style={{ color: 'var(--text-muted)' }}>
-                              Cancel
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      {/* Criteria list */}
-                      <div style={{ borderTop: criteria.length > 0 ? '1px solid var(--border)' : undefined }}>
-                        {criteria.map((c, i) => (
-                          <div key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            {editingCriteria?.id === c.id ? (
-                              <div className="py-4 space-y-3">
-                                <Input value={editingCriteria.name}
-                                  onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
-                                  placeholder="Name" autoFocus />
-                                {editingCriteria.name.trim() && (
-                                  <div className="flex justify-end">
-                                    <button onClick={generateEditCriteriaDesc} disabled={generatingEditDesc}
-                                      className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
-                                      style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                                      <SparkleIcon spinning={generatingEditDesc} />
-                                      {generatingEditDesc ? 'Generating…' : 'AI fill description'}
-                                    </button>
-                                  </div>
-                                )}
-                                <Textarea value={editingCriteria.description}
-                                  onChange={v => setEditingCriteria(p => p ? { ...p, description: v } : null)}
-                                  rows={3} placeholder="Scoring guide" />
-                                <div className="flex items-center gap-3">
-                                  <div className="w-40"><WeightSelect value={editingCriteria.weight}
-                                    onChange={v => setEditingCriteria(p => p ? { ...p, weight: v } : null)} /></div>
-                                  <div className="flex-1" />
-                                  <Btn onClick={() => setEditingCriteria(null)} variant="ghost" size="sm">Cancel</Btn>
-                                  <Btn onClick={saveCriteriaEdit} size="sm" disabled={!editingCriteria.name.trim()}>Save</Btn>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="py-3.5 flex items-start gap-3">
-                                <ReorderBtns onUp={() => moveCriteria(i, 'up')} onDown={() => moveCriteria(i, 'down')}
-                                  canUp={i > 0} canDown={i < criteria.length - 1} />
-                                <div className="flex-1 min-w-0 cursor-pointer"
-                                  onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
-                                  <div className="flex items-center gap-2 mb-0.5">
-                                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
-                                    {c.weight !== 1 && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded font-medium"
-                                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
-                                        ×{c.weight}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {c.description && (
-                                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{c.description}</p>
-                                  )}
-                                </div>
-                                <InlineDeleteBtn
-                                  isConfirming={confirmDelete?.id === c.id && confirmDelete.type === 'criteria'}
-                                  onRequest={() => setConfirmDelete({ type: 'criteria', id: c.id })}
-                                  onConfirm={() => deleteCriteria(c.id)}
-                                  onCancel={() => setConfirmDelete(null)}
-                                />
-                              </div>
+                            {t.icon} {t.name}
+                            {appliedTemplate === t.id && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
                             )}
-                          </div>
-                        ))}
-                        {criteria.length === 0 && (
-                          <p className="text-sm py-3" style={{ color: 'var(--text-muted)' }}>
-                            No criteria yet — load a template above or add one below.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Add criterion — progressive disclosure */}
-                      <div className="mt-4 space-y-3">
-                        <Input value={newCritName} onChange={setNewCritName}
-                          placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
-                        {newCritName.trim() && (
-                          <>
-                            <div className="flex justify-end">
-                              <button onClick={generateNewCriteriaDesc} disabled={generatingNewDesc}
-                                className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
-                                style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                                <SparkleIcon spinning={generatingNewDesc} />
-                                {generatingNewDesc ? 'Generating…' : 'AI fill description'}
-                              </button>
-                            </div>
-                            <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3}
-                              placeholder="Scoring guide — the more specific the better." />
-                            <div className="flex items-center gap-3">
-                              <div className="w-40"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} /></div>
-                              <Btn onClick={createCriteria} disabled={!newCritName.trim()}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                                </svg>
-                                Add
-                              </Btn>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </Section>
-
-                  </div>
-
-                  {/* Right column: Detection Mode + Participants + API Keys */}
-                  <div className="col-span-1 lg:col-span-2 space-y-10">
-
-                    {/* Detection Mode */}
-                    <Section title="Detection Mode" subtitle="How the app knows when to switch presenters.">
-                      <div className="flex gap-2 mb-3">
-                        {([
-                          { value: 'manual', label: 'Manual' },
-                          { value: 'automatic', label: 'Automatic' },
-                        ] as const).map(({ value, label }) => (
-                          <button key={value} onClick={() => saveDetectionMode(value)}
-                            className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
-                            style={{
-                              background: detectionMode === value ? 'var(--accent-dim)' : 'rgba(255,255,255,0.03)',
-                              color: detectionMode === value ? 'var(--accent)' : 'var(--text-muted)',
-                              border: `1px solid ${detectionMode === value ? 'var(--accent)' : 'var(--border)'}`,
-                            }}>
-                            {label}
                           </button>
                         ))}
                       </div>
-                      <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                        {detectionMode === 'manual'
-                          ? 'Select each participant before their presentation starts.'
-                          : 'AI detects presenter changes automatically. Participants are created on the fly — no setup needed.'}
-                      </p>
-                    </Section>
+                    }>
 
-                    {/* Participants — manual mode only */}
-                    {detectionMode === 'manual' && (
-                      <Section title={`Participants${teams.length ? ` (${teams.length})` : ''}`}
-                        subtitle="Add each team, candidate, or presenter.">
-                        <div style={{ borderTop: teams.length > 0 ? '1px solid var(--border)' : undefined }}>
-                          {teams.map((team, i) => (
-                            <div key={team.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                              {editingTeam?.id === team.id ? (
-                                <div className="py-4 space-y-2">
-                                  <Input value={editingTeam.name} onChange={v => setEditingTeam(p => p ? { ...p, name: v } : null)}
-                                    placeholder="Name" autoFocus onEnter={saveTeamEdit} />
-                                  <Input value={editingTeam.description}
-                                    onChange={v => setEditingTeam(p => p ? { ...p, description: v } : null)}
-                                    placeholder="Description (optional)" />
-                                  <div className="flex gap-2 justify-end pt-1">
-                                    <Btn onClick={() => setEditingTeam(null)} variant="ghost" size="sm">Cancel</Btn>
-                                    <Btn onClick={saveTeamEdit} size="sm" disabled={!editingTeam.name.trim()}>Save</Btn>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="py-3.5 flex items-center gap-3">
-                                  <ReorderBtns onUp={() => moveTeam(i, 'up')} onDown={() => moveTeam(i, 'down')}
-                                    canUp={i > 0} canDown={i < teams.length - 1} />
-                                  <div className="flex-1 min-w-0 cursor-pointer"
-                                    onClick={() => setEditingTeam({ id: team.id, name: team.name, description: team.description || '' })}>
-                                    <p className="text-sm font-medium hover:underline underline-offset-2">{team.name}</p>
-                                    {team.description && <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{team.description}</p>}
-                                  </div>
-                                  {confirmReset === team.id ? (
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Reset scores?</span>
-                                      <button onClick={() => resetTeamScores(team.id)} className="text-sm px-2 py-1 rounded-lg font-medium"
-                                        style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
-                                        Yes
-                                      </button>
-                                      <button onClick={() => setConfirmReset(null)} className="text-sm px-2 py-1 rounded-lg"
-                                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                                        No
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <button onClick={() => setConfirmReset(team.id)}
-                                      className="p-1.5 rounded-lg transition-all shrink-0"
-                                      title="Reset scores for this participant"
-                                      style={{ color: 'var(--text-muted)' }}
-                                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fbbf24'; (e.currentTarget as HTMLElement).style.background = 'rgba(251,191,36,0.1)' }}
-                                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                                        <path d="M3 3v5h5" />
-                                      </svg>
-                                    </button>
-                                  )}
-                                  <InlineDeleteBtn
-                                    isConfirming={confirmDelete?.id === team.id && confirmDelete.type === 'team'}
-                                    onRequest={() => setConfirmDelete({ type: 'team', id: team.id })}
-                                    onConfirm={() => deleteTeam(team.id)}
-                                    onCancel={() => setConfirmDelete(null)}
-                                  />
+                    <AnimatePresence>
+                      {confirmAutoGenerate && (
+                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                          className="mb-4 p-3 rounded-xl flex items-center gap-3"
+                          style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid var(--border-hover)' }}>
+                          <SparkleIcon spinning={false} />
+                          <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>
+                            Replace {criteria.length} existing criteria with AI-generated ones?
+                          </span>
+                          <button onClick={() => generateCriteriaSet(true)}
+                            className="text-sm px-3 py-1 rounded-lg font-medium"
+                            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                            Replace
+                          </button>
+                          <button onClick={() => setConfirmAutoGenerate(false)} className="text-sm"
+                            style={{ color: 'var(--text-muted)' }}>
+                            Cancel
+                          </button>
+                        </motion.div>
+                      )}
+                      {confirmReplaceTemplate && (
+                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                          className="mb-4 p-3 rounded-xl flex items-center gap-3"
+                          style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
+                          <span className="text-sm flex-1" style={{ color: '#fbbf24' }}>
+                            Replace {criteria.length} existing criteria?
+                          </span>
+                          <button onClick={() => applyTemplate(confirmReplaceTemplate)}
+                            className="text-sm px-3 py-1 rounded-lg font-medium"
+                            style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
+                            Replace
+                          </button>
+                          <button onClick={() => setConfirmReplaceTemplate(null)} className="text-sm"
+                            style={{ color: 'var(--text-muted)' }}>
+                            Cancel
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Criteria list */}
+                    <div style={{ borderTop: criteria.length > 0 ? '1px solid var(--border)' : undefined }}>
+                      {criteria.map((c, i) => (
+                        <div key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          {editingCriteria?.id === c.id ? (
+                            <div className="py-4 space-y-3">
+                              <Input value={editingCriteria.name}
+                                onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
+                                placeholder="Name" autoFocus />
+                              {editingCriteria.name.trim() && (
+                                <div className="flex justify-end">
+                                  <button onClick={generateEditCriteriaDesc} disabled={generatingEditDesc}
+                                    className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
+                                    style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                                    <SparkleIcon spinning={generatingEditDesc} />
+                                    {generatingEditDesc ? 'Generating…' : 'AI fill description'}
+                                  </button>
                                 </div>
                               )}
-                            </div>
-                          ))}
-                          {teams.length === 0 && (
-                            <p className="text-sm py-3" style={{ color: 'var(--text-muted)' }}>No participants yet</p>
-                          )}
-                        </div>
-
-                        {/* Add participant — progressive disclosure */}
-                        <div className="mt-4 space-y-2">
-                          <Input value={newTeamName} onChange={setNewTeamName}
-                            placeholder="Add a participant — e.g. Team Alpha" onEnter={createTeam} />
-                          {newTeamName.trim() && (
-                            <>
-                              <Input value={newTeamDesc} onChange={setNewTeamDesc}
-                                placeholder="Short description (optional)" />
-                              <div className="flex justify-end pt-1">
-                                <Btn onClick={createTeam} disabled={!newTeamName.trim()}>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                                  </svg>
-                                  Add
-                                </Btn>
+                              <Textarea value={editingCriteria.description}
+                                onChange={v => setEditingCriteria(p => p ? { ...p, description: v } : null)}
+                                rows={3} placeholder="Scoring guide" />
+                              <div className="flex items-center gap-3">
+                                <div className="w-40"><WeightSelect value={editingCriteria.weight}
+                                  onChange={v => setEditingCriteria(p => p ? { ...p, weight: v } : null)} /></div>
+                                <div className="flex-1" />
+                                <Btn onClick={() => setEditingCriteria(null)} variant="ghost" size="sm">Cancel</Btn>
+                                <Btn onClick={saveCriteriaEdit} size="sm" disabled={!editingCriteria.name.trim()}>Save</Btn>
                               </div>
-                            </>
-                          )}
-                        </div>
-                      </Section>
-                    )}
-
-                    {/* API Keys */}
-                    <Section title="API Keys" subtitle="Stored per-user, never shared.">
-                      <div style={{ borderTop: '1px solid var(--border)' }}>
-                        {apiKeySettings.length === 0 ? (
-                          <p className="text-sm py-4" style={{ color: 'var(--text-muted)' }}>Loading…</p>
-                        ) : apiKeySettings.map((setting) => (
-                          <div key={setting.key} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <div className="py-4 flex items-center gap-3">
-                              <div className="flex-1 min-w-0">
+                            </div>
+                          ) : (
+                            <div className="py-3.5 flex items-start gap-3">
+                              <ReorderBtns onUp={() => moveCriteria(i, 'up')} onDown={() => moveCriteria(i, 'down')}
+                                canUp={i > 0} canDown={i < criteria.length - 1} />
+                              <div className="flex-1 min-w-0 cursor-pointer"
+                                onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
                                 <div className="flex items-center gap-2 mb-0.5">
-                                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{setting.label}</p>
-                                  <span className="text-xs px-1.5 py-0.5 rounded font-medium"
-                                    style={{
-                                      background: setting.isSet ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
-                                      color: setting.isSet ? '#4ade80' : '#f87171',
-                                    }}>
-                                    {setting.isSet ? 'saved' : 'not set'}
-                                  </span>
+                                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
+                                  {c.weight !== 1 && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                                      style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                                      ×{c.weight}
+                                    </span>
+                                  )}
                                 </div>
-                                <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>
-                                  {setting.isSet ? setting.preview : setting.hint}
-                                </p>
+                                {c.description && (
+                                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{c.description}</p>
+                                )}
                               </div>
-                              <button
-                                onClick={() => { setEditingKey(setting.key === editingKey ? null : setting.key); setKeyDraft('') }}
-                                className="text-sm px-3 py-1.5 rounded-lg shrink-0 transition-all"
-                                style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                                {editingKey === setting.key ? 'Cancel' : setting.isSet ? 'Update' : 'Set'}
-                              </button>
+                              <InlineDeleteBtn
+                                isConfirming={confirmDelete?.id === c.id && confirmDelete.type === 'criteria'}
+                                onRequest={() => setConfirmDelete({ type: 'criteria', id: c.id })}
+                                onConfirm={() => deleteCriteria(c.id)}
+                                onCancel={() => setConfirmDelete(null)}
+                              />
                             </div>
-                            <AnimatePresence>
-                              {editingKey === setting.key && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                                  exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                  <div className="pb-4 flex gap-2">
-                                    <input
-                                      type="password" value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
-                                      placeholder={`Paste ${setting.label}…`} autoFocus
-                                      className="flex-1 text-sm px-4 py-2.5 rounded-xl font-mono"
-                                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }}
-                                      onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-                                      onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-                                      onKeyDown={async e => { if (e.key === 'Enter' && keyDraft.trim()) await saveApiKey(setting.key) }}
-                                    />
-                                    <button onClick={() => saveApiKey(setting.key)} disabled={keySaving || !keyDraft.trim()}
-                                      className="text-sm px-4 py-2.5 rounded-xl font-medium shrink-0"
-                                      style={{ background: keyDraft.trim() ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: keyDraft.trim() ? 'white' : 'var(--text-muted)', opacity: keySaving ? 0.6 : 1 }}>
-                                      {keySaving ? 'Saving…' : 'Save'}
-                                    </button>
-                                    {setting.isSet && (
-                                      <button onClick={() => removeApiKey(setting.key)}
-                                        className="text-sm px-3 py-2.5 rounded-xl shrink-0"
-                                        style={{ color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                        Remove
-                                      </button>
-                                    )}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        ))}
-                      </div>
-                    </Section>
-
-                    {/* External links */}
-                    <div className="flex flex-col gap-3 pb-8">
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { label: 'Anthropic Console', url: 'https://console.anthropic.com' },
-                          { label: 'Deepgram Console', url: 'https://console.deepgram.com' },
-                        ].map(({ label, url }) => (
-                          <a key={url} href={url} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg transition-all"
-                            style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                              <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                            </svg>
-                            {label}
-                          </a>
-                        ))}
-                      </div>
-                      <button onClick={() => setShowEnvVars(v => !v)}
-                        className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                          style={{ transform: showEnvVars ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                        Env vars
-                      </button>
-                      <AnimatePresence>
-                        {showEnvVars && (
-                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                            <div className="rounded-xl overflow-hidden divide-y" style={{ border: '1px solid var(--border)' }}>
-                              {[
-                                { key: 'NEXT_PUBLIC_SUPABASE_URL', hint: 'Project Settings → API' },
-                                { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', hint: 'Public key, safe for browser' },
-                                { key: 'SUPABASE_SERVICE_ROLE_KEY', hint: 'Server-only, never in browser' },
-                                { key: 'DEEPGRAM_API_KEY', hint: 'console.deepgram.com' },
-                                { key: 'DEEPGRAM_PROJECT_ID', hint: 'Optional — enables temporary keys' },
-                                { key: 'ANTHROPIC_API_KEY', hint: 'console.anthropic.com' },
-                              ].map(({ key, hint }) => (
-                                <div key={key} className="px-4 py-3 flex items-center justify-between gap-4">
-                                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{hint}</p>
-                                  <code className="text-sm px-2 py-1 rounded font-mono shrink-0"
-                                    style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                                    {key}
-                                  </code>
-                                </div>
-                              ))}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                          )}
+                        </div>
+                      ))}
+                      {criteria.length === 0 && (
+                        <p className="text-sm py-3" style={{ color: 'var(--text-muted)' }}>
+                          No criteria yet — load a template above or add one below.
+                        </p>
+                      )}
                     </div>
 
-                  </div>
-                </div>
+                    {/* Add criterion */}
+                    <div className="mt-4 space-y-3">
+                      <Input value={newCritName} onChange={setNewCritName}
+                        placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
+                      {newCritName.trim() && (
+                        <>
+                          <div className="flex justify-end">
+                            <button onClick={generateNewCriteriaDesc} disabled={generatingNewDesc}
+                              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium disabled:opacity-50 transition-all"
+                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                              <SparkleIcon spinning={generatingNewDesc} />
+                              {generatingNewDesc ? 'Generating…' : 'AI fill description'}
+                            </button>
+                          </div>
+                          <Textarea value={newCritDesc} onChange={setNewCritDesc} rows={3}
+                            placeholder="Scoring guide — the more specific the better." />
+                          <div className="flex items-center gap-3">
+                            <div className="w-40"><WeightSelect value={newCritWeight} onChange={setNewCritWeight} /></div>
+                            <Btn onClick={createCriteria} disabled={!newCritName.trim()}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                              </svg>
+                              Add
+                            </Btn>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </Section>
 
+                  {/* Settings — collapsible */}
+                  <div>
+                    <button
+                      onClick={() => setShowSettings(v => !v)}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all"
+                      style={{
+                        background: showSettings ? 'var(--bg-card)' : 'rgba(255,255,255,0.02)',
+                        border: '1px solid var(--border)',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                      onMouseLeave={e => { if (!showSettings) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                      <div className="flex items-center gap-3">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                          style={{ color: 'var(--text-muted)' }}>
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2" />
+                        </svg>
+                        <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Settings</span>
+                        {apiKeySettings.length > 0 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                            style={{
+                              background: keysSet === keysTotal ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
+                              color: keysSet === keysTotal ? '#4ade80' : '#f87171',
+                            }}>
+                            {keysSet}/{keysTotal} keys set
+                          </span>
+                        )}
+                      </div>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                        style={{ color: 'var(--text-muted)', transform: showSettings ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
+
+                    <AnimatePresence>
+                      {showSettings && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden">
+                          <div className="pt-4 space-y-6 pb-8">
+
+                            {/* API Keys */}
+                            <div>
+                              <p className="text-[11px] font-semibold tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>
+                                API Keys — stored per-user, never shared
+                              </p>
+                              <div style={{ borderTop: '1px solid var(--border)' }}>
+                                {apiKeySettings.length === 0 ? (
+                                  <p className="text-sm py-4" style={{ color: 'var(--text-muted)' }}>Loading…</p>
+                                ) : apiKeySettings.map((setting) => (
+                                  <div key={setting.key} style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <div className="py-4 flex items-center gap-3">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{setting.label}</p>
+                                          <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                                            style={{
+                                              background: setting.isSet ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
+                                              color: setting.isSet ? '#4ade80' : '#f87171',
+                                            }}>
+                                            {setting.isSet ? 'saved' : 'not set'}
+                                          </span>
+                                        </div>
+                                        <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>
+                                          {setting.isSet ? setting.preview : setting.hint}
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() => { setEditingKey(setting.key === editingKey ? null : setting.key); setKeyDraft('') }}
+                                        className="text-sm px-3 py-1.5 rounded-lg shrink-0 transition-all"
+                                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                                        {editingKey === setting.key ? 'Cancel' : setting.isSet ? 'Update' : 'Set'}
+                                      </button>
+                                    </div>
+                                    <AnimatePresence>
+                                      {editingKey === setting.key && (
+                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                                          exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                          <div className="pb-4 flex gap-2">
+                                            <input
+                                              type="password" value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
+                                              placeholder={`Paste ${setting.label}…`} autoFocus
+                                              className="flex-1 text-sm px-4 py-2.5 rounded-xl font-mono"
+                                              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }}
+                                              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+                                              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                                              onKeyDown={async e => { if (e.key === 'Enter' && keyDraft.trim()) await saveApiKey(setting.key) }}
+                                            />
+                                            <button onClick={() => saveApiKey(setting.key)} disabled={keySaving || !keyDraft.trim()}
+                                              className="text-sm px-4 py-2.5 rounded-xl font-medium shrink-0"
+                                              style={{ background: keyDraft.trim() ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: keyDraft.trim() ? 'white' : 'var(--text-muted)', opacity: keySaving ? 0.6 : 1 }}>
+                                              {keySaving ? 'Saving…' : 'Save'}
+                                            </button>
+                                            {setting.isSet && (
+                                              <button onClick={() => removeApiKey(setting.key)}
+                                                className="text-sm px-3 py-2.5 rounded-xl shrink-0"
+                                                style={{ color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                                Remove
+                                              </button>
+                                            )}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* External links + env vars */}
+                            <div className="space-y-3">
+                              <p className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+                                Resources
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { label: 'Anthropic Console', url: 'https://console.anthropic.com' },
+                                  { label: 'Deepgram Console', url: 'https://console.deepgram.com' },
+                                ].map(({ label, url }) => (
+                                  <a key={url} href={url} target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg transition-all"
+                                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                      <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                                    </svg>
+                                    {label}
+                                  </a>
+                                ))}
+                              </div>
+                              <button onClick={() => setShowEnvVars(v => !v)}
+                                className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                                  style={{ transform: showEnvVars ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
+                                  <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                                Env vars
+                              </button>
+                              <AnimatePresence>
+                                {showEnvVars && (
+                                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                    <div className="rounded-xl overflow-hidden divide-y" style={{ border: '1px solid var(--border)' }}>
+                                      {[
+                                        { key: 'NEXT_PUBLIC_SUPABASE_URL', hint: 'Project Settings → API' },
+                                        { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', hint: 'Public key, safe for browser' },
+                                        { key: 'SUPABASE_SERVICE_ROLE_KEY', hint: 'Server-only, never in browser' },
+                                        { key: 'DEEPGRAM_API_KEY', hint: 'console.deepgram.com' },
+                                        { key: 'DEEPGRAM_PROJECT_ID', hint: 'Optional — enables temporary keys' },
+                                        { key: 'ANTHROPIC_API_KEY', hint: 'console.anthropic.com' },
+                                      ].map(({ key, hint }) => (
+                                        <div key={key} className="px-4 py-3 flex items-center justify-between gap-4">
+                                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{hint}</p>
+                                          <code className="text-sm px-2 py-1 rounded font-mono shrink-0"
+                                            style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                                            {key}
+                                          </code>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                </div>
               </div>
             )}
           </main>

@@ -21,6 +21,7 @@ export default function CollectPage() {
 
   const { peers } = useSessionPresence(session?.id ?? null, deviceId, 'collector', isRecording)
   const judgeOnline = peers.some((p) => p.role === 'judge')
+  const judgeRecording = peers.some((p) => p.role === 'judge' && p.isRecording)
   const otherCollectors = peers.filter((p) => p.role === 'collector')
 
   useEffect(() => {
@@ -151,9 +152,15 @@ export default function CollectPage() {
             </div>
 
             {/* Big record button */}
+            {!judgeRecording && !isRecording && (
+              <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+                Waiting for the judge to start recording…
+              </p>
+            )}
+
             <motion.button
               onClick={isRecording ? stop : start}
-              disabled={isConnecting || !activeTeam}
+              disabled={isConnecting || !activeTeam || (!isRecording && !judgeRecording)}
               whileTap={{ scale: 0.94 }}
               className="relative w-28 h-28 rounded-full flex flex-col items-center justify-center gap-2 font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{

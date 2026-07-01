@@ -18,6 +18,7 @@ export interface Team {
   name: string
   description: string | null
   order_index: number
+  summary: string | null
   created_at: string
 }
 

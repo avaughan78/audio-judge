@@ -10,7 +10,7 @@ Real-time AI scoring for hackathons, pitch competitions, and structured intervie
 - **AI scoring** — every ~40 words (or every 12 seconds), Claude Haiku evaluates the transcript against your criteria and writes back scores + reasoning to the database
 - **Realtime display** — a separate projection-optimised page updates live via Supabase Realtime: animated score bars, an overall circular gauge, and a live transcript ticker
 - **Per-user isolation** — each account has its own events, participants, criteria, and API keys; nothing is shared between users
-- **Manual or automatic mode** — in manual mode you tap to select each presenter; in automatic mode the AI detects applause/introductions and switches presenters on its own
+- **Punctuate** — a single button snapshots the current session (scores + AI summary) and starts a fresh recording slot (Session 1, Session 2…) without interrupting the audio stream
 
 ---
 
@@ -34,9 +34,11 @@ Real-time AI scoring for hackathons, pitch competitions, and structured intervie
 
 | Route | Purpose |
 |---|---|
-| `/` | Judge view — transcription controls, live score bars, AI summary |
-| `/display` | Projector view — full-screen scores, team name, live ticker |
-| `/admin` | Setup — events, participants, criteria, API keys |
+| `/` | Judge view — transcription controls, live score bars, AI summary, Punctuate |
+| `/display` | Projector view — full-screen scores, session name, live ticker |
+| `/collect` | Collector view — additional mic devices contribute audio to the transcript |
+| `/records` | History view — all events with per-session scores and summaries |
+| `/admin` | Setup — events, scoring criteria, API keys |
 | `/login` | GitHub OAuth sign-in |
 
 ---
@@ -95,7 +97,7 @@ The app ships with `railway.toml` and `nixpacks.toml`. Set the same environment 
 ## Database schema (key tables)
 
 ```
-sessions           id, user_id, name, brief, is_active, active_team_id, theme_id, detection_mode
+sessions           id, user_id, name, brief, is_active, active_team_id, theme_id
 teams              id, session_id, name, description, order_index, summary
 criteria           id, session_id, name, description, weight, order_index
 scores             id, session_id, team_id, criteria_id, score, reasoning, updated_at
@@ -109,4 +111,4 @@ RLS policies ensure every row is scoped to the creating user.
 
 ## Themes
 
-Four built-in themes selectable from the top bar: **Midnight** (default), **Neon**, **Aurora**, **Ember**. Theme choice persists in `localStorage` and syncs to the active session so the display page matches.
+Five built-in themes selectable from the top bar: **Midnight** (default), **Neon**, **Aurora**, **Ember**, **Daylight**. Theme choice persists in `localStorage` and syncs to the active session so the display page matches.

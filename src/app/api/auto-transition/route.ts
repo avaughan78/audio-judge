@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const newName = detectedName?.trim() || `Presenter ${nextNumber}`
+  const newName = detectedName?.trim() || `Session ${nextNumber}`
 
   const { data: newTeam, error } = await supabase
     .from('teams')
