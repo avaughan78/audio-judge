@@ -4,12 +4,13 @@ import { useRef, useCallback } from 'react'
 import { useAppStore } from '@/lib/store'
 import { createClient as createSupabaseClient } from '@/lib/supabase'
 import { getDeviceId } from '@/lib/deviceId'
+import type { CaptureMode } from './useCollectorCapture'
 
 const WORDS_PER_CYCLE = 40
 const CYCLE_INTERVAL_MS = 12_000
 const MAX_BUFFER_WORDS = 8_000
 
-export function useAudioCapture() {
+export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const deviceId = useRef(getDeviceId())
   const connectionRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -121,10 +122,20 @@ export function useAudioCapture() {
     stoppedRef.current = false
     setConnecting(true)
     try {
-      const [tokenData, stream] = await Promise.all([
-        fetch('/api/deepgram-token').then((r) => r.json()),
-        navigator.mediaDevices.getUserMedia({ audio: true, video: false }),
-      ])
+      let stream: MediaStream
+      let tokenData: any
+      if (captureMode === 'online') {
+        ;[stream, tokenData] = await Promise.all([
+          navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }),
+          fetch('/api/deepgram-token').then((r) => r.json()),
+        ])
+        stream.getVideoTracks().forEach((t) => t.stop())
+      } else {
+        ;[tokenData, stream] = await Promise.all([
+          fetch('/api/deepgram-token').then((r) => r.json()),
+          navigator.mediaDevices.getUserMedia({ audio: true, video: false }),
+        ])
+      }
 
       if (tokenData.error) throw new Error(`Deepgram token error: ${tokenData.error}`)
       const key: string = tokenData.key

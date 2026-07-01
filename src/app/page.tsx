@@ -12,6 +12,7 @@ import { RecordingControl } from '@/components/RecordingControl'
 import { ThemeSelector, ThemeProvider } from '@/components/ThemeSelector'
 import { useAudioCapture } from '@/hooks/useAudioCapture'
 import { useSessionPresence } from '@/hooks/useSessionPresence'
+import type { CaptureMode } from '@/hooks/useCollectorCapture'
 import { getDeviceId } from '@/lib/deviceId'
 
 export default function JudgePage() {
@@ -27,7 +28,15 @@ export default function JudgePage() {
   const [confirmPunctuate, setConfirmPunctuate] = useState(false)
   const [isPunctuating, setIsPunctuating] = useState(false)
   const [mobileTab, setMobileTab] = useState<'scores' | 'summary'>('scores')
-  const { start, stop, punctuate } = useAudioCapture()
+  const [captureMode, setCaptureMode] = useState<CaptureMode>(() => {
+    try { return (localStorage.getItem('aj_capture_mode') as CaptureMode) ?? 'local' } catch { return 'local' }
+  })
+  const { start, stop, punctuate } = useAudioCapture(captureMode)
+
+  const setMode = (m: CaptureMode) => {
+    setCaptureMode(m)
+    try { localStorage.setItem('aj_capture_mode', m) } catch {}
+  }
   const deviceId = getDeviceId()
   const { peers } = useSessionPresence(session?.id ?? null, deviceId, 'judge', isRecording)
   const collectors = peers.filter((p) => p.role === 'collector' && p.isRecording)
@@ -296,7 +305,35 @@ export default function JudgePage() {
                 )}
               </AnimatePresence>
 
-              <div className="ml-auto shrink-0">
+              {/* Capture mode toggle */}
+              <div className="ml-auto shrink-0 flex items-center gap-2">
+                <div className="flex rounded-lg overflow-hidden text-xs font-medium shrink-0"
+                  style={{ border: '1px solid var(--border)', opacity: isRecording ? 0.4 : 1, pointerEvents: isRecording ? 'none' : 'auto' }}>
+                  {([
+                    { value: 'local' as const, label: 'Local', icon: (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
+                      </svg>
+                    )},
+                    { value: 'online' as const, label: 'Meeting', icon: (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <rect x="2" y="7" width="15" height="12" rx="2" />
+                        <path d="M17 11l4-3v8l-4-3" />
+                      </svg>
+                    )},
+                  ]).map(({ value, label, icon }) => (
+                    <button key={value} onClick={() => setMode(value)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 transition-all"
+                      style={{
+                        background: captureMode === value ? 'var(--accent-dim)' : 'transparent',
+                        color: captureMode === value ? 'var(--accent)' : 'var(--text-muted)',
+                        borderRight: value === 'local' ? '1px solid var(--border)' : 'none',
+                      }}>
+                      {icon}{label}
+                    </button>
+                  ))}
+                </div>
                 <RecordingControl compact onStart={start} onStop={stop} />
               </div>
             </div>
