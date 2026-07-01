@@ -100,18 +100,21 @@ function LoginForm() {
       </div>
 
       {/* Nav */}
-      <nav style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 40px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <nav style={{ position: 'relative', zIndex: 10, display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '18px 40px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div />
         <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
           <img src="/app-icon.svg" alt="" style={{ width: '26px', height: '26px', borderRadius: '7px' }} />
           <span style={{ fontWeight: 700, fontSize: '14px', letterSpacing: '-0.01em' }}>AudioJudge</span>
         </div>
-        <button onClick={handleGitHubSignIn} disabled={loading}
-          style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 15px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.09)', cursor: 'pointer', transition: 'all 0.15s' }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.09)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.09)' }}>
-          {GITHUB_ICON}
-          {loading ? 'Redirecting…' : 'Sign in'}
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={handleGitHubSignIn} disabled={loading}
+            style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 15px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.09)', cursor: 'pointer', transition: 'all 0.15s' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.09)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.09)' }}>
+            {GITHUB_ICON}
+            {loading ? 'Redirecting…' : 'Sign in'}
+          </button>
+        </div>
       </nav>
 
       {/* Hero */}
