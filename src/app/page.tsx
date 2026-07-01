@@ -17,7 +17,7 @@ import type { CaptureMode } from '@/hooks/useCollectorCapture'
 import { getDeviceId } from '@/lib/deviceId'
 
 export default function JudgePage() {
-  const { session, setSession, setTeams, setCriteria, updateScore, setThemeId, setActiveTeam, setScores } = useAppStore()
+  const { session, setSession, setTeams, setCriteria, updateScore, setActiveTeam, setScores } = useAppStore()
   const activeTeam = useAppStore((s) => s.activeTeam)
   const teams = useAppStore((s) => s.teams)
   const isRecording = useAppStore((s) => s.isRecording)
@@ -75,7 +75,6 @@ export default function JudgePage() {
 
       if (!sess) return
       setSession(sess)
-      if (sess.theme_id) setThemeId(sess.theme_id)
 
       const [{ data: loadedTeams }, { data: criteria }] = await Promise.all([
         supabase.from('teams').select('*').eq('session_id', sess.id).order('order_index'),
@@ -110,7 +109,6 @@ export default function JudgePage() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions' }, (payload: any) => {
         if (payload.new?.is_active) {
           setSession(payload.new)
-          if (payload.new.theme_id) setThemeId(payload.new.theme_id)
         }
       })
       .subscribe()

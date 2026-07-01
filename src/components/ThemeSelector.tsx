@@ -4,25 +4,18 @@ import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAppStore } from '@/lib/store'
 import { themes, applyTheme, themeMap } from '@/lib/themes'
-import { createClient } from '@/lib/supabase'
 
 export function ThemeSelector() {
   const themeId = useAppStore((s) => s.themeId)
-  const session = useAppStore((s) => s.session)
   const setThemeId = useAppStore((s) => s.setThemeId)
 
-  // Apply theme on mount and when themeId changes
   useEffect(() => {
     applyTheme(themeMap[themeId])
   }, [themeId])
 
-  const handleSelect = async (id: typeof themeId) => {
+  const handleSelect = (id: typeof themeId) => {
     setThemeId(id)
     applyTheme(themeMap[id])
-    if (session) {
-      const supabase = createClient()
-      await supabase.from('sessions').update({ theme_id: id }).eq('id', session.id)
-    }
   }
 
   return (
