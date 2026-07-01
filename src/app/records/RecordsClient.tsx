@@ -94,7 +94,7 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
                 return (
                   <div key={c.id} className="text-center">
                     <div className="text-xs font-bold tabular-nums" style={getScoreStyle(score)}>{score}</div>
-                    <div className="text-[9px] truncate max-w-[48px]" style={{ color: 'var(--text-muted)' }}>{c.name}</div>
+                    <div className="text-xs truncate max-w-[48px]" style={{ color: 'var(--text-muted)' }}>{c.name}</div>
                   </div>
                 )
               })}
@@ -104,7 +104,7 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
               <div className="w-px h-6 mx-1" style={{ background: 'var(--border)' }} />
               <div className="text-center">
                 <div className="text-sm font-black tabular-nums" style={overallStyle}>{weighted}</div>
-                <div className="text-[9px]" style={{ color: 'var(--text-muted)' }}>Overall</div>
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Overall</div>
               </div>
             </div>
           ) : (
@@ -130,7 +130,7 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
               {/* Summary */}
               {team.summary && (
                 <div className="pt-4">
-                  <p className="text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Summary</p>
+                  <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Summary</p>
                   <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{team.summary}</p>
                 </div>
               )}
@@ -138,7 +138,7 @@ function TeamCard({ team, criteria, index }: { team: Team & { scores: Score[] };
               {/* Criteria scores */}
               {criteria.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-bold tracking-widest uppercase mb-3 pt-2" style={{ color: 'var(--text-muted)' }}>Scores</p>
+                  <p className="text-xs font-bold tracking-widest uppercase mb-3 pt-2" style={{ color: 'var(--text-muted)' }}>Scores</p>
                   <div className="space-y-3">
                     {criteria.map(c => {
                       const scoreEntry = team.scores.find(s => s.criteria_id === c.id)
@@ -350,7 +350,7 @@ export default function RecordsClient() {
                               <>
                                 {session.brief && (
                                   <div className="px-1 py-3">
-                                    <p className="text-[10px] font-bold tracking-widest uppercase mb-1.5" style={{ color: 'var(--text-muted)' }}>Context</p>
+                                    <p className="text-xs font-bold tracking-widest uppercase mb-1.5" style={{ color: 'var(--text-muted)' }}>Context</p>
                                     <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{session.brief}</p>
                                   </div>
                                 )}

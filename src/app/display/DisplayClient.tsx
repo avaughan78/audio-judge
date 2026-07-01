@@ -307,9 +307,9 @@ export default function DisplayClient() {
 
       {/* Transcript ticker */}
       {latestTranscript && (
-        <div className="absolute bottom-0 inset-x-0 px-12 py-3" style={{ borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
+        <div className="absolute bottom-0 inset-x-0 px-12 py-3" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-4 overflow-hidden">
-            <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-xs font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
               Transcript
             </span>
             <AnimatePresence mode="wait">

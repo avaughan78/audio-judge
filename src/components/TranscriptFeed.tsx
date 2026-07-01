@@ -34,7 +34,7 @@ export function TranscriptFeed() {
               <span className="relative inline-flex rounded-full h-2 w-2"
                 style={{ background: 'var(--score-low)' }} />
             </span>
-            <span className="text-[10px] font-bold tracking-widest" style={{ color: 'var(--score-low)' }}>LIVE</span>
+            <span className="text-xs font-bold tracking-widest" style={{ color: 'var(--score-low)' }}>LIVE</span>
           </div>
         )}
       </div>

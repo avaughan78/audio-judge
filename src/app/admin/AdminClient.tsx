@@ -60,7 +60,7 @@ function Input({ value, onChange, placeholder, className = '', onEnter, autoFocu
       placeholder={placeholder} autoFocus={autoFocus}
       onKeyDown={e => { if (e.key === 'Enter' && onEnter) { e.preventDefault(); onEnter() } }}
       className={`w-full px-4 py-2.5 rounded-xl text-sm placeholder:text-[color:var(--text-muted)] focus:outline-none transition-colors ${className}`}
-      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
       onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
       onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
     />
@@ -75,7 +75,7 @@ function Textarea({ value, onChange, placeholder, rows = 4 }: {
       value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder} rows={rows}
       className="w-full px-4 py-3 rounded-xl text-sm placeholder:text-[color:var(--text-muted)] focus:outline-none transition-colors resize-none leading-relaxed"
-      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
       onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
       onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
     />
@@ -86,7 +86,7 @@ function WeightSelect({ value, onChange }: { value: number; onChange: (v: number
   return (
     <select value={value} onChange={e => onChange(parseFloat(e.target.value))}
       className="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition-colors"
-      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text-primary)', appearance: 'none' }}
+      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', appearance: 'none' }}
       onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
       onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}>
       {WEIGHT_OPTIONS.map(o => (
@@ -102,7 +102,7 @@ function Btn({ onClick, children, variant = 'primary', disabled = false, size = 
 }) {
   const styles = {
     primary: { background: 'var(--accent)', color: 'white', border: '1px solid transparent' },
-    ghost: { background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', border: '1px solid var(--border)' },
+    ghost: { background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' },
     danger: { background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' },
   }
   const sizes = { sm: 'text-sm px-3 py-2', md: 'text-sm px-4 py-2', lg: 'text-sm px-5 py-2.5' }
@@ -462,7 +462,7 @@ export default function AdminClient() {
 
         {/* ── Top bar ─────────────────────────────────────────────────── */}
         <header className="shrink-0 flex items-center justify-between px-6 h-14 sticky top-0 z-20"
-          style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)' }}>
+          style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)' }}>
           <div className="flex items-center gap-3">
             <Link href="/" className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--text-muted)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
@@ -525,7 +525,7 @@ export default function AdminClient() {
                   placeholder="New event…"
                   onKeyDown={e => { if (e.key === 'Enter') createSession() }}
                   className="flex-1 px-3 py-2 rounded-lg text-sm placeholder:text-[color:var(--text-muted)] focus:outline-none"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
                   onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
                 />
@@ -925,7 +925,7 @@ export default function AdminClient() {
 
                             {/* API Keys */}
                             <div>
-                              <p className="text-[11px] font-semibold tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>
+                              <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>
                                 API Keys — stored per-user, never shared
                               </p>
                               <div style={{ borderTop: '1px solid var(--border)' }}>
@@ -967,14 +967,14 @@ export default function AdminClient() {
                                               type="password" value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
                                               placeholder={`Paste ${setting.label}…`} autoFocus
                                               className="flex-1 text-sm px-4 py-2.5 rounded-xl font-mono"
-                                              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }}
+                                              style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }}
                                               onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                                               onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                                               onKeyDown={async e => { if (e.key === 'Enter' && keyDraft.trim()) await saveApiKey(setting.key) }}
                                             />
                                             <button onClick={() => saveApiKey(setting.key)} disabled={keySaving || !keyDraft.trim()}
                                               className="text-sm px-4 py-2.5 rounded-xl font-medium shrink-0"
-                                              style={{ background: keyDraft.trim() ? 'var(--accent)' : 'rgba(255,255,255,0.05)', color: keyDraft.trim() ? 'white' : 'var(--text-muted)', opacity: keySaving ? 0.6 : 1 }}>
+                                              style={{ background: keyDraft.trim() ? 'var(--accent)' : 'var(--bg-card)', color: keyDraft.trim() ? 'white' : 'var(--text-muted)', opacity: keySaving ? 0.6 : 1 }}>
                                               {keySaving ? 'Saving…' : 'Save'}
                                             </button>
                                             {setting.isSet && (
@@ -995,7 +995,7 @@ export default function AdminClient() {
 
                             {/* External links + env vars */}
                             <div className="space-y-3">
-                              <p className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+                              <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
                                 Resources
                               </p>
                               <div className="flex flex-wrap gap-2">
@@ -1040,7 +1040,7 @@ export default function AdminClient() {
                                         <div key={key} className="px-4 py-3 flex items-center justify-between gap-4">
                                           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{hint}</p>
                                           <code className="text-sm px-2 py-1 rounded font-mono shrink-0"
-                                            style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                                            style={{ background: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                                             {key}
                                           </code>
                                         </div>

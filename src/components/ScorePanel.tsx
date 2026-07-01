@@ -148,7 +148,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
                       {overall || '—'}
                     </motion.span>
                     {overall > 0 && (
-                      <span className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>/100</span>
+                      <span className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>/100</span>
                     )}
                   </div>
                 </div>
@@ -234,7 +234,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
                       key={overall} initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
                       {overall || '—'}
                     </motion.span>
-                    {overall > 0 && <span className="text-[9px] mt-0.5" style={{ color: 'var(--text-muted)' }}>/100</span>}
+                    {overall > 0 && <span className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>/100</span>}
                   </div>
                 </div>
               </div>

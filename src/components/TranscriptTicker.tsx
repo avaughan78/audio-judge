@@ -15,7 +15,7 @@ export function TranscriptTicker() {
 
   return (
     <div className="shrink-0 flex items-center gap-3 px-5 py-2.5"
-      style={{ borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(8px)', minHeight: '38px' }}>
+      style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)', minHeight: '38px' }}>
       {isRecording && (
         <span className="relative flex h-1.5 w-1.5 shrink-0">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"

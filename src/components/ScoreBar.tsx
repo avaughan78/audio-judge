@@ -80,7 +80,7 @@ export function ScoreBar({ name, description, score, reasoning, weight = 1, inde
             {name}
           </span>
           {weight !== 1 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md shrink-0"
+            <span className="text-xs px-1.5 py-0.5 rounded-md shrink-0"
               style={{ background: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
               ×{weight}
             </span>

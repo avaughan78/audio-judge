@@ -128,7 +128,7 @@ export function RecordingControl({ compact = false, onStart, onStop }: Recording
 
   // Full bar mode (legacy, kept for compatibility)
   return (
-    <div className="relative z-20 shrink-0 px-5 py-3" style={{ borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)' }}>
+    <div className="relative z-20 shrink-0 px-5 py-3" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 min-w-0">
           <AnimatePresence mode="wait">
@@ -168,7 +168,7 @@ export function RecordingControl({ compact = false, onStart, onStop }: Recording
           </AnimatePresence>
 
           {lastJudgedAt > 0 && !isRecording && (
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Last scored {new Date(lastJudgedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}

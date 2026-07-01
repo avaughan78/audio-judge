@@ -44,12 +44,12 @@ export function TranscriptSummary({ fullHeight = false }: { fullHeight?: boolean
             </div>
           )}
           {timeStr && (
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Updated {timeStr}</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Updated {timeStr}</span>
           )}
           {!fullHeight && summary && (
             <button
               onClick={() => setExpanded(e => !e)}
-              className="text-[10px] px-1.5 py-0.5 rounded transition-colors"
+              className="text-xs px-1.5 py-0.5 rounded transition-colors"
               style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>

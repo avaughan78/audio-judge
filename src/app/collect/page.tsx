@@ -84,7 +84,7 @@ export default function CollectPage() {
 
         {/* Header */}
         <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
-          style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(8px)' }}>
+          style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
               style={{ background: 'linear-gradient(135deg, var(--gradient-from), var(--gradient-to))' }}>
@@ -123,7 +123,7 @@ export default function CollectPage() {
 
             {/* Current presenter */}
             <div className="text-center">
-              <p className="text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
                 Now presenting
               </p>
               <AnimatePresence mode="wait">
@@ -262,7 +262,7 @@ export default function CollectPage() {
 
         {/* Live transcript strip */}
         <div className="shrink-0 flex items-center gap-3 px-5 py-2.5 relative z-10"
-          style={{ borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(8px)', minHeight: '38px' }}>
+          style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)', minHeight: '38px' }}>
           {isRecording && (
             <span className="relative flex h-1.5 w-1.5 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--score-low)' }} />

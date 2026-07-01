@@ -264,6 +264,10 @@ export function useAudioCapture() {
     wordCountAtLastJudgeRef.current = 0
     useAppStore.getState().setInterimTranscript('')
     useAppStore.getState().setRecordingStartedAt(null)
+    // Update UI immediately so the button responds at once
+    useAppStore.getState().setConnecting(false)
+    useAppStore.getState().setRecording(false)
+
     await runCycle({ final: true })
     clearBuffer()
 
@@ -281,8 +285,6 @@ export function useAudioCapture() {
         useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
       }
     }
-
-    useAppStore.getState().setRecording(false)
   }, [runCycle, clearBuffer])
 
   // Snapshot the current session: run a final scoring cycle, create the next

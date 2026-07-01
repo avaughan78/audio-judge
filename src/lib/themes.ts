@@ -4,6 +4,8 @@ export interface ThemeVars {
   bg: string
   bgCard: string
   bgCardHover: string
+  bgGlass: string
+  inputBg: string
   border: string
   borderHover: string
   accent: string
@@ -43,6 +45,8 @@ export const themes: Theme[] = [
       bg: '#030711',
       bgCard: 'rgba(255,255,255,0.03)',
       bgCardHover: 'rgba(255,255,255,0.05)',
+      bgGlass: 'rgba(0,0,0,0.3)',
+      inputBg: 'rgba(255,255,255,0.05)',
       border: 'rgba(255,255,255,0.07)',
       borderHover: 'rgba(59,130,246,0.4)',
       accent: '#3b82f6',
@@ -57,7 +61,7 @@ export const themes: Theme[] = [
       glowLow: 'rgba(239,68,68,0.4)',
       textPrimary: '#f1f5f9',
       textSecondary: '#94a3b8',
-      textMuted: '#475569',
+      textMuted: '#64748b',
       gradientFrom: '#3b82f6',
       gradientTo: '#8b5cf6',
       barTrack: 'rgba(255,255,255,0.05)',
@@ -73,6 +77,8 @@ export const themes: Theme[] = [
       bg: '#010201',
       bgCard: 'rgba(57,255,20,0.03)',
       bgCardHover: 'rgba(57,255,20,0.06)',
+      bgGlass: 'rgba(0,0,0,0.3)',
+      inputBg: 'rgba(57,255,20,0.04)',
       border: 'rgba(57,255,20,0.12)',
       borderHover: 'rgba(57,255,20,0.5)',
       accent: '#39ff14',
@@ -87,7 +93,7 @@ export const themes: Theme[] = [
       glowLow: 'rgba(255,45,120,0.45)',
       textPrimary: '#e8ffe4',
       textSecondary: '#86efac',
-      textMuted: '#16a34a',
+      textMuted: '#4ade80',
       gradientFrom: '#39ff14',
       gradientTo: '#00e5ff',
       barTrack: 'rgba(57,255,20,0.08)',
@@ -103,6 +109,8 @@ export const themes: Theme[] = [
       bg: '#07031a',
       bgCard: 'rgba(192,132,252,0.04)',
       bgCardHover: 'rgba(192,132,252,0.07)',
+      bgGlass: 'rgba(0,0,0,0.3)',
+      inputBg: 'rgba(192,132,252,0.05)',
       border: 'rgba(192,132,252,0.1)',
       borderHover: 'rgba(192,132,252,0.5)',
       accent: '#c084fc',
@@ -117,7 +125,7 @@ export const themes: Theme[] = [
       glowLow: 'rgba(251,113,133,0.4)',
       textPrimary: '#faf5ff',
       textSecondary: '#c4b5fd',
-      textMuted: '#7c3aed',
+      textMuted: '#a78bfa',
       gradientFrom: '#c084fc',
       gradientTo: '#2dd4bf',
       barTrack: 'rgba(192,132,252,0.1)',
@@ -133,6 +141,8 @@ export const themes: Theme[] = [
       bg: '#0c0804',
       bgCard: 'rgba(249,115,22,0.04)',
       bgCardHover: 'rgba(249,115,22,0.07)',
+      bgGlass: 'rgba(0,0,0,0.3)',
+      inputBg: 'rgba(249,115,22,0.05)',
       border: 'rgba(249,115,22,0.1)',
       borderHover: 'rgba(249,115,22,0.5)',
       accent: '#f97316',
@@ -147,7 +157,7 @@ export const themes: Theme[] = [
       glowLow: 'rgba(248,113,113,0.4)',
       textPrimary: '#fef3e8',
       textSecondary: '#fb923c',
-      textMuted: '#431407',
+      textMuted: '#c47038',
       gradientFrom: '#f97316',
       gradientTo: '#fbbf24',
       barTrack: 'rgba(249,115,22,0.1)',
@@ -163,6 +173,8 @@ export const themes: Theme[] = [
       bg: '#f8fafc',
       bgCard: 'rgba(0,0,0,0.03)',
       bgCardHover: 'rgba(0,0,0,0.055)',
+      bgGlass: 'rgba(255,255,255,0.85)',
+      inputBg: '#ffffff',
       border: 'rgba(0,0,0,0.09)',
       borderHover: 'rgba(37,99,235,0.45)',
       accent: '#2563eb',
@@ -194,6 +206,8 @@ export function applyTheme(theme: Theme) {
   r.style.setProperty('--bg', v.bg)
   r.style.setProperty('--bg-card', v.bgCard)
   r.style.setProperty('--bg-card-hover', v.bgCardHover)
+  r.style.setProperty('--bg-glass', v.bgGlass)
+  r.style.setProperty('--input-bg', v.inputBg)
   r.style.setProperty('--border', v.border)
   r.style.setProperty('--border-hover', v.borderHover)
   r.style.setProperty('--accent', v.accent)

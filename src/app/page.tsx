@@ -144,7 +144,7 @@ export default function JudgePage() {
 
         {/* Header */}
         <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
-          style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(8px)' }}>
+          style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
               style={{ background: 'linear-gradient(135deg, var(--gradient-from), var(--gradient-to))' }}>
@@ -219,10 +219,10 @@ export default function JudgePage() {
 
             {/* Session + controls strip */}
             <div className="relative shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5"
-              style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
+              style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
 
               {/* Current session label */}
-              <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-xs font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
                 Session
               </span>
               <span className="h-1.5 w-1.5 rounded-full shrink-0"
@@ -266,9 +266,8 @@ export default function JudgePage() {
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <line x1="12" y1="2" x2="12" y2="22" />
-                          <polyline points="17 7 12 2 7 7" />
-                          <polyline points="17 17 12 22 7 17" />
+                          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                          <line x1="4" y1="22" x2="4" y2="15" />
                         </svg>
                         Punctuate
                       </button>
@@ -324,7 +323,7 @@ export default function JudgePage() {
             </AnimatePresence>
 
             {/* Mobile tab bar */}
-            <div className="flex md:hidden shrink-0" style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.15)' }}>
+            <div className="flex md:hidden shrink-0" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
               {(['scores', 'summary'] as const).map(tab => (
                 <button
                   key={tab}
