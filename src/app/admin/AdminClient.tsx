@@ -11,14 +11,13 @@ import { useAppStore } from '@/lib/store'
 // ── Templates ────────────────────────────────────────────────────────────────
 
 interface Template {
-  id: string; name: string; icon: string; tagline: string; brief: string
+  id: string; name: string; icon: string; brief: string
   criteria: { name: string; description: string; weight: number }[]
 }
 
 const TEMPLATES: Template[] = [
   {
     id: 'hackathon', name: 'Hackathon Pitch', icon: '⚡',
-    tagline: 'Score teams on innovation, execution, and clarity',
     brief: `This is a time-boxed hackathon. Teams present a working prototype that solves a real problem — we want to see the product working, not slides about what it might do. Ideas should be genuinely novel, not a thin wrapper on an existing tool. Technical ambition matters, but so does clarity: if you can't explain the problem and solution in 60 seconds, that's a gap. Presentations are 5 minutes followed by Q&A.`,
     criteria: [
       { name: 'Innovation', weight: 1.5, description: 'How original is the idea? Does it approach the problem in a genuinely novel way, or is it incremental? Look for unexpected angles and ideas that challenge assumptions. Penalise obvious extensions of existing products.' },
@@ -30,7 +29,6 @@ const TEMPLATES: Template[] = [
   },
   {
     id: 'interview', name: 'Job Interview', icon: '🎯',
-    tagline: 'Evaluate candidates against role competencies',
     brief: `This is a structured interview. We're evaluating candidates against specific competencies for the role. Listen for concrete examples (STAR format: Situation, Task, Action, Result) rather than abstract claims about skills. Strong candidates show self-awareness, speak about failure honestly, and adapt their communication style to the audience. Generic answers without specifics should score lower even if they sound polished.`,
     criteria: [
       { name: 'Relevant Experience', weight: 1.5, description: 'Have they done genuinely similar work before? Do they give specific, concrete examples rather than speaking in generalities? Vague claims about "leading teams" or "driving impact" without substance score low.' },
@@ -115,21 +113,20 @@ function Btn({ onClick, children, variant = 'primary', disabled = false, size = 
   )
 }
 
+// Flat section — label + spacing, no card wrapper
 function Section({ title, subtitle, children, action }: {
   title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode
 }) {
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-      <div className="flex items-start justify-between gap-4 px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>{title}</h2>
-          {subtitle && <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
+          <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>{title}</p>
+          {subtitle && <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
         </div>
-        {action && <div className="shrink-0 pt-0.5">{action}</div>}
+        {action && <div className="shrink-0">{action}</div>}
       </div>
-      <div className="px-6 py-5">
-        {children}
-      </div>
+      {children}
     </div>
   )
 }
@@ -162,8 +159,9 @@ export default function AdminClient() {
   const [appliedTemplate, setAppliedTemplate] = useState<string | null>(null)
   const [confirmReplaceTemplate, setConfirmReplaceTemplate] = useState<Template | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<{ type: 'criteria' | 'session'; id: string } | null>(null)
-  const [showSettings, setShowSettings] = useState(false)
   const [showEnvVars, setShowEnvVars] = useState(false)
+  const [showOverflow, setShowOverflow] = useState(false)
+  const overflowRef = useRef<HTMLDivElement>(null)
 
   type ApiKeySetting = { key: string; label: string; hint: string; isSet: boolean; source: string; preview: string; updatedAt: string | null }
   const [apiKeySettings, setApiKeySettings] = useState<ApiKeySetting[]>([])
@@ -175,6 +173,16 @@ export default function AdminClient() {
   const [generatingEditDesc, setGeneratingEditDesc] = useState(false)
   const [generatingCriteriaSet, setGeneratingCriteriaSet] = useState(false)
   const [confirmAutoGenerate, setConfirmAutoGenerate] = useState(false)
+
+  // Close overflow on outside click
+  useEffect(() => {
+    if (!showOverflow) return
+    const handler = (e: MouseEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) setShowOverflow(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showOverflow])
 
   // ── Auto-save brief ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -328,9 +336,7 @@ export default function AdminClient() {
     setCriteria(newOrder)
     if (reorderTimer.current) clearTimeout(reorderTimer.current)
     reorderTimer.current = setTimeout(async () => {
-      await Promise.all(
-        newOrder.map((c, i) => supabase.from('criteria').update({ order_index: i }).eq('id', c.id))
-      )
+      await Promise.all(newOrder.map((c, i) => supabase.from('criteria').update({ order_index: i }).eq('id', c.id)))
     }, 500)
   }
 
@@ -412,8 +418,7 @@ export default function AdminClient() {
         setCriteria([])
       }
       const rows = data.criteria.map((c: { name: string; description: string; weight: number }, i: number) => ({
-        session_id: viewedSession.id, name: c.name, description: c.description,
-        weight: c.weight, order_index: i,
+        session_id: viewedSession.id, name: c.name, description: c.description, weight: c.weight, order_index: i,
       }))
       const { data: inserted } = await supabase.from('criteria').insert(rows).select()
       if (inserted) setCriteria(inserted)
@@ -427,7 +432,6 @@ export default function AdminClient() {
     if (!viewedSession) return
     const { data: scores } = await supabase.from('scores').select('*').eq('session_id', viewedSession.id)
     if (!scores?.length) return
-    // Load teams to resolve names
     const { data: teams } = await supabase.from('teams').select('*').eq('session_id', viewedSession.id)
     const headers = ['Session', 'Criterion', 'Score', 'Reasoning', 'Updated At']
     const rows = scores.map((s: any) => {
@@ -445,9 +449,7 @@ export default function AdminClient() {
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
-    a.download = `${viewedSession.name.replace(/[^a-z0-9]/gi, '-')}-scores.csv`
-    a.click()
+    a.href = url; a.download = `${viewedSession.name.replace(/[^a-z0-9]/gi, '-')}-scores.csv`; a.click()
     URL.revokeObjectURL(url)
   }
 
@@ -508,14 +510,13 @@ export default function AdminClient() {
 
         <div className="flex flex-1 overflow-hidden">
 
-          {/* ── Sidebar ───────────────────────────────────────────────── */}
-          <aside className="w-72 shrink-0 flex flex-col overflow-y-auto"
-            style={{ borderRight: '1px solid var(--border)', background: 'var(--bg-card)', height: 'calc(100vh - 56px)', position: 'sticky', top: '56px' }}>
+          {/* ── Sidebar — same bg as main, lighter ──────────────────── */}
+          <aside className="w-60 shrink-0 flex flex-col overflow-y-auto"
+            style={{ borderRight: '1px solid var(--border)', background: 'var(--bg)', height: 'calc(100vh - 56px)', position: 'sticky', top: '56px' }}>
 
             <div className="p-4 space-y-2">
-              <p className="text-sm font-semibold px-1 mb-3" style={{ color: 'var(--text-muted)' }}>Events</p>
+              <p className="text-xs font-semibold tracking-widest uppercase px-1 mb-3" style={{ color: 'var(--text-muted)' }}>Events</p>
 
-              {/* Create new */}
               <div className="flex gap-2">
                 <input
                   value={newSessionName} onChange={e => setNewSessionName(e.target.value)}
@@ -541,8 +542,7 @@ export default function AdminClient() {
                 </div>
               )}
 
-              {/* Event list */}
-              <div className="space-y-1 pt-1">
+              <div className="space-y-0.5 pt-1">
                 {sessions.length === 0 && !dbError && (
                   <p className="text-sm px-1 py-2" style={{ color: 'var(--text-muted)' }}>No events yet</p>
                 )}
@@ -551,27 +551,23 @@ export default function AdminClient() {
                   const isLive = sess.is_active
                   return (
                     <div key={sess.id}
-                      className="group relative rounded-xl transition-all cursor-pointer"
-                      style={{
-                        background: isViewed ? 'var(--accent-dim)' : 'transparent',
-                        border: `1px solid ${isViewed ? 'var(--border-hover)' : 'transparent'}`,
-                      }}
+                      className="group relative rounded-lg transition-all cursor-pointer"
+                      style={{ background: isViewed ? 'var(--accent-dim)' : 'transparent' }}
                       onClick={() => selectEvent(sess)}>
-                      <div className="flex items-center gap-2 px-3 py-2.5">
-                        <span className="h-2 w-2 rounded-full shrink-0"
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <span className="h-1.5 w-1.5 rounded-full shrink-0"
                           style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
-                        <span className="text-sm font-medium flex-1 truncate"
+                        <span className="text-sm flex-1 truncate"
                           style={{ color: isViewed ? 'var(--accent)' : 'var(--text-secondary)' }}>
                           {sess.name}
                         </span>
                         <button
                           onClick={e => { e.stopPropagation(); isLive ? deactivateSession(sess) : activateSession(sess) }}
-                          className="shrink-0 text-xs px-2 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="shrink-0 text-xs px-1.5 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity"
                           style={isLive
                             ? { color: '#4ade80', border: '1px solid rgba(74,222,128,0.35)' }
-                            : { color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                          title={isLive ? 'Deactivate' : 'Make active'}>
-                          {isLive ? 'Active' : 'Activate'}
+                            : { color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                          {isLive ? 'Live' : 'Go live'}
                         </button>
                       </div>
                     </div>
@@ -594,11 +590,11 @@ export default function AdminClient() {
                 </div>
               </div>
             ) : (
-              <div className="max-w-3xl mx-auto px-10 py-10">
+              <div className="max-w-2xl mx-auto px-10 py-10">
 
                 {/* Event header */}
                 <div className="flex items-start justify-between gap-4 mb-10">
-                  <div>
+                  <div className="min-w-0">
                     {editingSessionName ? (
                       <div className="flex items-center gap-2">
                         <input
@@ -617,26 +613,16 @@ export default function AdminClient() {
                       <button className="group flex items-center gap-2 text-left"
                         onClick={() => { setSessionNameDraft(viewedSession.name); setEditingSessionName(true) }}>
                         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{viewedSession.name}</h1>
-                        <svg className="opacity-0 group-hover:opacity-50 transition-opacity" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg className="opacity-0 group-hover:opacity-40 transition-opacity shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
                       </button>
                     )}
                   </div>
+
+                  {/* Primary action + overflow */}
                   <div className="flex items-center gap-2 shrink-0 pt-1">
-                    <button onClick={exportCsv}
-                      className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-xl transition-colors"
-                      style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                      title="Export scores as CSV"
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                      CSV
-                    </button>
                     {viewedSession.is_active ? (
                       <>
                         <button onClick={() => deactivateSession(viewedSession)}
@@ -665,14 +651,73 @@ export default function AdminClient() {
                         Inactive
                       </button>
                     )}
-                    <InlineDeleteBtn
-                      isConfirming={confirmDelete?.id === viewedSession.id && confirmDelete.type === 'session'}
-                      onRequest={() => setConfirmDelete({ type: 'session', id: viewedSession.id })}
-                      onConfirm={() => deleteSession(viewedSession.id)}
-                      onCancel={() => setConfirmDelete(null)}
-                    />
+
+                    {/* ··· overflow menu */}
+                    <div className="relative" ref={overflowRef}>
+                      <button
+                        onClick={() => setShowOverflow(v => !v)}
+                        className="p-1.5 rounded-lg transition-all"
+                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                          <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                        </svg>
+                      </button>
+                      <AnimatePresence>
+                        {showOverflow && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                            transition={{ duration: 0.1 }}
+                            className="absolute right-0 top-full mt-1 z-30 min-w-[140px] rounded-xl py-1 overflow-hidden"
+                            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                            <button onClick={() => { exportCsv(); setShowOverflow(false) }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left"
+                              style={{ color: 'var(--text-secondary)' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                              </svg>
+                              Export CSV
+                            </button>
+                            <button
+                              onClick={() => { setConfirmDelete({ type: 'session', id: viewedSession.id }); setShowOverflow(false) }}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left"
+                              style={{ color: '#f87171' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+                              </svg>
+                              Delete event
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </div>
+
+                {/* Delete confirm banner */}
+                <AnimatePresence>
+                  {confirmDelete?.type === 'session' && confirmDelete.id === viewedSession.id && (
+                    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm mb-6"
+                      style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+                      <span className="flex-1">Delete <strong>{viewedSession.name}</strong> and all its data?</span>
+                      <button onClick={() => deleteSession(viewedSession.id)}
+                        className="px-3 py-1 rounded-lg font-medium text-xs"
+                        style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                        Delete
+                      </button>
+                      <button onClick={() => setConfirmDelete(null)} className="text-xs" style={{ color: 'var(--text-muted)' }}>Cancel</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Warning: editing non-live event */}
                 {!viewedSession.is_active && liveSession && (
@@ -686,7 +731,7 @@ export default function AdminClient() {
                   </div>
                 )}
 
-                <div className="space-y-5">
+                <div className="space-y-8">
 
                   {/* Context */}
                   <Section
@@ -712,40 +757,21 @@ export default function AdminClient() {
                     title={`Scoring Criteria${criteria.length ? ` (${criteria.length})` : ''}`}
                     subtitle="What the AI scores on. Specific descriptions produce more reliable scores."
                     action={
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => generateCriteriaSet()}
-                          disabled={!brief.trim() || generatingCriteriaSet}
-                          title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context above first'}
-                          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
-                          style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-                          <SparkleIcon spinning={generatingCriteriaSet} />
-                          {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
-                        </button>
-                        <div className="w-px h-4" style={{ background: 'var(--border)' }} />
-                        {TEMPLATES.map(t => (
-                          <button key={t.id} onClick={() => handleTemplateClick(t)}
-                            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
-                            style={{
-                              background: appliedTemplate === t.id ? 'var(--accent-dim)' : 'rgba(255,255,255,0.04)',
-                              color: appliedTemplate === t.id ? 'var(--accent)' : 'var(--text-muted)',
-                              border: `1px solid ${appliedTemplate === t.id ? 'var(--border-hover)' : 'var(--border)'}`,
-                            }}>
-                            {t.icon} {t.name}
-                            {appliedTemplate === t.id && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                      <button
+                        onClick={() => generateCriteriaSet()}
+                        disabled={!brief.trim() || generatingCriteriaSet}
+                        title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context above first'}
+                        className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
+                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                        <SparkleIcon spinning={generatingCriteriaSet} />
+                        {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
+                      </button>
                     }>
 
                     <AnimatePresence>
                       {confirmAutoGenerate && (
                         <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                          className="mb-4 p-3 rounded-xl flex items-center gap-3"
+                          className="mb-3 p-3 rounded-xl flex items-center gap-3"
                           style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid var(--border-hover)' }}>
                           <SparkleIcon spinning={false} />
                           <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>
@@ -756,15 +782,14 @@ export default function AdminClient() {
                             style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
                             Replace
                           </button>
-                          <button onClick={() => setConfirmAutoGenerate(false)} className="text-sm"
-                            style={{ color: 'var(--text-muted)' }}>
+                          <button onClick={() => setConfirmAutoGenerate(false)} className="text-sm" style={{ color: 'var(--text-muted)' }}>
                             Cancel
                           </button>
                         </motion.div>
                       )}
                       {confirmReplaceTemplate && (
                         <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                          className="mb-4 p-3 rounded-xl flex items-center gap-3"
+                          className="mb-3 p-3 rounded-xl flex items-center gap-3"
                           style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
                           <span className="text-sm flex-1" style={{ color: '#fbbf24' }}>
                             Replace {criteria.length} existing criteria?
@@ -774,13 +799,35 @@ export default function AdminClient() {
                             style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
                             Replace
                           </button>
-                          <button onClick={() => setConfirmReplaceTemplate(null)} className="text-sm"
-                            style={{ color: 'var(--text-muted)' }}>
+                          <button onClick={() => setConfirmReplaceTemplate(null)} className="text-sm" style={{ color: 'var(--text-muted)' }}>
                             Cancel
                           </button>
                         </motion.div>
                       )}
                     </AnimatePresence>
+
+                    {/* Templates — quick-start label when empty, switch row when populated */}
+                    <div className="flex items-center gap-2 flex-wrap mb-3">
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {criteria.length === 0 ? 'Quick start:' : 'Template:'}
+                      </span>
+                      {TEMPLATES.map(t => (
+                        <button key={t.id} onClick={() => handleTemplateClick(t)}
+                          className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg font-medium transition-all"
+                          style={{
+                            background: appliedTemplate === t.id ? 'var(--accent-dim)' : 'transparent',
+                            color: appliedTemplate === t.id ? 'var(--accent)' : 'var(--text-muted)',
+                            border: `1px solid ${appliedTemplate === t.id ? 'var(--border-hover)' : 'var(--border)'}`,
+                          }}>
+                          {t.icon} {t.name}
+                          {appliedTemplate === t.id && (
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
 
                     {/* Criteria list */}
                     <Reorder.Group as="div" axis="y" values={criteria} onReorder={handleReorder} className="space-y-0.5">
@@ -788,7 +835,7 @@ export default function AdminClient() {
                         <Reorder.Item as="div" key={c.id} value={c} layout="position">
                           {editingCriteria?.id === c.id ? (
                             <div className="p-4 rounded-xl space-y-3 my-1"
-                              style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border-hover)' }}>
+                              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-hover)' }}>
                               <Input value={editingCriteria.name}
                                 onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
                                 placeholder="Name" autoFocus />
@@ -815,8 +862,7 @@ export default function AdminClient() {
                             </div>
                           ) : (
                             <div className="group/row -mx-2 px-2 py-3 rounded-xl flex items-start gap-3 transition-colors"
-                              style={{ background: 'transparent' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card)' }}
                               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
                               <div className="shrink-0 self-center cursor-grab active:cursor-grabbing touch-none py-1"
                                 style={{ color: 'var(--text-muted)' }}>
@@ -850,15 +896,10 @@ export default function AdminClient() {
                           )}
                         </Reorder.Item>
                       ))}
-                      {criteria.length === 0 && (
-                        <p className="text-sm py-1" style={{ color: 'var(--text-muted)' }}>
-                          No criteria yet — load a template above or add one below.
-                        </p>
-                      )}
                     </Reorder.Group>
 
                     {/* Add criterion */}
-                    <div className="mt-5 pt-5 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
+                    <div className="mt-4 pt-4 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
                       <Input value={newCritName} onChange={setNewCritName}
                         placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
                       {newCritName.trim() && (
@@ -887,176 +928,140 @@ export default function AdminClient() {
                     </div>
                   </Section>
 
-                  {/* Settings — collapsible */}
-                  <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                    <button
-                      onClick={() => setShowSettings(v => !v)}
-                      className="w-full flex items-center justify-between px-6 py-4 transition-all"
-                      style={{ borderBottom: showSettings ? '1px solid var(--border)' : 'none' }}>
-                      <div className="flex items-center gap-3">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                          style={{ color: 'var(--text-muted)' }}>
-                          <circle cx="12" cy="12" r="3" />
-                          <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2" />
-                        </svg>
-                        <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Settings</span>
-                        {apiKeySettings.length > 0 && (
-                          <span className="text-xs px-1.5 py-0.5 rounded font-medium"
-                            style={{
-                              background: keysSet === keysTotal ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
-                              color: keysSet === keysTotal ? '#4ade80' : '#f87171',
-                            }}>
-                            {keysSet}/{keysTotal} keys set
-                          </span>
-                        )}
-                      </div>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                        style={{ color: 'var(--text-muted)', transform: showSettings ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
-
-                    <AnimatePresence>
-                      {showSettings && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden">
-                          <div className="px-6 py-5 space-y-6">
-
-                            {/* API Keys */}
-                            <div>
-                              <p className="text-xs font-semibold tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>
-                                API Keys — stored per-user, never shared
-                              </p>
-                              <div style={{ borderTop: '1px solid var(--border)' }}>
-                                {apiKeySettings.length === 0 ? (
-                                  <p className="text-sm py-4" style={{ color: 'var(--text-muted)' }}>Loading…</p>
-                                ) : apiKeySettings.map((setting) => (
-                                  <div key={setting.key} style={{ borderBottom: '1px solid var(--border)' }}>
-                                    <div className="py-4 flex items-center gap-3">
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-0.5">
-                                          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{setting.label}</p>
-                                          <span className="text-xs px-1.5 py-0.5 rounded font-medium"
-                                            style={{
-                                              background: setting.isSet ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
-                                              color: setting.isSet ? '#4ade80' : '#f87171',
-                                            }}>
-                                            {setting.isSet ? 'saved' : 'not set'}
-                                          </span>
-                                        </div>
-                                        <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>
-                                          {setting.isSet ? setting.preview : setting.hint}
-                                        </p>
-                                      </div>
-                                      <button
-                                        onClick={() => { setEditingKey(setting.key === editingKey ? null : setting.key); setKeyDraft('') }}
-                                        className="text-sm px-3 py-1.5 rounded-lg shrink-0 transition-all"
-                                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                                        {editingKey === setting.key ? 'Cancel' : setting.isSet ? 'Update' : 'Set'}
-                                      </button>
-                                    </div>
-                                    <AnimatePresence>
-                                      {editingKey === setting.key && (
-                                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                                          exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                          <div className="pb-4 flex gap-2">
-                                            <input
-                                              type="password" value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
-                                              placeholder={`Paste ${setting.label}…`} autoFocus
-                                              className="flex-1 text-sm px-4 py-2.5 rounded-xl font-mono"
-                                              style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }}
-                                              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-                                              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-                                              onKeyDown={async e => { if (e.key === 'Enter' && keyDraft.trim()) await saveApiKey(setting.key) }}
-                                            />
-                                            <button onClick={() => saveApiKey(setting.key)} disabled={keySaving || !keyDraft.trim()}
-                                              className="text-sm px-4 py-2.5 rounded-xl font-medium shrink-0"
-                                              style={{ background: keyDraft.trim() ? 'var(--accent)' : 'var(--bg-card)', color: keyDraft.trim() ? 'white' : 'var(--text-muted)', opacity: keySaving ? 0.6 : 1 }}>
-                                              {keySaving ? 'Saving…' : 'Save'}
-                                            </button>
-                                            {setting.isSet && (
-                                              <button onClick={() => removeApiKey(setting.key)}
-                                                className="text-sm px-3 py-2.5 rounded-xl shrink-0"
-                                                style={{ color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                                Remove
-                                              </button>
-                                            )}
-                                          </div>
-                                        </motion.div>
-                                      )}
-                                    </AnimatePresence>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* External links + env vars */}
-                            <div className="space-y-3">
-                              <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
-                                Resources
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {[
-                                  { label: 'Anthropic Console', url: 'https://console.anthropic.com' },
-                                  { label: 'Deepgram Console', url: 'https://console.deepgram.com' },
-                                ].map(({ label, url }) => (
-                                  <a key={url} href={url} target="_blank" rel="noopener noreferrer"
-                                    className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg transition-all"
-                                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                                      <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                                    </svg>
-                                    {label}
-                                  </a>
-                                ))}
-                              </div>
-                              <button onClick={() => setShowEnvVars(v => !v)}
-                                className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                                  style={{ transform: showEnvVars ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
-                                  <polyline points="9 18 15 12 9 6" />
-                                </svg>
-                                Env vars
-                              </button>
-                              <AnimatePresence>
-                                {showEnvVars && (
-                                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                    <div className="rounded-xl overflow-hidden divide-y" style={{ border: '1px solid var(--border)' }}>
-                                      {[
-                                        { key: 'NEXT_PUBLIC_SUPABASE_URL', hint: 'Project Settings → API' },
-                                        { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', hint: 'Public key, safe for browser' },
-                                        { key: 'SUPABASE_SERVICE_ROLE_KEY', hint: 'Server-only, never in browser' },
-                                        { key: 'DEEPGRAM_API_KEY', hint: 'console.deepgram.com' },
-                                        { key: 'DEEPGRAM_PROJECT_ID', hint: 'Optional — enables temporary keys' },
-                                        { key: 'ANTHROPIC_API_KEY', hint: 'console.anthropic.com' },
-                                      ].map(({ key, hint }) => (
-                                        <div key={key} className="px-4 py-3 flex items-center justify-between gap-4">
-                                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{hint}</p>
-                                          <code className="text-sm px-2 py-1 rounded font-mono shrink-0"
-                                            style={{ background: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                                            {key}
-                                          </code>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-
-                          </div>
-                        </motion.div>
+                  {/* API Keys — flat section at bottom */}
+                  <div className="pt-6 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>API Keys</p>
+                      {apiKeySettings.length > 0 && (
+                        <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                          style={{
+                            background: keysSet === keysTotal ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
+                            color: keysSet === keysTotal ? '#4ade80' : '#f87171',
+                          }}>
+                          {keysSet}/{keysTotal} set
+                        </span>
                       )}
-                    </AnimatePresence>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--border)' }}>
+                      {apiKeySettings.length === 0 ? (
+                        <p className="text-sm py-4" style={{ color: 'var(--text-muted)' }}>Loading…</p>
+                      ) : apiKeySettings.map((setting) => (
+                        <div key={setting.key} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <div className="py-3 flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{setting.label}</p>
+                                <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                                  style={{
+                                    background: setting.isSet ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.08)',
+                                    color: setting.isSet ? '#4ade80' : '#f87171',
+                                  }}>
+                                  {setting.isSet ? 'saved' : 'not set'}
+                                </span>
+                              </div>
+                              <p className="text-xs font-mono truncate" style={{ color: 'var(--text-muted)' }}>
+                                {setting.isSet ? setting.preview : setting.hint}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => { setEditingKey(setting.key === editingKey ? null : setting.key); setKeyDraft('') }}
+                              className="text-sm px-3 py-1.5 rounded-lg shrink-0 transition-all"
+                              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                              {editingKey === setting.key ? 'Cancel' : setting.isSet ? 'Update' : 'Set'}
+                            </button>
+                          </div>
+                          <AnimatePresence>
+                            {editingKey === setting.key && (
+                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                <div className="pb-3 flex gap-2">
+                                  <input
+                                    type="password" value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
+                                    placeholder={`Paste ${setting.label}…`} autoFocus
+                                    className="flex-1 text-sm px-4 py-2.5 rounded-xl font-mono"
+                                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }}
+                                    onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+                                    onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                                    onKeyDown={async e => { if (e.key === 'Enter' && keyDraft.trim()) await saveApiKey(setting.key) }}
+                                  />
+                                  <button onClick={() => saveApiKey(setting.key)} disabled={keySaving || !keyDraft.trim()}
+                                    className="text-sm px-4 py-2.5 rounded-xl font-medium shrink-0"
+                                    style={{ background: keyDraft.trim() ? 'var(--accent)' : 'var(--bg-card)', color: keyDraft.trim() ? 'white' : 'var(--text-muted)', opacity: keySaving ? 0.6 : 1 }}>
+                                    {keySaving ? 'Saving…' : 'Save'}
+                                  </button>
+                                  {setting.isSet && (
+                                    <button onClick={() => removeApiKey(setting.key)}
+                                      className="text-sm px-3 py-2.5 rounded-xl shrink-0"
+                                      style={{ color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                      Remove
+                                    </button>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Footer links row */}
+                    <div className="flex items-center gap-5 flex-wrap pt-1 pb-8">
+                      {[
+                        { label: 'Anthropic Console', url: 'https://console.anthropic.com' },
+                        { label: 'Deepgram Console', url: 'https://console.deepgram.com' },
+                      ].map(({ label, url }) => (
+                        <a key={url} href={url} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs transition-colors"
+                          style={{ color: 'var(--text-muted)' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                          {label}
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                        </a>
+                      ))}
+                      <button onClick={() => setShowEnvVars(v => !v)}
+                        className="flex items-center gap-1 text-xs transition-colors"
+                        style={{ color: 'var(--text-muted)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                        Env vars
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                          style={{ transform: showEnvVars ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </button>
+                      <AnimatePresence>
+                        {showEnvVars && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }} className="overflow-hidden w-full">
+                            <div className="rounded-xl overflow-hidden divide-y" style={{ border: '1px solid var(--border)' }}>
+                              {[
+                                { key: 'NEXT_PUBLIC_SUPABASE_URL', hint: 'Project Settings → API' },
+                                { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', hint: 'Public key, safe for browser' },
+                                { key: 'SUPABASE_SERVICE_ROLE_KEY', hint: 'Server-only, never in browser' },
+                                { key: 'DEEPGRAM_API_KEY', hint: 'console.deepgram.com' },
+                                { key: 'DEEPGRAM_PROJECT_ID', hint: 'Optional — enables temporary keys' },
+                                { key: 'ANTHROPIC_API_KEY', hint: 'console.anthropic.com' },
+                              ].map(({ key, hint }) => (
+                                <div key={key} className="px-4 py-3 flex items-center justify-between gap-4">
+                                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{hint}</p>
+                                  <code className="text-xs px-2 py-1 rounded font-mono shrink-0"
+                                    style={{ background: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                                    {key}
+                                  </code>
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
 
                 </div>
@@ -1075,8 +1080,7 @@ export default function AdminClient() {
 function SparkleIcon({ spinning }: { spinning: boolean }) {
   if (spinning) {
     return (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-        className="animate-spin">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
         <path d="M21 12a9 9 0 1 1-6.219-8.56" />
       </svg>
     )
@@ -1089,7 +1093,6 @@ function SparkleIcon({ spinning }: { spinning: boolean }) {
     </svg>
   )
 }
-
 
 function InlineDeleteBtn({ isConfirming, onRequest, onConfirm, onCancel }: {
   isConfirming: boolean; onRequest: () => void; onConfirm: () => void; onCancel: () => void
