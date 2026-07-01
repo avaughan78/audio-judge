@@ -265,8 +265,24 @@ export function useAudioCapture() {
     useAppStore.getState().setInterimTranscript('')
     useAppStore.getState().setRecordingStartedAt(null)
     await runCycle({ final: true })
-    useAppStore.getState().setRecording(false)
     clearBuffer()
+
+    // Auto-advance to a fresh session slot so the next Record starts clean
+    const { session, setActiveTeam } = useAppStore.getState()
+    if (session) {
+      const res = await fetch('/api/auto-transition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: session.id, manual: true }),
+      })
+      const data = await res.json()
+      if (data.transition && data.team) {
+        setActiveTeam(data.team)
+        useAppStore.setState((s: any) => ({ teams: [...s.teams, data.team] }))
+      }
+    }
+
+    useAppStore.getState().setRecording(false)
   }, [runCycle, clearBuffer])
 
   // Snapshot the current session: run a final scoring cycle, create the next

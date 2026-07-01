@@ -30,7 +30,7 @@ export default function JudgePage() {
   const { start, stop, punctuate } = useAudioCapture()
   const deviceId = getDeviceId()
   const { peers } = useSessionPresence(session?.id ?? null, deviceId, 'judge', isRecording)
-  const collectors = peers.filter((p) => p.role === 'collector')
+  const collectors = peers.filter((p) => p.role === 'collector' && p.isRecording)
 
   useEffect(() => {
     if (!activeTeam) return

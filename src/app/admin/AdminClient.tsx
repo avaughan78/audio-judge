@@ -565,18 +565,15 @@ export default function AdminClient() {
                           style={{ color: isViewed ? 'var(--accent)' : 'var(--text-secondary)' }}>
                           {sess.name}
                         </span>
-                        {isLive ? (
-                          <span className="text-xs font-bold tracking-wide shrink-0"
-                            style={{ color: '#4ade80' }}>LIVE</span>
-                        ) : (
-                          <button
-                            onClick={e => { e.stopPropagation(); activateSession(sess) }}
-                            className="shrink-0 text-xs px-1.5 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}
-                            title="Make active">
-                            Make active
-                          </button>
-                        )}
+                        <button
+                          onClick={e => { e.stopPropagation(); isLive ? deactivateSession(sess) : activateSession(sess) }}
+                          className="shrink-0 text-xs px-2 py-0.5 rounded-full font-semibold transition-all"
+                          style={isLive
+                            ? { background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }
+                            : { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                          title={isLive ? 'Deactivate' : 'Make active'}>
+                          {isLive ? 'Active' : 'Inactive'}
+                        </button>
                       </div>
                     </div>
                   )
@@ -643,17 +640,13 @@ export default function AdminClient() {
                     </button>
                     {viewedSession.is_active ? (
                       <>
-                        <span className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-xl"
-                          style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}>
-                          <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
-                          Live
-                        </span>
                         <button onClick={() => deactivateSession(viewedSession)}
-                          className="text-sm px-3 py-1.5 rounded-xl transition-colors"
-                          style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.4)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                          Stop
+                          className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-xl transition-all"
+                          style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.25)' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)'; (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.3)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)'; (e.currentTarget as HTMLElement).style.color = '#4ade80'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(74,222,128,0.25)' }}>
+                          <span className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ background: 'currentColor' }} />
+                          Active
                         </button>
                         <Link href="/" className="flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-xl"
                           style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
@@ -665,14 +658,12 @@ export default function AdminClient() {
                       </>
                     ) : (
                       <button onClick={() => activateSession(viewedSession)}
-                        className="flex items-center gap-2 text-sm font-semibold px-4 py-1.5 rounded-xl transition-all"
-                        style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent)'; (e.currentTarget as HTMLElement).style.color = 'white' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-dim)'; (e.currentTarget as HTMLElement).style.color = 'var(--accent)' }}>
-                        Make active
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" />
-                        </svg>
+                        className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-xl transition-all"
+                        style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)'; (e.currentTarget as HTMLElement).style.color = '#4ade80'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(74,222,128,0.25)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} />
+                        Inactive
                       </button>
                     )}
                     <InlineDeleteBtn
