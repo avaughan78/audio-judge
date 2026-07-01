@@ -115,14 +115,13 @@ function LoginForm() {
       </nav>
 
       {/* Hero */}
-      <section style={{ position: 'relative', zIndex: 10, maxWidth: '720px', margin: '0 auto', padding: '80px 40px 72px', textAlign: 'center' }}>
+      <section style={{ position: 'relative', zIndex: 10, maxWidth: '720px', margin: '0 auto', padding: '80px 40px 72px' }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '28px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '5px 13px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#86efac', background: 'rgba(101,163,13,0.1)', border: '1px solid rgba(101,163,13,0.25)' }}>
-            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#65A30D', display: 'inline-block', boxShadow: '0 0 6px #65A30D' }} />
-            Real-time AI judging
-          </div>
-          <img src="/app-icon.svg" alt="Audio Judge" style={{ width: '80px', height: '80px', borderRadius: '20px', boxShadow: '0 0 80px rgba(101,163,13,0.2), 0 0 24px rgba(101,163,13,0.1)' }} />
+        <img src="/app-icon.svg" alt="Audio Judge" style={{ width: '80px', height: '80px', borderRadius: '20px', marginBottom: '24px', display: 'block', boxShadow: '0 0 80px rgba(101,163,13,0.2), 0 0 24px rgba(101,163,13,0.1)' }} />
+
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginBottom: '24px', padding: '5px 13px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#86efac', background: 'rgba(101,163,13,0.1)', border: '1px solid rgba(101,163,13,0.25)' }}>
+          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#65A30D', display: 'inline-block', boxShadow: '0 0 6px #65A30D' }} />
+          Real-time AI judging
         </div>
 
         <h1 style={{ fontSize: 'clamp(36px, 6vw, 58px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', color: '#f8fafc', marginBottom: '20px' }}>
@@ -130,12 +129,12 @@ function LoginForm() {
           <span style={{ color: '#65A30D' }}>as they happen.</span>
         </h1>
 
-        <p style={{ fontSize: '18px', lineHeight: 1.7, color: '#64748b', maxWidth: '540px', margin: '0 auto 40px' }}>
+        <p style={{ fontSize: '18px', lineHeight: 1.7, color: '#64748b', maxWidth: '540px', marginBottom: '40px' }}>
           Audio Judge listens to meetings and events, scores them against your criteria in real time using AI, and shows live results on the big screen.
         </p>
 
         {/* Primary CTA */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
           <button onClick={handleGitHubSignIn} disabled={loading}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', padding: '14px 32px', borderRadius: '12px', fontSize: '15px', fontWeight: 700, background: '#65A30D', color: 'white', border: 'none', cursor: loading ? 'default' : 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 32px rgba(101,163,13,0.4), 0 1px 2px rgba(0,0,0,0.3)', letterSpacing: '-0.01em' }}
             onMouseEnter={e => { if (!loading) { (e.currentTarget as HTMLElement).style.background = '#74b80f'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 40px rgba(101,163,13,0.55), 0 1px 2px rgba(0,0,0,0.3)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)' } }}
