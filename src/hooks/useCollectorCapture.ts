@@ -60,20 +60,23 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing')
 
-      // For online mode: extract audio tracks, stop video, build audio-only stream
+      // For online mode: build an audio-only stream for the MediaRecorder but
+      // keep rawStream alive — stopping video prematurely can end the entire
+      // Chrome tab-capture session (audio included). stop() cleans up everything.
       let stream: MediaStream
       if (mode === 'online') {
         const audioTracks = rawStream.getAudioTracks()
-        rawStream.getVideoTracks().forEach((t) => t.stop())
         if (!audioTracks.length) {
+          rawStream.getTracks().forEach((t) => t.stop())
           throw new Error('No audio captured — share a browser tab and tick "Share tab audio"')
         }
         stream = new MediaStream(audioTracks)
+        streamRef.current = rawStream   // full stream so stop() closes video + audio
       } else {
         stream = rawStream
+        streamRef.current = stream
       }
 
-      streamRef.current = stream
       const supabase = createClient()
 
       const { DeepgramClient } = await import('@deepgram/sdk')

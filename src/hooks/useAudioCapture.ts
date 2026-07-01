@@ -127,22 +127,24 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing from response')
 
-      // For online mode: extract audio tracks before stopping video, then build
-      // an audio-only stream. Chrome can terminate the capture session when video
-      // tracks are stopped if we leave them in the stream.
+      // For online mode: build an audio-only stream for the MediaRecorder but
+      // do NOT stop the video track yet. Stopping video prematurely can terminate
+      // the entire Chrome tab-capture session (including audio), causing the
+      // Deepgram connection to drop and re-open — the flip-flop. stop() will call
+      // streamRef.current.getTracks().forEach(stop) to clean up everything.
       let stream: MediaStream
       if (captureMode === 'online') {
         const audioTracks = rawStream.getAudioTracks()
-        rawStream.getVideoTracks().forEach((t) => t.stop())
         if (!audioTracks.length) {
+          rawStream.getTracks().forEach((t) => t.stop())
           throw new Error('No audio captured — share a browser tab and tick "Share tab audio"')
         }
         stream = new MediaStream(audioTracks)
+        streamRef.current = rawStream   // full stream so stop() closes video + audio
       } else {
         stream = rawStream
+        streamRef.current = stream
       }
-
-      streamRef.current = stream
 
       const { DeepgramClient } = await import('@deepgram/sdk')
       const dg = new DeepgramClient({ apiKey: key })
