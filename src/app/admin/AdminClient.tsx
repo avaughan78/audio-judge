@@ -473,8 +473,10 @@ export default function AdminClient() {
       }))
       const { data: inserted } = await supabase.from('criteria').insert(rows).select()
       if (inserted) setCriteria(inserted)
-    } catch (_) {}
-    setGeneratingCriteriaSet(false)
+    } catch (_) {
+    } finally {
+      setGeneratingCriteriaSet(false)
+    }
   }
 
   const exportCsv = async () => {

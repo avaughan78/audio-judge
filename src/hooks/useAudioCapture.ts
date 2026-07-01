@@ -10,7 +10,16 @@ const TRANSITION_CHECK_WORDS = 30
 const MIN_WORDS_BEFORE_TRANSITION = 60
 const MAX_BUFFER_WORDS = 8_000  // prevent unbounded memory growth on long events
 
+function getDeviceId(): string {
+  try {
+    let id = sessionStorage.getItem('aj_device_id')
+    if (!id) { id = crypto.randomUUID(); sessionStorage.setItem('aj_device_id', id) }
+    return id
+  } catch (_) { return crypto.randomUUID() }
+}
+
 export function useAudioCapture() {
+  const deviceId = useRef(getDeviceId())
   const connectionRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -27,6 +36,7 @@ export function useAudioCapture() {
   // those late events from flipping isRecording back on.
   const stoppedRef = useRef(false)
   const isDetectingRef = useRef(false)
+  const collectorChannelRef = useRef<any>(null)
 
   // Sends the current transcript buffer to /api/judge and /api/summarise in parallel.
   // Called both on a word-count trigger and a periodic timer; the isJudgingRef guard
@@ -219,6 +229,28 @@ export function useAudioCapture() {
         mediaRecorderRef.current = mr
 
         timerRef.current = setInterval(runCycle, CYCLE_INTERVAL_MS)
+
+        // Subscribe to transcript chunks from collector devices on the same session
+        const { session: currentSess } = useAppStore.getState()
+        if (currentSess) {
+          collectorChannelRef.current = supabase
+            .channel('collector-chunks')
+            .on('postgres_changes', {
+              event: 'INSERT', schema: 'public', table: 'transcript_chunks',
+              filter: `session_id=eq.${currentSess.id}`,
+            }, (payload: any) => {
+              if (!payload.new?.content) return
+              if (payload.new.device_id === deviceId.current) return // skip own chunks
+              const { activeTeam: team } = useAppStore.getState()
+              if (payload.new.team_id !== team?.id) return // skip other teams' chunks
+              bufferRef.current += ' ' + payload.new.content
+              const words = bufferRef.current.split(/\s+/).filter(Boolean)
+              if (words.length > MAX_BUFFER_WORDS) {
+                bufferRef.current = words.slice(-MAX_BUFFER_WORDS).join(' ')
+              }
+            })
+            .subscribe()
+        }
       })
 
       conn.on('message', (message: any) => {
@@ -252,7 +284,7 @@ export function useAudioCapture() {
 
           if (team && sess) {
             supabase.from('transcript_chunks')
-              .insert({ session_id: sess.id, team_id: team.id, content: alt.transcript })
+              .insert({ session_id: sess.id, team_id: team.id, content: alt.transcript, device_id: deviceId.current })
               .then(() => {})
           }
 
@@ -295,6 +327,10 @@ export function useAudioCapture() {
   const stop = useCallback(async () => {
     stoppedRef.current = true
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    if (collectorChannelRef.current) {
+      try { createSupabaseClient().removeChannel(collectorChannelRef.current) } catch (_) {}
+      collectorChannelRef.current = null
+    }
     mediaRecorderRef.current?.stop()
     try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
     streamRef.current?.getTracks().forEach((t) => t.stop())

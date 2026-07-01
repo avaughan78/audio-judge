@@ -157,6 +157,7 @@ export default function JudgePage() {
               <ThemeSelector />
               <div className="w-px h-4" style={{ background: 'var(--border)' }} />
               <NavLink href="/display" target="_blank" label="Display" icon="external" />
+              <NavLink href="/collect" target="_blank" label="Collect" icon="mic" />
             </div>
             <NavLink href="/admin" label="Admin" icon="settings" />
           </div>
@@ -415,6 +416,11 @@ function NavLink({ href, label, icon, target }: { href: string; label: string; i
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
           <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+        </svg>
+      ) : icon === 'mic' ? (
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
         </svg>
       ) : (
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
