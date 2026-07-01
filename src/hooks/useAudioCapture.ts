@@ -22,6 +22,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const stoppedRef = useRef(false)
   const collectorChannelRef = useRef<any>(null)
   const isStartingRef = useRef(false)
+  const audioCtxRef = useRef<AudioContext | null>(null)
 
   const runCycle = useCallback(async (options?: { final?: boolean }) => {
     if (isJudgingRef.current) return
@@ -172,9 +173,28 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         if (mediaRecorderRef.current) return
         setRecordingStartedAt(Date.now())
 
-        // Always let the browser choose its native container — explicit mimeTypes
-        // cause NotSupportedError on some browsers/OS combinations.
-        const mr = new MediaRecorder(stream)
+        // For getDisplayMedia streams (video + audio), route audio through
+        // Web Audio API to produce a clean audio-only stream. Recording the
+        // raw video/webm container sends video data Deepgram can't transcribe.
+        let recordingStream: MediaStream = stream
+        if (stream.getVideoTracks().length > 0) {
+          try {
+            const ctx = new AudioContext()
+            audioCtxRef.current = ctx
+            const src = ctx.createMediaStreamSource(stream)
+            const dest = ctx.createMediaStreamDestination()
+            src.connect(dest)
+            recordingStream = dest.stream
+          } catch (e) {
+            console.error('[recorder] AudioContext failed, falling back to raw stream:', e)
+          }
+        }
+
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
+
+        const mr = new MediaRecorder(recordingStream, mimeType ? { mimeType } : undefined)
         mr.ondataavailable = (e) => {
           if (e.data.size > 0 && conn.readyState === 1) conn.sendMedia(e.data)
         }
@@ -185,6 +205,8 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           stoppedRef.current = true
           setRecording(false)
           setConnecting(false)
+          audioCtxRef.current?.close().catch(() => {})
+          audioCtxRef.current = null
           try { (conn as any).sendCloseStream({}) } catch (_) {}
           return
         }
@@ -197,6 +219,8 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
             stoppedRef.current = true
             if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
             try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
+            audioCtxRef.current?.close().catch(() => {})
+            audioCtxRef.current = null
             mediaRecorderRef.current = null
             connectionRef.current = null
             streamRef.current = null
@@ -303,6 +327,8 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     mediaRecorderRef.current?.stop()
     try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
     streamRef.current?.getTracks().forEach((t) => t.stop())
+    audioCtxRef.current?.close().catch(() => {})
+    audioCtxRef.current = null
     mediaRecorderRef.current = null
     connectionRef.current = null
     streamRef.current = null
