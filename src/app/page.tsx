@@ -155,8 +155,8 @@ export default function JudgePage() {
         <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
           style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-3 min-w-0">
-            <img src="/app-icon.svg" alt="AudioJudge" className="w-6 h-6 shrink-0" />
-            <span className="text-sm font-bold gradient-text shrink-0">AudioJudge</span>
+            <img src="/app-icon.svg" alt="Audio Judge" className="w-6 h-6 shrink-0" />
+            <span className="text-sm font-bold gradient-text shrink-0">Audio Judge</span>
             {session && (
               <>
                 <span className="hidden sm:inline" style={{ color: 'var(--text-muted)' }}>·</span>

@@ -167,8 +167,8 @@ export default function DisplayClient() {
       {/* Header */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-12 pt-6">
         <div className="flex items-center gap-3">
-          <img src="/app-icon.svg" alt="AudioJudge" className="w-8 h-8" />
-          <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{session?.name || 'AudioJudge'}</span>
+          <img src="/app-icon.svg" alt="Audio Judge" className="w-8 h-8" />
+          <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{session?.name || 'Audio Judge'}</span>
         </div>
         <div className="flex items-center gap-5">
           <ThemeSelector />

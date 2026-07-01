@@ -104,7 +104,7 @@ function LoginForm() {
         <div />
         <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
           <img src="/app-icon.svg" alt="" style={{ width: '26px', height: '26px', borderRadius: '7px' }} />
-          <span style={{ fontWeight: 700, fontSize: '14px', letterSpacing: '-0.01em' }}>AudioJudge</span>
+          <span style={{ fontWeight: 700, fontSize: '14px', letterSpacing: '-0.01em' }}>Audio Judge</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button onClick={handleGitHubSignIn} disabled={loading}
@@ -120,7 +120,7 @@ function LoginForm() {
       {/* Hero */}
       <section style={{ position: 'relative', zIndex: 10, maxWidth: '720px', margin: '0 auto', padding: '80px 40px 72px', textAlign: 'center' }}>
 
-        <img src="/app-icon.svg" alt="AudioJudge" style={{ width: '80px', height: '80px', borderRadius: '20px', marginBottom: '28px', boxShadow: '0 0 80px rgba(101,163,13,0.2), 0 0 24px rgba(101,163,13,0.1)' }} />
+        <img src="/app-icon.svg" alt="Audio Judge" style={{ width: '80px', height: '80px', borderRadius: '20px', marginBottom: '28px', boxShadow: '0 0 80px rgba(101,163,13,0.2), 0 0 24px rgba(101,163,13,0.1)' }} />
 
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', marginBottom: '28px', padding: '5px 13px', borderRadius: '99px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#86efac', background: 'rgba(101,163,13,0.1)', border: '1px solid rgba(101,163,13,0.25)' }}>
           <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#65A30D', display: 'inline-block', boxShadow: '0 0 6px #65A30D' }} />
@@ -133,7 +133,7 @@ function LoginForm() {
         </h1>
 
         <p style={{ fontSize: '18px', lineHeight: 1.7, color: '#64748b', maxWidth: '540px', margin: '0 auto 40px' }}>
-          AudioJudge listens to meetings and events, scores them against your criteria in real time using AI, and shows live results on the big screen.
+          Audio Judge listens to meetings and events, scores them against your criteria in real time using AI, and shows live results on the big screen.
         </p>
 
         {/* Primary CTA */}
@@ -204,7 +204,7 @@ function LoginForm() {
       <footer style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '20px 40px', borderTop: '1px solid rgba(255,255,255,0.04)', fontSize: '12px', color: '#1e293b' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <img src="/app-icon.svg" alt="" style={{ width: '16px', height: '16px', borderRadius: '4px', opacity: 0.4 }} />
-          AudioJudge · Built with Deepgram and Claude
+          Audio Judge · Built with Deepgram and Claude
         </div>
         <a href="https://awoken.dev" target="_blank" rel="noopener noreferrer" style={{ color: '#1e293b', textDecoration: 'none', transition: 'color 0.15s' }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#475569' }}

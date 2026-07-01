@@ -246,8 +246,8 @@ export default function RecordsClient() {
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </Link>
-            <img src="/app-icon.svg" alt="AudioJudge" className="w-7 h-7 shrink-0" />
-            <span className="font-bold gradient-text">AudioJudge</span>
+            <img src="/app-icon.svg" alt="Audio Judge" className="w-7 h-7 shrink-0" />
+            <span className="font-bold gradient-text">Audio Judge</span>
             <span style={{ color: 'var(--border-hover)' }}>·</span>
             <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Records</span>
           </div>

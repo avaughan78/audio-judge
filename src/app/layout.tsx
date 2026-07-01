@@ -6,7 +6,7 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'AudioJudge — Real-time Hackathon Scoring',
+  title: 'Audio Judge — Real-time Hackathon Scoring',
   description: 'Live AI-powered hackathon judging with real-time transcription and scoring',
   icons: {
     icon: [
