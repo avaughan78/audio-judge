@@ -200,11 +200,22 @@ export default function DisplayClient() {
       </div>
 
       {!activeSession ? (
-        <div className="relative z-0 flex-1 flex items-center justify-center">
+        <div className="relative z-0 flex-1 flex items-center justify-center gap-20 px-16">
           <div className="text-center space-y-4">
             <div className="text-7xl">🎯</div>
             <p className="text-2xl font-light" style={{ color: 'var(--text-muted)' }}>Waiting for presentation...</p>
           </div>
+          {collectorCode && (
+            <div className="flex flex-col items-center gap-3 shrink-0">
+              <div className="p-4 rounded-2xl" style={{ background: 'white' }}>
+                <QRCodeSVG
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/collect/${collectorCode}`}
+                  size={160} bgColor="white" fgColor="#0f172a" level="M"
+                />
+              </div>
+              <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Scan to collect audio</span>
+            </div>
+          )}
         </div>
       ) : (
         <div className="relative z-0 flex-1 flex flex-col min-h-0 pb-16 px-12 pt-6">
@@ -272,33 +283,47 @@ export default function DisplayClient() {
               })}
             </div>
 
-            {/* Overall circular gauge */}
-            <div className="w-64 shrink-0 flex flex-col items-center justify-center">
-              <p className="text-base font-bold tracking-[0.35em] uppercase mb-6" style={{ color: 'var(--text-muted)' }}>
-                Overall
-              </p>
-              <div className="relative w-56 h-56">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 110 110">
-                  <circle cx="55" cy="55" r="46" fill="none" strokeWidth="8" style={{ stroke: 'var(--ring-track)' }} />
-                  <motion.circle
-                    cx="55" cy="55" r="46" fill="none" strokeWidth="8" strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    initial={{ strokeDashoffset: circumference }}
-                    animate={{ strokeDashoffset: circumference * (1 - overall / 100) }}
-                    transition={{ type: 'spring', stiffness: 35, damping: 14 }}
-                    style={{
-                      stroke: overallStyle.color,
-                      filter: overall > 0 ? `drop-shadow(0 0 10px ${overallStyle.color})` : 'none',
-                    }}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-7xl font-black tabular-nums leading-none" style={{ color: overallStyle.color }}>
-                    {overall > 0 ? <AnimatedNumber value={overall} /> : '—'}
-                  </span>
-                  {overall > 0 && <span className="text-lg mt-1" style={{ color: 'var(--text-muted)' }}>/100</span>}
+            {/* Overall + QR column */}
+            <div className="w-56 shrink-0 flex flex-col items-center justify-center gap-8">
+              <div className="flex flex-col items-center">
+                <p className="text-base font-bold tracking-[0.35em] uppercase mb-6" style={{ color: 'var(--text-muted)' }}>
+                  Overall
+                </p>
+                <div className="relative w-48 h-48">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 110 110">
+                    <circle cx="55" cy="55" r="46" fill="none" strokeWidth="8" style={{ stroke: 'var(--ring-track)' }} />
+                    <motion.circle
+                      cx="55" cy="55" r="46" fill="none" strokeWidth="8" strokeLinecap="round"
+                      strokeDasharray={circumference}
+                      initial={{ strokeDashoffset: circumference }}
+                      animate={{ strokeDashoffset: circumference * (1 - overall / 100) }}
+                      transition={{ type: 'spring', stiffness: 35, damping: 14 }}
+                      style={{
+                        stroke: overallStyle.color,
+                        filter: overall > 0 ? `drop-shadow(0 0 10px ${overallStyle.color})` : 'none',
+                      }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-6xl font-black tabular-nums leading-none" style={{ color: overallStyle.color }}>
+                      {overall > 0 ? <AnimatedNumber value={overall} /> : '—'}
+                    </span>
+                    {overall > 0 && <span className="text-base mt-1" style={{ color: 'var(--text-muted)' }}>/100</span>}
+                  </div>
                 </div>
               </div>
+
+              {collectorCode && (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="p-2.5 rounded-xl" style={{ background: 'white' }}>
+                    <QRCodeSVG
+                      value={`${typeof window !== 'undefined' ? window.location.origin : ''}/collect/${collectorCode}`}
+                      size={100} bgColor="white" fgColor="#0f172a" level="M"
+                    />
+                  </div>
+                  <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Scan to join</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -319,23 +344,6 @@ export default function DisplayClient() {
               </motion.p>
             </AnimatePresence>
           </div>
-        </div>
-      )}
-      {/* QR code — fixed bottom-left, always visible for room scanning */}
-      {collectorCode && typeof window !== 'undefined' && (
-        <div className="fixed bottom-6 left-8 z-20 flex flex-col items-center gap-2">
-          <div className="p-3 rounded-2xl" style={{ background: 'white' }}>
-            <QRCodeSVG
-              value={`${window.location.origin}/collect/${collectorCode}`}
-              size={128}
-              bgColor="white"
-              fgColor="#0f172a"
-              level="M"
-            />
-          </div>
-          <span className="text-xs font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
-            Scan to collect audio
-          </span>
         </div>
       )}
     </div>
