@@ -187,11 +187,11 @@ export default function RecordsClient() {
   const [confirmDeleteSession, setConfirmDeleteSession] = useState<string | null>(null)
 
   const deleteSession = async (id: string) => {
-    const supabase = createClient()
-    await supabase.from('scores').delete().eq('session_id', id)
-    await supabase.from('teams').delete().eq('session_id', id)
-    await supabase.from('criteria').delete().eq('session_id', id)
-    await supabase.from('sessions').delete().eq('id', id)
+    const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      console.error('Delete failed:', await res.text())
+      return
+    }
     setRecords(prev => prev.filter(r => r.session.id !== id))
     setConfirmDeleteSession(null)
   }
