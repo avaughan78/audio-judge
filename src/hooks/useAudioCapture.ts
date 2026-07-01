@@ -99,10 +99,10 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     // Initiate media acquisition synchronously — getDisplayMedia must be called
     // within the user-activation window (the click), before any awaited fetches
     // that would expire it.
-    // video: false requests audio-only tab capture (Chrome 121+) — no video
-    // tracks means no stripping needed and audio/webm;codecs=opus works cleanly.
+    // Try audio-only tab capture (Chrome 121+); fall back to video:true on older builds.
     const rawStreamPromise: Promise<MediaStream> = captureMode === 'online'
       ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: false })
+          .catch(() => navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }))
       : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
 
     // Create fresh session slot — runs in parallel while the user is picking
@@ -142,8 +142,12 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         useAppStore.getState().setJudgeError(msg)
         throw new Error(msg)
       }
-      const stream = rawStream
-      streamRef.current = rawStream
+      // If fallback gave us a video track, strip it — record audio-only
+      const stream = rawStream.getVideoTracks().length > 0
+        ? new MediaStream(rawStream.getAudioTracks())
+        : rawStream
+      rawStream.getVideoTracks().forEach((t) => t.stop())
+      streamRef.current = stream
 
       const { DeepgramClient } = await import('@deepgram/sdk')
       const dg = new DeepgramClient({ apiKey: key, baseUrl: 'https://api.eu.deepgram.com' })

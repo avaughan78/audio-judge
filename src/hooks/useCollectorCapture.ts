@@ -49,6 +49,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       // before any awaited network calls that would expire the activation window.
       const rawStreamPromise: Promise<MediaStream> = mode === 'online'
         ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: false })
+            .catch(() => navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }))
         : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
 
       const [tokenData, rawStream] = await Promise.all([
@@ -64,8 +65,11 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
         rawStream.getTracks().forEach((t) => t.stop())
         throw new Error('No audio captured — select a Chrome tab and tick "Share tab audio"')
       }
-      const stream = rawStream
-      streamRef.current = rawStream
+      const stream = rawStream.getVideoTracks().length > 0
+        ? new MediaStream(rawStream.getAudioTracks())
+        : rawStream
+      rawStream.getVideoTracks().forEach((t) => t.stop())
+      streamRef.current = stream
 
       const supabase = createClient()
 
