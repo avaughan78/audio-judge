@@ -167,10 +167,7 @@ export default function DisplayClient() {
       {/* Header */}
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-12 pt-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, var(--gradient-from), var(--gradient-to))' }}>
-            <span className="text-xs font-black text-white">AJ</span>
-          </div>
+          <img src="/app-icon.svg" alt="AudioJudge" className="w-8 h-8" />
           <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{session?.name || 'AudioJudge'}</span>
         </div>
         <div className="flex items-center gap-5">

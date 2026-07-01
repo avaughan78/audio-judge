@@ -86,10 +86,7 @@ export default function CollectPage() {
         <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
           style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg, var(--gradient-from), var(--gradient-to))' }}>
-              <span className="text-[9px] font-black text-white">AJ</span>
-            </div>
+            <img src="/app-icon.svg" alt="AudioJudge" className="w-6 h-6 shrink-0" />
             <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>AudioJudge</span>
             <span style={{ color: 'var(--text-muted)' }}>·</span>
             <span className="text-xs px-2 py-0.5 rounded-full font-semibold"

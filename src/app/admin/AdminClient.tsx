@@ -471,10 +471,7 @@ export default function AdminClient() {
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </Link>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'linear-gradient(135deg, var(--gradient-from), var(--gradient-to))' }}>
-              <span className="text-xs font-black text-white">AJ</span>
-            </div>
+            <img src="/app-icon.svg" alt="AudioJudge" className="w-7 h-7 shrink-0" />
             <span className="font-bold gradient-text">AudioJudge</span>
             <span style={{ color: 'var(--border-hover)' }}>·</span>
             <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Setup</span>

@@ -8,6 +8,13 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 export const metadata: Metadata = {
   title: 'AudioJudge — Real-time Hackathon Scoring',
   description: 'Live AI-powered hackathon judging with real-time transcription and scoring',
+  icons: {
+    icon: [
+      { url: '/app-icon.svg', type: 'image/svg+xml' },
+      { url: '/app-icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/apple-icon.png',
+  },
 }
 
 export const viewport: Viewport = {
