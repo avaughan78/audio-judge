@@ -119,15 +119,17 @@ function Section({ title, subtitle, children, action }: {
   title: string; subtitle?: string; children: React.ReactNode; action?: React.ReactNode
 }) {
   return (
-    <div>
-      <div className="flex items-start justify-between gap-4 mb-5">
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <div className="flex items-start justify-between gap-4 px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div>
-          <h2 className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>{title}</h2>
-          {subtitle && <p className="mt-1.5 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
+          <h2 className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>{title}</h2>
+          {subtitle && <p className="mt-1 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
         </div>
         {action && <div className="shrink-0 pt-0.5">{action}</div>}
       </div>
-      {children}
+      <div className="px-6 py-5">
+        {children}
+      </div>
     </div>
   )
 }
@@ -511,7 +513,7 @@ export default function AdminClient() {
 
           {/* ── Sidebar ───────────────────────────────────────────────── */}
           <aside className="w-72 shrink-0 flex flex-col overflow-y-auto"
-            style={{ borderRight: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)', height: 'calc(100vh - 56px)', position: 'sticky', top: '56px' }}>
+            style={{ borderRight: '1px solid var(--border)', background: 'var(--bg-card)', height: 'calc(100vh - 56px)', position: 'sticky', top: '56px' }}>
 
             <div className="p-4 space-y-2">
               <p className="text-sm font-semibold px-1 mb-3" style={{ color: 'var(--text-muted)' }}>Events</p>
@@ -567,12 +569,12 @@ export default function AdminClient() {
                         </span>
                         <button
                           onClick={e => { e.stopPropagation(); isLive ? deactivateSession(sess) : activateSession(sess) }}
-                          className="shrink-0 text-xs px-2 py-0.5 rounded-full font-semibold transition-all"
+                          className="shrink-0 text-xs px-2 py-0.5 rounded font-medium opacity-0 group-hover:opacity-100 transition-opacity"
                           style={isLive
-                            ? { background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }
-                            : { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                            ? { color: '#4ade80', border: '1px solid rgba(74,222,128,0.35)' }
+                            : { color: 'var(--text-muted)', border: '1px solid var(--border)' }}
                           title={isLive ? 'Deactivate' : 'Make active'}>
-                          {isLive ? 'Active' : 'Inactive'}
+                          {isLive ? 'Active' : 'Activate'}
                         </button>
                       </div>
                     </div>
@@ -687,7 +689,7 @@ export default function AdminClient() {
                   </div>
                 )}
 
-                <div className="space-y-12">
+                <div className="space-y-5">
 
                   {/* Context */}
                   <Section
@@ -784,11 +786,12 @@ export default function AdminClient() {
                     </AnimatePresence>
 
                     {/* Criteria list */}
-                    <div style={{ borderTop: criteria.length > 0 ? '1px solid var(--border)' : undefined }}>
+                    <div className="space-y-0.5">
                       {criteria.map((c, i) => (
-                        <div key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <div key={c.id}>
                           {editingCriteria?.id === c.id ? (
-                            <div className="py-4 space-y-3">
+                            <div className="p-4 rounded-xl space-y-3 my-1"
+                              style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border-hover)' }}>
                               <Input value={editingCriteria.name}
                                 onChange={v => setEditingCriteria(p => p ? { ...p, name: v } : null)}
                                 placeholder="Name" autoFocus />
@@ -814,11 +817,14 @@ export default function AdminClient() {
                               </div>
                             </div>
                           ) : (
-                            <div className="py-3.5 flex items-start gap-3">
+                            <div className="group/row -mx-2 px-2 py-3 rounded-xl flex items-start gap-3 cursor-pointer transition-colors"
+                              style={{ background: 'transparent' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                              onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
                               <ReorderBtns onUp={() => moveCriteria(i, 'up')} onDown={() => moveCriteria(i, 'down')}
                                 canUp={i > 0} canDown={i < criteria.length - 1} />
-                              <div className="flex-1 min-w-0 cursor-pointer"
-                                onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
+                              <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-0.5">
                                   <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
                                   {c.weight !== 1 && (
@@ -843,14 +849,14 @@ export default function AdminClient() {
                         </div>
                       ))}
                       {criteria.length === 0 && (
-                        <p className="text-sm py-3" style={{ color: 'var(--text-muted)' }}>
+                        <p className="text-sm py-1" style={{ color: 'var(--text-muted)' }}>
                           No criteria yet — load a template above or add one below.
                         </p>
                       )}
                     </div>
 
                     {/* Add criterion */}
-                    <div className="mt-4 space-y-3">
+                    <div className="mt-5 pt-5 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
                       <Input value={newCritName} onChange={setNewCritName}
                         placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
                       {newCritName.trim() && (
@@ -880,23 +886,18 @@ export default function AdminClient() {
                   </Section>
 
                   {/* Settings — collapsible */}
-                  <div>
+                  <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                     <button
                       onClick={() => setShowSettings(v => !v)}
-                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all"
-                      style={{
-                        background: showSettings ? 'var(--bg-card)' : 'rgba(255,255,255,0.02)',
-                        border: '1px solid var(--border)',
-                      }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                      onMouseLeave={e => { if (!showSettings) (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                      className="w-full flex items-center justify-between px-6 py-4 transition-all"
+                      style={{ borderBottom: showSettings ? '1px solid var(--border)' : 'none' }}>
                       <div className="flex items-center gap-3">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                           style={{ color: 'var(--text-muted)' }}>
                           <circle cx="12" cy="12" r="3" />
                           <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2" />
                         </svg>
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Settings</span>
+                        <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Settings</span>
                         {apiKeySettings.length > 0 && (
                           <span className="text-xs px-1.5 py-0.5 rounded font-medium"
                             style={{
@@ -920,7 +921,7 @@ export default function AdminClient() {
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                           className="overflow-hidden">
-                          <div className="pt-4 space-y-6 pb-8">
+                          <div className="px-6 py-5 space-y-6">
 
                             {/* API Keys */}
                             <div>
@@ -1060,6 +1061,7 @@ export default function AdminClient() {
               </div>
             )}
           </main>
+
         </div>
       </div>
     </ThemeProvider>
