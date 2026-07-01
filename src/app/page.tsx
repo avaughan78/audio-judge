@@ -156,11 +156,11 @@ export default function JudgePage() {
           style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
           <div className="flex items-center gap-3 min-w-0">
             <img src="/app-icon.svg" alt="Audio Judge" className="w-6 h-6 shrink-0" />
-            <span className="text-sm font-bold gradient-text shrink-0">Audio Judge</span>
+            <span className="text-base font-bold gradient-text shrink-0">Audio Judge</span>
             {session && (
               <>
                 <span className="hidden sm:inline" style={{ color: 'var(--text-muted)' }}>·</span>
-                <span className="hidden sm:inline text-sm truncate" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
+                <span className="hidden sm:inline text-base truncate" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
               </>
             )}
           </div>
@@ -271,7 +271,7 @@ export default function JudgePage() {
                         style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                           <line x1="4" y1="22" x2="4" y2="15" />
                         </svg>
@@ -399,28 +399,28 @@ export default function JudgePage() {
 function NavLink({ href, label, icon, target }: { href: string; label: string; icon: string; target?: string }) {
   return (
     <Link href={href} target={target}
-      className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md transition-colors"
+      className="flex items-center gap-1.5 text-base px-2.5 py-1.5 rounded-md transition-colors"
       style={{ color: 'var(--text-muted)' }}
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
       {icon === 'external' ? (
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
           <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
         </svg>
       ) : icon === 'mic' ? (
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
           <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
         </svg>
       ) : icon === 'archive' ? (
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="21 8 21 21 3 21 3 8" />
           <rect x="1" y="3" width="22" height="5" />
           <line x1="10" y1="12" x2="14" y2="12" />
         </svg>
       ) : (
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="3" />
           <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2" />
         </svg>
