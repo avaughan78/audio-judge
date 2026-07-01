@@ -92,7 +92,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       })
       connectionRef.current = conn
 
-      conn.on('open', () => {
+      conn.on('open', async () => {
         if (stoppedRef.current) return
         if (mediaRecorderRef.current) return
         setIsConnecting(false)
@@ -105,6 +105,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
           try {
             const ctx = new AudioContext()
             audioCtxRef.current = ctx
+            await ctx.resume()
             const src = ctx.createMediaStreamSource(stream)
             const dest = ctx.createMediaStreamDestination()
             src.connect(dest)

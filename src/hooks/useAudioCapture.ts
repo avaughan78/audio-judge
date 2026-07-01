@@ -166,7 +166,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       })
       connectionRef.current = conn
 
-      conn.on('open', () => {
+      conn.on('open', async () => {
         if (stoppedRef.current) return
         setConnecting(false)
         setRecording(true)
@@ -176,11 +176,14 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         // For getDisplayMedia streams (video + audio), route audio through
         // Web Audio API to produce a clean audio-only stream. Recording the
         // raw video/webm container sends video data Deepgram can't transcribe.
+        // AudioContext starts suspended when created outside a user gesture, so
+        // resume() must be awaited before audio flows through the graph.
         let recordingStream: MediaStream = stream
         if (stream.getVideoTracks().length > 0) {
           try {
             const ctx = new AudioContext()
             audioCtxRef.current = ctx
+            await ctx.resume()
             const src = ctx.createMediaStreamSource(stream)
             const dest = ctx.createMediaStreamDestination()
             src.connect(dest)
