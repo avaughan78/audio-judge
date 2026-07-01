@@ -399,7 +399,7 @@ export default function JudgePage() {
 function NavLink({ href, label, icon, target }: { href: string; label: string; icon: string; target?: string }) {
   return (
     <Link href={href} target={target}
-      className="flex items-center gap-1.5 text-base px-2.5 py-1.5 rounded-md transition-colors"
+      className="flex items-center gap-1.5 text-base px-2.5 py-1.5 rounded-md transition-colors small-caps"
       style={{ color: 'var(--text-muted)' }}
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
