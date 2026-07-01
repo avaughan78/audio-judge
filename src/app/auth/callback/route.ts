@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const next = searchParams.get('next') ?? '/admin'
 
   // Railway (and most reverse proxies) forward the real public host via headers.
   // request.url itself resolves to localhost:8080 internally, so we must not use its origin.

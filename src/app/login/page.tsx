@@ -80,7 +80,7 @@ function LoginForm() {
     setError('')
     setLoading(true)
     const supabase = createClient()
-    const from = searchParams.get('from') || '/'
+    const from = searchParams.get('from') || '/admin'
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(from)}` },
