@@ -158,7 +158,7 @@ export default function JudgePage() {
             { label: 'Display', href: '/display', icon: 'external', target: '_blank', hideOnMobile: true },
             { label: 'Collect', href: '/collect', icon: 'mic', target: '_blank', hideOnMobile: true },
             { label: 'Records', href: '/records', icon: 'archive', hideOnMobile: true },
-            { label: 'Admin', href: '/admin', icon: 'settings' },
+            { label: 'Events', href: '/admin', icon: 'settings' },
           ]}
         />
 
@@ -197,11 +197,11 @@ export default function JudgePage() {
           <div className="relative z-10 flex-1 flex items-center justify-center">
             <div className="text-center space-y-4">
               <div className="text-6xl">🎯</div>
-              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-secondary)' }}>No active session</h2>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Create and activate a session in Admin to begin</p>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-secondary)' }}>No active event</h2>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Go live on an event in Events to start judging</p>
               <Link href="/admin" className="inline-block mt-2 text-sm underline underline-offset-4"
                 style={{ color: 'var(--accent)' }}>
-                Go to Admin →
+                Go to Events →
               </Link>
             </div>
           </div>
@@ -209,54 +209,45 @@ export default function JudgePage() {
           <div className="relative z-10 flex flex-col flex-1 overflow-hidden min-h-0">
 
             {/* Session + controls strip */}
-            <div className="relative shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5"
+            <div className="relative shrink-0 flex items-center gap-3 px-4 py-2.5"
               style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)' }}>
 
-              {/* Current session label */}
-              <span className="text-xs font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
-                Session
-              </span>
-              <span className="h-1.5 w-1.5 rounded-full shrink-0"
-                style={{ background: activeSession ? 'var(--accent)' : 'var(--text-muted)' }} />
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {activeSession?.name ?? 'Press Record to begin'}
-              </span>
+              {/* Presenter status */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="h-1.5 w-1.5 rounded-full shrink-0"
+                  style={{ background: activeSession ? 'var(--accent)' : 'var(--border-hover)' }} />
+                <span className="text-sm font-medium truncate"
+                  style={{ color: activeSession ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                  {activeSession?.name ?? 'Waiting for presenter…'}
+                </span>
+              </div>
 
-              {/* Punctuate button — visible only while recording */}
+              {/* Punctuate — only while recording */}
               <AnimatePresence>
                 {isRecording && activeSession && (
-                  <motion.div
-                    key="punctuate-zone"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="flex items-center"
-                  >
+                  <motion.div key="punctuate-zone" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                    className="shrink-0 flex items-center">
                     {confirmPunctuate ? (
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Snapshot &amp; start fresh?</span>
-                        <button
-                          onClick={handlePunctuate}
-                          disabled={isSummarising || isPunctuating}
+                        <button onClick={handlePunctuate} disabled={isSummarising || isPunctuating}
                           className="text-xs px-2.5 py-1 rounded-lg font-medium disabled:opacity-50"
                           style={{ background: 'var(--accent)', color: 'white' }}>
                           {isPunctuating ? '…' : 'Yes'}
                         </button>
-                        <button
-                          onClick={() => setConfirmPunctuate(false)}
+                        <button onClick={() => setConfirmPunctuate(false)}
                           className="text-xs px-2.5 py-1 rounded-lg"
                           style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                           Cancel
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setConfirmPunctuate(true)}
+                      <button onClick={() => setConfirmPunctuate(true)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                         style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}
                         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                           <line x1="4" y1="22" x2="4" y2="15" />
                         </svg>
@@ -267,17 +258,12 @@ export default function JudgePage() {
                 )}
               </AnimatePresence>
 
-              {/* Collector mics pill */}
+              {/* Collector mics */}
               <AnimatePresence>
                 {collectors.length > 0 && (
-                  <motion.div
-                    key="collectors"
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.85 }}
+                  <motion.div key="collectors" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85 }}
                     className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                    style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--score-high)', border: '1px solid rgba(16,185,129,0.25)' }}
-                  >
+                    style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--score-high)', border: '1px solid rgba(16,185,129,0.25)' }}>
                     <span className="relative flex h-1.5 w-1.5 shrink-0">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'currentColor' }} />
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'currentColor' }} />
@@ -287,34 +273,26 @@ export default function JudgePage() {
                 )}
               </AnimatePresence>
 
-              {/* Capture mode toggle + Record button */}
-              <div className="ml-auto shrink-0 flex items-center gap-2">
-                <div className="hidden sm:flex rounded-lg overflow-hidden text-xs font-medium shrink-0"
-                  style={{ border: '1px solid var(--border)', opacity: isRecording ? 0.4 : 1, pointerEvents: isRecording ? 'none' : 'auto' }}>
-                  {([
-                    { value: 'local' as const, label: 'Local', icon: (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
-                      </svg>
-                    )},
-                    { value: 'online' as const, label: 'Meeting', icon: (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <rect x="2" y="7" width="15" height="12" rx="2" />
-                        <path d="M17 11l4-3v8l-4-3" />
-                      </svg>
-                    )},
-                  ]).map(({ value, label, icon }) => (
-                    <button key={value} onClick={() => setMode(value)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 transition-all"
-                      style={{
-                        background: captureMode === value ? 'var(--accent-dim)' : 'transparent',
-                        color: captureMode === value ? 'var(--accent)' : 'var(--text-muted)',
-                        borderRight: value === 'local' ? '1px solid var(--border)' : 'none',
-                      }}>
-                      {icon}{label}
-                    </button>
-                  ))}
+              {/* Capture mode toggle (icon-only) + Record */}
+              <div className="shrink-0 flex items-center gap-1.5">
+                <div className="hidden sm:flex rounded-lg overflow-hidden"
+                  style={{ border: '1px solid var(--border)', opacity: isRecording ? 0.35 : 1, pointerEvents: isRecording ? 'none' : 'auto' }}>
+                  <button onClick={() => setMode('local')} title="Local mic"
+                    className="px-2 py-1.5 transition-all"
+                    style={{ background: captureMode === 'local' ? 'var(--accent-dim)' : 'transparent', color: captureMode === 'local' ? 'var(--accent)' : 'var(--text-muted)', borderRight: '1px solid var(--border)' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
+                    </svg>
+                  </button>
+                  <button onClick={() => setMode('online')} title="Meeting audio"
+                    className="px-2 py-1.5 transition-all"
+                    style={{ background: captureMode === 'online' ? 'var(--accent-dim)' : 'transparent', color: captureMode === 'online' ? 'var(--accent)' : 'var(--text-muted)' }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <rect x="2" y="7" width="15" height="12" rx="2" />
+                      <path d="M17 11l4-3v8l-4-3" />
+                    </svg>
+                  </button>
                 </div>
                 <RecordingControl compact onStart={start} onStop={stop} />
               </div>

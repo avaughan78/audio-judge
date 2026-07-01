@@ -82,7 +82,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
       <div className="flex flex-col h-full">
         {!activeSession ? (
           <div className="flex-1 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>
-            Press Record to begin
+            Waiting for presenter…
           </div>
         ) : criteria.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -173,7 +173,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
       <div className="flex-1 overflow-y-auto p-4 space-y-5 min-h-0">
         {!activeSession ? (
           <div className="flex items-center justify-center h-full text-sm" style={{ color: 'var(--text-muted)' }}>
-            Press Record to begin
+            Waiting for presenter…
           </div>
         ) : criteria.length === 0 ? (
           <div className="flex items-center justify-center h-full text-sm" style={{ color: 'var(--text-muted)' }}>
