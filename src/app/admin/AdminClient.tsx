@@ -174,6 +174,8 @@ export default function AdminClient() {
 
   const [generatingNewDesc, setGeneratingNewDesc] = useState(false)
   const [generatingEditDesc, setGeneratingEditDesc] = useState(false)
+  const [generatingCriteriaSet, setGeneratingCriteriaSet] = useState(false)
+  const [confirmAutoGenerate, setConfirmAutoGenerate] = useState(false)
   const [confirmReset, setConfirmReset] = useState<string | null>(null)
 
   // ── Auto-save brief ────────────────────────────────────────────────────────
@@ -447,6 +449,32 @@ export default function AdminClient() {
       if (data.description) setEditingCriteria(p => p ? { ...p, description: data.description } : null)
     } catch (_) {}
     setGeneratingEditDesc(false)
+  }
+
+  const generateCriteriaSet = async (force = false) => {
+    if (!brief.trim() || !viewedSession) return
+    if (criteria.length > 0 && !force) { setConfirmAutoGenerate(true); return }
+    setGeneratingCriteriaSet(true)
+    setConfirmAutoGenerate(false)
+    try {
+      const res = await fetch('/api/generate-criteria-set', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brief }),
+      })
+      const data = await res.json()
+      if (!data.criteria?.length) return
+      if (criteria.length > 0) {
+        await supabase.from('criteria').delete().eq('session_id', viewedSession.id)
+        setCriteria([])
+      }
+      const rows = data.criteria.map((c: { name: string; description: string; weight: number }, i: number) => ({
+        session_id: viewedSession.id, name: c.name, description: c.description,
+        weight: c.weight, order_index: i,
+      }))
+      const { data: inserted } = await supabase.from('criteria').insert(rows).select()
+      if (inserted) setCriteria(inserted)
+    } catch (_) {}
+    setGeneratingCriteriaSet(false)
   }
 
   const exportCsv = async () => {
@@ -746,6 +774,16 @@ export default function AdminClient() {
                       subtitle="What the AI scores on. Specific descriptions produce more reliable scores."
                       action={
                         <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => generateCriteriaSet()}
+                            disabled={!brief.trim() || generatingCriteriaSet}
+                            title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context above first'}
+                            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
+                            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                            <SparkleIcon spinning={generatingCriteriaSet} />
+                            {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
+                          </button>
+                          <div className="w-px h-4" style={{ background: 'var(--border)' }} />
                           {TEMPLATES.map(t => (
                             <button key={t.id} onClick={() => handleTemplateClick(t)}
                               className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
@@ -766,6 +804,25 @@ export default function AdminClient() {
                       }>
 
                       <AnimatePresence>
+                        {confirmAutoGenerate && (
+                          <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                            className="mb-4 p-3 rounded-xl flex items-center gap-3"
+                            style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid var(--border-hover)' }}>
+                            <SparkleIcon spinning={false} />
+                            <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>
+                              Replace {criteria.length} existing criteria with AI-generated ones?
+                            </span>
+                            <button onClick={() => generateCriteriaSet(true)}
+                              className="text-sm px-3 py-1 rounded-lg font-medium"
+                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                              Replace
+                            </button>
+                            <button onClick={() => setConfirmAutoGenerate(false)} className="text-sm"
+                              style={{ color: 'var(--text-muted)' }}>
+                              Cancel
+                            </button>
+                          </motion.div>
+                        )}
                         {confirmReplaceTemplate && (
                           <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                             className="mb-4 p-3 rounded-xl flex items-center gap-3"
