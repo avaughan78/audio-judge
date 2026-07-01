@@ -722,8 +722,23 @@ export default function AdminClient() {
                 </div>
 
                 {/* ── Card panels ── */}
-                <div className="flex-1 flex flex-col min-h-0 px-5 pb-5 gap-3">
-                  <div className="flex-1 relative overflow-hidden min-h-0">
+                <div className="flex-1 flex flex-col min-h-0 py-5 gap-3">
+                  <div className="flex-1 flex items-stretch min-h-0 gap-3 px-4 max-w-3xl mx-auto w-full">
+
+                    {/* Left nav */}
+                    <button
+                      onClick={() => goToTab(0)}
+                      disabled={activeTab === 0}
+                      className="shrink-0 self-center w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
+                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+                      onMouseEnter={e => { if (activeTab !== 0) { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' } }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
+                    </button>
+
+                    <div className="flex-1 relative overflow-hidden min-h-0">
                     <AnimatePresence mode="wait" custom={tabDir} initial={false}>
                       <motion.div
                         key={activeTab}
@@ -1099,6 +1114,20 @@ export default function AdminClient() {
                         </div>
                       </motion.div>
                     </AnimatePresence>
+                  </div>
+
+                    {/* Right nav */}
+                    <button
+                      onClick={() => goToTab(1)}
+                      disabled={activeTab === 1}
+                      className="shrink-0 self-center w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-20"
+                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+                      onMouseEnter={e => { if (activeTab !== 1) { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' } }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
                   </div>
 
                   {/* Navigation dots */}
