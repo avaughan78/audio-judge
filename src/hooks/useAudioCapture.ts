@@ -99,8 +99,10 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     // Initiate media acquisition synchronously — getDisplayMedia must be called
     // within the user-activation window (the click), before any awaited fetches
     // that would expire it.
+    // video: false requests audio-only tab capture (Chrome 121+) — no video
+    // tracks means no stripping needed and audio/webm;codecs=opus works cleanly.
     const rawStreamPromise: Promise<MediaStream> = captureMode === 'online'
-      ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+      ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: false })
       : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
 
     // Create fresh session slot — runs in parallel while the user is picking
@@ -132,24 +134,16 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing from response')
 
-      let stream: MediaStream
-      if (captureMode === 'online') {
-        const audioTracks = rawStream.getAudioTracks()
-        if (!audioTracks.length) {
-          rawStream.getTracks().forEach((t) => t.stop())
-          const msg = 'No audio captured — select a Chrome tab and tick "Share tab audio"'
-          useAppStore.getState().setJudgeError(msg)
-          throw new Error(msg)
-        }
-        // Use rawStream directly — new MediaStream(audioTracks) can silently break
-        // the audio data pipeline for getDisplayMedia tracks in Chrome.
-        // audio/webm mimeType ensures only audio is encoded even with video tracks present.
-        stream = rawStream
-        streamRef.current = rawStream
-      } else {
-        stream = rawStream
-        streamRef.current = stream
+      if (!rawStream.getAudioTracks().length) {
+        rawStream.getTracks().forEach((t) => t.stop())
+        const msg = captureMode === 'online'
+          ? 'No audio captured — select a Chrome tab and tick "Share tab audio"'
+          : 'No microphone audio captured'
+        useAppStore.getState().setJudgeError(msg)
+        throw new Error(msg)
       }
+      const stream = rawStream
+      streamRef.current = rawStream
 
       const { DeepgramClient } = await import('@deepgram/sdk')
       const dg = new DeepgramClient({ apiKey: key, baseUrl: 'https://api.eu.deepgram.com' })
@@ -172,18 +166,11 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         if (mediaRecorderRef.current) return
         setRecordingStartedAt(Date.now())
 
-        // For getDisplayMedia streams strip video tracks so MediaRecorder gets
-        // a clean audio-only stream — required for audio/webm;codecs=opus mimeType.
-        const audioTracks = stream.getAudioTracks()
-        const recordingStream = audioTracks.length > 0 && stream.getVideoTracks().length > 0
-          ? new MediaStream(audioTracks)
-          : stream
-
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? 'audio/webm;codecs=opus'
           : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
 
-        const mr = new MediaRecorder(recordingStream, mimeType ? { mimeType } : undefined)
+        const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
         mr.ondataavailable = (e) => {
           if (e.data.size > 0 && conn.readyState === 1) conn.sendMedia(e.data)
         }

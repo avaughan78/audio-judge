@@ -48,7 +48,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       // Initiate media acquisition synchronously in the user-activation context
       // before any awaited network calls that would expire the activation window.
       const rawStreamPromise: Promise<MediaStream> = mode === 'online'
-        ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+        ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: false })
         : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
 
       const [tokenData, rawStream] = await Promise.all([
@@ -60,21 +60,12 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing')
 
-      let stream: MediaStream
-      if (mode === 'online') {
-        const audioTracks = rawStream.getAudioTracks()
-        if (!audioTracks.length) {
-          rawStream.getTracks().forEach((t) => t.stop())
-          throw new Error('No audio captured — select a Chrome tab and tick "Share tab audio"')
-        }
-        // Use rawStream directly — new MediaStream(audioTracks) can silently break
-        // the audio data pipeline for getDisplayMedia tracks in Chrome.
-        stream = rawStream
-        streamRef.current = rawStream
-      } else {
-        stream = rawStream
-        streamRef.current = stream
+      if (!rawStream.getAudioTracks().length) {
+        rawStream.getTracks().forEach((t) => t.stop())
+        throw new Error('No audio captured — select a Chrome tab and tick "Share tab audio"')
       }
+      const stream = rawStream
+      streamRef.current = rawStream
 
       const supabase = createClient()
 
@@ -99,16 +90,11 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
         acquireWakeLock()
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
-        const audioTracks = stream.getAudioTracks()
-        const recordingStream = audioTracks.length > 0 && stream.getVideoTracks().length > 0
-          ? new MediaStream(audioTracks)
-          : stream
-
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
           ? 'audio/webm;codecs=opus'
           : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
 
-        const mr = new MediaRecorder(recordingStream, mimeType ? { mimeType } : undefined)
+        const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
         mr.ondataavailable = (e) => {
           if (e.data.size > 0 && conn.readyState === 1) conn.sendMedia(e.data)
         }
