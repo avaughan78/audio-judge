@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { Session, Criteria } from '@/lib/types'
 import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
@@ -137,7 +137,7 @@ function Section({ title, subtitle, children, action }: {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AdminClient() {
-  const { setThemeId } = useAppStore()
+  const { setThemeId, themeId: currentThemeId } = useAppStore()
   const supabase = createClient()
 
   const [dbError, setDbError] = useState<string | null>(null)
@@ -146,6 +146,8 @@ export default function AdminClient() {
   const [editingSessionName, setEditingSessionName] = useState(false)
   const [sessionNameDraft, setSessionNameDraft] = useState('')
   const [newSessionName, setNewSessionName] = useState('')
+
+  const reorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [brief, setBrief] = useState('')
   const [briefStatus, setBriefStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved')
@@ -260,7 +262,7 @@ export default function AdminClient() {
       setBrief(data.brief || '')
       savedBriefRef.current = data.brief || ''
       setBriefStatus('saved')
-      setThemeId(data.theme_id || 'midnight')
+      setThemeId(data.theme_id || currentThemeId)
     }
   }
 
@@ -272,7 +274,7 @@ export default function AdminClient() {
 
   const createSession = async () => {
     if (!newSessionName.trim()) return
-    const { data, error } = await supabase.from('sessions').insert({ name: newSessionName.trim(), is_active: false }).select().single()
+    const { data, error } = await supabase.from('sessions').insert({ name: newSessionName.trim(), is_active: false, theme_id: currentThemeId }).select().single()
     if (error) { setDbError(`Create failed: ${error.message}`); return }
     if (data) { setSessions(p => [data, ...p]); selectEvent(data); setNewSessionName(''); setDbError(null) }
   }
@@ -322,16 +324,14 @@ export default function AdminClient() {
     setConfirmDelete(null)
   }
 
-  const moveCriteria = async (index: number, dir: 'up' | 'down') => {
-    const swap = dir === 'up' ? index - 1 : index + 1
-    if (swap < 0 || swap >= criteria.length) return
-    const next = [...criteria]
-    ;[next[index], next[swap]] = [next[swap], next[index]]
-    setCriteria(next)
-    await Promise.all([
-      supabase.from('criteria').update({ order_index: index }).eq('id', next[index].id),
-      supabase.from('criteria').update({ order_index: swap }).eq('id', next[swap].id),
-    ])
+  const handleReorder = (newOrder: Criteria[]) => {
+    setCriteria(newOrder)
+    if (reorderTimer.current) clearTimeout(reorderTimer.current)
+    reorderTimer.current = setTimeout(async () => {
+      await Promise.all(
+        newOrder.map((c, i) => supabase.from('criteria').update({ order_index: i }).eq('id', c.id))
+      )
+    }, 500)
   }
 
   const applyTemplate = async (template: Template) => {
@@ -786,9 +786,9 @@ export default function AdminClient() {
                     </AnimatePresence>
 
                     {/* Criteria list */}
-                    <div className="space-y-0.5">
-                      {criteria.map((c, i) => (
-                        <div key={c.id}>
+                    <Reorder.Group as="div" axis="y" values={criteria} onReorder={handleReorder} className="space-y-0.5">
+                      {criteria.map((c) => (
+                        <Reorder.Item as="div" key={c.id} value={c} layout="position">
                           {editingCriteria?.id === c.id ? (
                             <div className="p-4 rounded-xl space-y-3 my-1"
                               style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border-hover)' }}>
@@ -817,14 +817,19 @@ export default function AdminClient() {
                               </div>
                             </div>
                           ) : (
-                            <div className="group/row -mx-2 px-2 py-3 rounded-xl flex items-start gap-3 cursor-pointer transition-colors"
+                            <div className="group/row -mx-2 px-2 py-3 rounded-xl flex items-start gap-3 transition-colors"
                               style={{ background: 'transparent' }}
                               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-                              onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
-                              <ReorderBtns onUp={() => moveCriteria(i, 'up')} onDown={() => moveCriteria(i, 'down')}
-                                canUp={i > 0} canDown={i < criteria.length - 1} />
-                              <div className="flex-1 min-w-0">
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                              <div className="shrink-0 self-center cursor-grab active:cursor-grabbing touch-none py-1"
+                                style={{ color: 'var(--text-muted)' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                  <circle cx="9" cy="5" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="9" cy="19" r="1.5" />
+                                  <circle cx="15" cy="5" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="15" cy="19" r="1.5" />
+                                </svg>
+                              </div>
+                              <div className="flex-1 min-w-0 cursor-pointer"
+                                onClick={() => setEditingCriteria({ id: c.id, name: c.name, description: c.description || '', weight: c.weight })}>
                                 <div className="flex items-center gap-2 mb-0.5">
                                   <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
                                   {c.weight !== 1 && (
@@ -846,14 +851,14 @@ export default function AdminClient() {
                               />
                             </div>
                           )}
-                        </div>
+                        </Reorder.Item>
                       ))}
                       {criteria.length === 0 && (
                         <p className="text-sm py-1" style={{ color: 'var(--text-muted)' }}>
                           No criteria yet — load a template above or add one below.
                         </p>
                       )}
-                    </div>
+                    </Reorder.Group>
 
                     {/* Add criterion */}
                     <div className="mt-5 pt-5 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
@@ -1088,26 +1093,6 @@ function SparkleIcon({ spinning }: { spinning: boolean }) {
   )
 }
 
-function ReorderBtns({ onUp, onDown, canUp, canDown }: {
-  onUp: () => void; onDown: () => void; canUp: boolean; canDown: boolean
-}) {
-  return (
-    <div className="flex flex-col gap-0.5 shrink-0 self-center">
-      <button onClick={onUp} disabled={!canUp} className="p-0.5 rounded transition-colors hover:text-white disabled:opacity-0">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-          style={{ color: canUp ? 'var(--text-muted)' : 'transparent' }}>
-          <polyline points="18 15 12 9 6 15" />
-        </svg>
-      </button>
-      <button onClick={onDown} disabled={!canDown} className="p-0.5 rounded transition-colors hover:text-white disabled:opacity-0">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-          style={{ color: canDown ? 'var(--text-muted)' : 'transparent' }}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-    </div>
-  )
-}
 
 function InlineDeleteBtn({ isConfirming, onRequest, onConfirm, onCancel }: {
   isConfirming: boolean; onRequest: () => void; onConfirm: () => void; onCancel: () => void

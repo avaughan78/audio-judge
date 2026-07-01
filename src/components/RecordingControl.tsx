@@ -42,8 +42,7 @@ export function RecordingControl({ compact = false, onStart, onStop }: Recording
   const start = onStart ?? hookStart
   const stop = onStop ?? hookStop
 
-  const isAutoMode = session?.detection_mode === 'automatic'
-  const canRecord = (!!activeTeam || isAutoMode) && !isConnecting
+  const canRecord = !!session && !isConnecting
 
   if (compact) {
     return (
@@ -161,7 +160,7 @@ export function RecordingControl({ compact = false, onStart, onStop }: Recording
             ) : (
               <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {activeTeam ? `Ready · ${activeTeam.name}` : 'Select a participant to begin'}
+                  {activeTeam ? `Ready · ${activeTeam.name}` : 'Ready'}
                 </span>
               </motion.div>
             )}
