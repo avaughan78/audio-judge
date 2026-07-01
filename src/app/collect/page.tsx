@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { useCollectorCapture } from '@/hooks/useCollectorCapture'
+import { useSessionPresence } from '@/hooks/useSessionPresence'
+import { getDeviceId } from '@/lib/deviceId'
 import { ThemeProvider } from '@/components/ThemeSelector'
 import { applyTheme, themeMap } from '@/lib/themes'
 import type { Session, Team, ThemeId } from '@/lib/types'
@@ -12,9 +14,14 @@ export default function CollectPage() {
   const [session, setSession] = useState<Session | null>(null)
   const [activeTeam, setActiveTeam] = useState<Team | null>(null)
   const [loading, setLoading] = useState(true)
+  const deviceId = getDeviceId()
 
   const { start, stop, isRecording, isConnecting, transcript, interimTranscript, hasWakeLock } =
     useCollectorCapture(session?.id ?? null, activeTeam?.id ?? null)
+
+  const { peers } = useSessionPresence(session?.id ?? null, deviceId, 'collector', isRecording)
+  const judgeOnline = peers.some((p) => p.role === 'judge')
+  const otherCollectors = peers.filter((p) => p.role === 'collector')
 
   useEffect(() => {
     const supabase = createClient()
@@ -115,6 +122,29 @@ export default function CollectPage() {
                   {activeTeam?.name ?? 'Waiting…'}
                 </motion.p>
               </AnimatePresence>
+            </div>
+
+            {/* Connection status */}
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
+                style={{
+                  background: judgeOnline ? 'rgba(16,185,129,0.1)' : 'var(--bg-card)',
+                  color: judgeOnline ? 'var(--score-high)' : 'var(--text-muted)',
+                  border: `1px solid ${judgeOnline ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`,
+                  transition: 'all 0.3s ease',
+                }}>
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  {judgeOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'currentColor' }} />}
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'currentColor' }} />
+                </span>
+                Judge {judgeOnline ? 'online' : 'offline'}
+              </div>
+              {otherCollectors.length > 0 && (
+                <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
+                  style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                  +{otherCollectors.length} other mic{otherCollectors.length !== 1 ? 's' : ''}
+                </div>
+              )}
             </div>
 
             {/* Big record button */}

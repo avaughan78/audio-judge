@@ -12,6 +12,8 @@ import { ScorePanel } from '@/components/ScorePanel'
 import { RecordingControl } from '@/components/RecordingControl'
 import { ThemeSelector, ThemeProvider } from '@/components/ThemeSelector'
 import { useAudioCapture } from '@/hooks/useAudioCapture'
+import { useSessionPresence } from '@/hooks/useSessionPresence'
+import { getDeviceId } from '@/lib/deviceId'
 
 export default function JudgePage() {
   const { session, setSession, setTeams, setCriteria, updateScore, setThemeId } = useAppStore()
@@ -30,6 +32,9 @@ export default function JudgePage() {
   const [newTeamNameInline, setNewTeamNameInline] = useState('')
   const [addingTeamInline, setAddingTeamInline] = useState(false)
   const { start, stop, advanceToNextTeam, manualAdvanceAutoMode } = useAudioCapture()
+  const deviceId = getDeviceId()
+  const { peers } = useSessionPresence(session?.id ?? null, deviceId, 'judge', isRecording)
+  const collectors = peers.filter((p) => p.role === 'collector')
 
   // Flash transition banner when team changes
   useEffect(() => {
@@ -336,6 +341,24 @@ export default function JudgePage() {
                   )}
                 </>
               )}
+              <AnimatePresence>
+                {collectors.length > 0 && (
+                  <motion.div
+                    key="collectors"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                    style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--score-high)', border: '1px solid rgba(16,185,129,0.25)' }}
+                  >
+                    <span className="relative flex h-1.5 w-1.5 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'currentColor' }} />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: 'currentColor' }} />
+                    </span>
+                    {collectors.length} mic{collectors.length !== 1 ? 's' : ''}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="ml-auto shrink-0">
                 <RecordingControl compact onStart={start} onStop={stop} />
               </div>

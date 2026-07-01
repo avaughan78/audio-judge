@@ -2,14 +2,7 @@
 
 import { useRef, useCallback, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-
-function getDeviceId(): string {
-  try {
-    let id = sessionStorage.getItem('aj_device_id')
-    if (!id) { id = crypto.randomUUID(); sessionStorage.setItem('aj_device_id', id) }
-    return id
-  } catch (_) { return crypto.randomUUID() }
-}
+import { getDeviceId } from '@/lib/deviceId'
 
 export function useCollectorCapture(sessionId: string | null, activeTeamId: string | null) {
   const deviceId = useRef(getDeviceId())

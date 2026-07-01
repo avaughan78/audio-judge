@@ -18,15 +18,16 @@ export async function POST(request: Request) {
   if (!brief?.trim()) return NextResponse.json({ error: 'Brief required' }, { status: 400 })
 
   const anthropicKey = await getSetting('ANTHROPIC_API_KEY', undefined, user.id)
-  if (!anthropicKey) return NextResponse.json({ error: 'No Anthropic API key set' }, { status: 400 })
+  if (!anthropicKey) return NextResponse.json({ error: 'No Anthropic API key configured — add it in Admin → Settings' }, { status: 400 })
 
-  const anthropic = new Anthropic({ apiKey: anthropicKey })
-
-  const message = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1500,
-    temperature: 0.4,
-    system: `You generate scoring criteria for structured evaluation sessions. Given a description of what's being evaluated, produce 4–6 specific, useful criteria.
+  let text = ''
+  try {
+    const anthropic = new Anthropic({ apiKey: anthropicKey })
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1500,
+      temperature: 0.4,
+      system: `You generate scoring criteria for structured evaluation sessions. Given a description of what's being evaluated, produce 4–6 specific, useful criteria.
 
 Return ONLY valid JSON — no markdown, no preamble:
 {
@@ -40,16 +41,22 @@ Return ONLY valid JSON — no markdown, no preamble:
 }
 
 Weight must be one of: 0.5, 1, 1.5, 2. Use 1.5–2 for the most important criteria, 0.5 for secondary ones.`,
-    messages: [{ role: 'user', content: `Generate scoring criteria for:\n\n${brief.trim()}` }],
-  })
+      messages: [{ role: 'user', content: `Generate scoring criteria for:\n\n${brief.trim()}` }],
+    })
+    text = message.content[0].type === 'text' ? message.content[0].text.trim() : ''
+  } catch (e: any) {
+    const msg = e?.message ?? 'Anthropic API error'
+    return NextResponse.json({ error: msg }, { status: 502 })
+  }
 
-  const text = message.content[0].type === 'text' ? message.content[0].text.trim() : ''
+  // Strip markdown code fences if the model wrapped the JSON anyway
+  const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
 
   try {
-    const parsed = JSON.parse(text)
+    const parsed = JSON.parse(stripped)
     if (!Array.isArray(parsed.criteria) || parsed.criteria.length === 0) throw new Error('Invalid format')
     return NextResponse.json(parsed)
   } catch {
-    return NextResponse.json({ error: 'Failed to parse AI response', raw: text }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to parse AI response', raw: stripped }, { status: 500 })
   }
 }

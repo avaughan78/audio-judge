@@ -3,20 +3,13 @@
 import { useRef, useCallback } from 'react'
 import { useAppStore } from '@/lib/store'
 import { createClient as createSupabaseClient } from '@/lib/supabase'
+import { getDeviceId } from '@/lib/deviceId'
 
 const WORDS_PER_CYCLE = 40
 const CYCLE_INTERVAL_MS = 12_000
 const TRANSITION_CHECK_WORDS = 30
 const MIN_WORDS_BEFORE_TRANSITION = 60
 const MAX_BUFFER_WORDS = 8_000  // prevent unbounded memory growth on long events
-
-function getDeviceId(): string {
-  try {
-    let id = sessionStorage.getItem('aj_device_id')
-    if (!id) { id = crypto.randomUUID(); sessionStorage.setItem('aj_device_id', id) }
-    return id
-  } catch (_) { return crypto.randomUUID() }
-}
 
 export function useAudioCapture() {
   const deviceId = useRef(getDeviceId())
