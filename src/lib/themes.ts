@@ -158,7 +158,7 @@ export const themes: Theme[] = [
     id: 'daylight',
     name: 'Daylight',
     description: 'Clean light mode for bright rooms',
-    swatch: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+    swatch: 'linear-gradient(135deg, #fbbf24, #7dd3fc)',
     vars: {
       bg: '#f8fafc',
       bgCard: 'rgba(0,0,0,0.03)',

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { Session, Team, Criteria } from '@/lib/types'
-import { ThemeProvider } from '@/components/ThemeSelector'
+import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
 import { useAppStore } from '@/lib/store'
 
 // ── Templates ────────────────────────────────────────────────────────────────
@@ -544,6 +544,8 @@ export default function AdminClient() {
                 <span className="text-sm font-medium" style={{ color: '#4ade80' }}>{liveSession.name} · Live</span>
               </div>
             )}
+            <ThemeSelector />
+            <div className="w-px h-4" style={{ background: 'var(--border)' }} />
             <button
               onClick={async () => { const { createClient } = await import('@/lib/supabase'); await createClient().auth.signOut(); window.location.href = '/login' }}
               className="text-sm px-3 py-1.5 rounded-lg transition-colors"

@@ -6,6 +6,7 @@ import { useSpring } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { Session, Team, Criteria, Score, ThemeId } from '@/lib/types'
 import { applyTheme, themeMap } from '@/lib/themes'
+import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
   const [display, setDisplay] = useState(0)
@@ -35,6 +36,7 @@ export default function DisplayClient() {
   // Ref rather than state because it's read inside the Supabase Realtime callback,
   // which is a closure that would always see the stale initial value if it used state.
   const activeTeamIdRef = useRef<string | null>(null)
+  const [judgeRecording, setJudgeRecording] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000)
@@ -77,6 +79,16 @@ export default function DisplayClient() {
     supabase.channel('display-transcript')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transcript_chunks', filter: `session_id=eq.${sess.id}` },
         (payload: any) => { if (payload.new?.content) setLatestTranscript(payload.new.content) })
+      .subscribe()
+
+    // Observe judge/collector presence to show recording state (display page does not track itself)
+    const presenceChannel = supabase.channel(`presence:${sess.id}`)
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState<any>()
+        const recording = Object.values(state).flat().some((p: any) => p.role === 'judge' && p.isRecording)
+        setJudgeRecording(recording)
+      })
       .subscribe()
   }, [applySessionTheme])
 
@@ -137,6 +149,7 @@ export default function DisplayClient() {
   const overallStyle = getBarStyle(overall)
 
   return (
+  <ThemeProvider>
     <div className="fixed inset-0 overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
       {/* Ambient */}
@@ -159,17 +172,29 @@ export default function DisplayClient() {
           <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{session?.name || 'AudioJudge'}</span>
         </div>
         <div className="flex items-center gap-5">
+          <ThemeSelector />
           <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
             {clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute h-full w-full rounded-full opacity-75"
-                style={{ background: 'var(--score-low)' }} />
-              <span className="relative h-2 w-2 rounded-full" style={{ background: 'var(--score-low)' }} />
-            </span>
-            <span className="text-xs font-bold tracking-widest" style={{ color: 'var(--score-low)' }}>LIVE</span>
-          </div>
+          <AnimatePresence mode="wait">
+            {judgeRecording ? (
+              <motion.div key="rec" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute h-full w-full rounded-full opacity-75"
+                    style={{ background: 'var(--score-low)' }} />
+                  <span className="relative h-2 w-2 rounded-full" style={{ background: 'var(--score-low)' }} />
+                </span>
+                <span className="text-xs font-bold tracking-widest" style={{ color: 'var(--score-low)' }}>RECORDING</span>
+              </motion.div>
+            ) : (
+              <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full" style={{ background: 'var(--text-muted)' }} />
+                <span className="text-xs font-bold tracking-widest" style={{ color: 'var(--text-muted)' }}>STANDBY</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -296,6 +321,7 @@ export default function DisplayClient() {
         </div>
       )}
     </div>
+  </ThemeProvider>
   )
 }
 

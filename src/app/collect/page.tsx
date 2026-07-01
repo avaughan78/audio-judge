@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase'
 import { useCollectorCapture } from '@/hooks/useCollectorCapture'
 import { useSessionPresence } from '@/hooks/useSessionPresence'
 import { getDeviceId } from '@/lib/deviceId'
-import { ThemeProvider } from '@/components/ThemeSelector'
+import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
 import { applyTheme, themeMap } from '@/lib/themes'
 import type { Session, Team, ThemeId } from '@/lib/types'
 
@@ -86,9 +86,12 @@ export default function CollectPage() {
               Collector
             </span>
           </div>
-          {session && (
-            <span className="text-xs truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
-          )}
+          <div className="flex items-center gap-3">
+            {session && (
+              <span className="hidden sm:inline text-xs truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
+            )}
+            <ThemeSelector />
+          </div>
         </header>
 
         {/* Body */}
