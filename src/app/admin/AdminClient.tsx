@@ -504,17 +504,30 @@ export default function AdminClient() {
       <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
         <AppHeader
-          back
           section="Events"
           items={[
             { label: 'Records', href: '/records', icon: 'archive', hideOnMobile: true },
             { label: 'Settings', onClick: () => setShowSettings(true), icon: 'settings' },
-            { label: 'Sign out', onClick: async () => {
-              const { createClient } = await import('@/lib/supabase')
-              await createClient().auth.signOut()
-              window.location.href = '/login'
-            }},
           ]}
+          rightSlot={
+            <button
+              onClick={async () => {
+                const { createClient } = await import('@/lib/supabase')
+                await createClient().auth.signOut()
+                window.location.href = '/login'
+              }}
+              title="Sign out"
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
+          }
         />
 
         <div className="flex flex-1 overflow-hidden">
@@ -535,15 +548,6 @@ export default function AdminClient() {
             style={{ borderRight: '1px solid var(--border)', background: 'var(--bg)', top: '56px', height: 'calc(100dvh - 56px)', position: showSidebar ? 'fixed' : 'sticky' }}>
 
             <div className="p-4 space-y-2">
-              <div className="flex items-center justify-between px-1 mb-3">
-                <p className="text-base font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Events</p>
-                <button onClick={() => setShowSidebar(false)} className="md:hidden p-1 rounded-lg" style={{ color: 'var(--text-muted)' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-
               <div className="flex gap-2">
                 <input
                   value={newEventName} onChange={e => setNewEventName(e.target.value)}
@@ -559,6 +563,12 @@ export default function AdminClient() {
                   style={{ background: 'var(--accent)', color: 'white' }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </button>
+                <button onClick={() => setShowSidebar(false)} className="md:hidden px-2.5 py-2 rounded-lg shrink-0"
+                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 </button>
               </div>
@@ -806,48 +816,29 @@ export default function AdminClient() {
 
                 {/* ── Setup sections ── */}
                 <div className="flex-1 overflow-y-auto">
-                  <div className="max-w-2xl mx-auto px-10 py-8 space-y-10 pb-24">
+                  <div className="max-w-2xl mx-auto px-8 py-8 space-y-5 pb-24">
 
-                    {/* Step indicator */}
-                    {(() => {
-                      const steps = [
-                        { label: 'Context', done: brief.trim().length > 0 },
-                        { label: 'Criteria', done: criteria.length > 0 },
-                        { label: 'Go live', done: viewedEvent.is_active },
-                      ]
-                      return (
-                        <div className="flex items-center gap-0">
-                          {steps.map((step, i) => (
-                            <div key={step.label} className="flex items-center">
-                              {i > 0 && (
-                                <div className="w-8 h-px mx-1" style={{ background: steps[i - 1].done ? 'var(--accent)' : 'var(--border)' }} />
-                              )}
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                                  style={{
-                                    background: step.done ? 'var(--accent)' : 'var(--border)',
-                                    color: step.done ? 'white' : 'var(--text-muted)',
-                                  }}>
-                                  {step.done ? (
-                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
-                                  ) : i + 1}
-                                </div>
-                                <span className="text-xs font-medium" style={{ color: step.done ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
-                                  {step.label}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                    {/* ── Section 1: Context ── */}
+                    <div className="rounded-2xl p-6 space-y-5"
+                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
+                            style={{
+                              background: brief.trim() ? 'var(--accent)' : 'var(--accent-dim)',
+                              color: brief.trim() ? 'white' : 'var(--accent)',
+                            }}>
+                            {brief.trim()
+                              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                              : '1'}
+                          </div>
+                          <div>
+                            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Context</h2>
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>What you're evaluating and what good looks like</p>
+                          </div>
                         </div>
-                      )
-                    })()}
-
-                    {/* Context */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Context</p>
                         {briefStatus !== 'saved' && (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-md"
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-md mt-1 shrink-0"
                             style={{
                               background: briefStatus === 'saving' ? 'rgba(99,102,241,0.12)' : 'rgba(251,191,36,0.12)',
                               color: briefStatus === 'saving' ? 'var(--accent)' : '#fbbf24',
@@ -856,34 +847,41 @@ export default function AdminClient() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                        What are you evaluating and what does good look like? The more specific, the more accurate the AI scoring.
-                      </p>
-                      <Textarea value={brief} onChange={setBrief} rows={8}
+                      <Textarea value={brief} onChange={setBrief} rows={7}
                         placeholder={`Describe what you're evaluating and what good looks like.\n\ne.g. "5-minute investor pitch. We want a clear problem, evidence of market size, and a working prototype. Strong teams will demonstrate real traction."`} />
                     </div>
 
-                    <div style={{ borderTop: '1px solid var(--border)' }} />
-
-                    {/* Scoring Criteria */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
-                          Scoring Criteria{criteria.length ? ` (${criteria.length})` : ''}
-                        </p>
+                    {/* ── Section 2: Scoring Criteria ── */}
+                    <div className="rounded-2xl p-6 space-y-5"
+                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
+                            style={{
+                              background: criteria.length > 0 ? 'var(--accent)' : 'var(--accent-dim)',
+                              color: criteria.length > 0 ? 'white' : 'var(--accent)',
+                            }}>
+                            {criteria.length > 0
+                              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                              : '2'}
+                          </div>
+                          <div>
+                            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                              Scoring Criteria{criteria.length > 0 ? <span className="ml-2 text-sm font-normal" style={{ color: 'var(--text-muted)' }}>{criteria.length} {criteria.length === 1 ? 'criterion' : 'criteria'}</span> : ''}
+                            </h2>
+                            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>What the AI scores on — specific descriptions produce better results</p>
+                          </div>
+                        </div>
                         <button
                           onClick={() => generateCriteriaSet()}
                           disabled={!brief.trim() || generatingCriteriaSet}
                           title={brief.trim() ? 'Auto-generate criteria from your context' : 'Add context first'}
-                          className="flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40"
+                          className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-40 shrink-0 mt-0.5"
                           style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
                           <SparkleIcon spinning={generatingCriteriaSet} />
                           {generatingCriteriaSet ? 'Generating…' : 'Auto-generate'}
                         </button>
                       </div>
-                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                        What the AI scores on. Specific descriptions produce more reliable scores.
-                      </p>
 
                       <AnimatePresence>
                         {confirmAutoGenerate && (
@@ -1016,7 +1014,7 @@ export default function AdminClient() {
                       </Reorder.Group>
 
                       {/* Add criterion */}
-                      <div className="pt-3 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
+                      <div className="pt-1 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
                         <Input value={newCritName} onChange={setNewCritName}
                           placeholder="Add a criterion — e.g. Clarity, Technical Depth" onEnter={createCriteria} />
                         {newCritName.trim() && (
@@ -1045,22 +1043,33 @@ export default function AdminClient() {
                       </div>
                     </div>
 
-                    {/* Go live CTA — shown at bottom when not yet active */}
-                    {!viewedEvent.is_active && (
-                      <div className="pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Ready to start judging?</p>
-                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Going live makes this the active event and enables scoring.</p>
+                    {/* ── Section 3: Go live ── */}
+                    {!viewedEvent.is_active ? (
+                      <div className="rounded-2xl p-6"
+                        style={{
+                          background: (brief.trim() && criteria.length > 0) ? 'rgba(74,222,128,0.04)' : 'var(--bg-card)',
+                          border: `1px solid ${(brief.trim() && criteria.length > 0) ? 'rgba(74,222,128,0.2)' : 'var(--border)'}`,
+                        }}>
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
+                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                              3
+                            </div>
+                            <div>
+                              <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Go live</h2>
+                              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                                {!brief.trim() ? 'Add context first' : criteria.length === 0 ? 'Add at least one criterion' : 'Ready — make this the active event and start scoring'}
+                              </p>
+                            </div>
                           </div>
                           <button
                             onClick={() => activateEvent(viewedEvent)}
                             disabled={!brief.trim() || criteria.length === 0}
-                            title={!brief.trim() ? 'Add context first' : criteria.length === 0 ? 'Add at least one criterion' : 'Go live'}
-                            className="flex items-center gap-2 text-base font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                            style={{ background: 'rgba(74,222,128,0.1)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}
-                            onMouseEnter={e => { if (!e.currentTarget.disabled) (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.18)' }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.1)' }}>
+                            className="flex items-center gap-2 text-base font-semibold px-5 py-2.5 rounded-xl transition-all disabled:opacity-35 disabled:cursor-not-allowed shrink-0"
+                            style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}
+                            onMouseEnter={e => { if (!(e.currentTarget as HTMLButtonElement).disabled) (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.2)' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(74,222,128,0.12)' }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" />
                             </svg>
@@ -1068,22 +1077,26 @@ export default function AdminClient() {
                           </button>
                         </div>
                       </div>
-                    )}
-
-                    {/* Start evaluating CTA — shown when live */}
-                    {viewedEvent.is_active && (
-                      <div className="pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
-                              <p className="text-sm font-medium" style={{ color: '#4ade80' }}>Live now</p>
+                    ) : (
+                      <div className="rounded-2xl p-6"
+                        style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.25)' }}>
+                        <div className="flex items-center justify-between gap-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                              style={{ background: '#4ade80' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
                             </div>
-                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Collectors can join and scoring is active.</p>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h2 className="text-lg font-semibold" style={{ color: '#4ade80' }}>Live now</h2>
+                                <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
+                              </div>
+                              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Collectors can join. Scoring is active.</p>
+                            </div>
                           </div>
                           <Link href="/"
-                            className="flex items-center gap-2 text-base font-semibold px-5 py-2.5 rounded-xl"
-                            style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }}>
+                            className="flex items-center gap-2 text-base font-semibold px-5 py-2.5 rounded-xl shrink-0"
+                            style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.35)' }}>
                             Start evaluating
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <polyline points="9 18 15 12 9 6" />
