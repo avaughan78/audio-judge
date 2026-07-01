@@ -143,6 +143,11 @@ function Section({ title, subtitle, children, action }: {
 export default function AdminClient() {
   const { setThemeId, themeId: currentThemeId } = useAppStore()
   const supabase = createClient()
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
+  }, [])
 
   const [dbError, setDbError] = useState<string | null>(null)
   const [events, setEvents] = useState<Event[]>([])
@@ -293,8 +298,8 @@ export default function AdminClient() {
   }
 
   const createEvent = async () => {
-    if (!newEventName.trim()) return
-    const { data, error } = await supabase.from('sessions').insert({ name: newEventName.trim(), is_active: false, theme_id: currentThemeId }).select().single()
+    if (!newEventName.trim() || !userId) return
+    const { data, error } = await supabase.from('sessions').insert({ name: newEventName.trim(), is_active: false, theme_id: currentThemeId, user_id: userId }).select().single()
     if (error) { setDbError(`Create failed: ${error.message}`); return }
     if (data) { setEvents(p => [data, ...p]); selectEvent(data); setNewEventName(''); setDbError(null) }
   }
