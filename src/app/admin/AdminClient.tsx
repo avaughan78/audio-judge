@@ -511,7 +511,7 @@ export default function AdminClient() {
         <div className="flex flex-1 overflow-hidden">
 
           {/* ── Sidebar — same bg as main, lighter ──────────────────── */}
-          <aside className="w-60 shrink-0 flex flex-col overflow-y-auto"
+          <aside className="w-72 shrink-0 flex flex-col overflow-y-auto"
             style={{ borderRight: '1px solid var(--border)', background: 'var(--bg)', height: 'calc(100vh - 56px)', position: 'sticky', top: '56px' }}>
 
             <div className="p-4 space-y-2">
