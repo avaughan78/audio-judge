@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
-import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
+import { ThemeProvider } from '@/components/ThemeSelector'
+import AppHeader from '@/components/AppHeader'
 import type { Session, Team, Criteria, Score } from '@/lib/types'
 
 interface SessionRecord {
@@ -235,33 +236,7 @@ export default function RecordsClient() {
     <ThemeProvider>
       <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
-        {/* Header */}
-        <header className="sticky top-0 z-20 flex items-center justify-between px-6 h-14"
-          style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)' }}>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--text-muted)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </Link>
-            <img src="/app-icon.svg" alt="Audio Judge" className="w-7 h-7 shrink-0" />
-            <span className="font-bold gradient-text">Audio Judge</span>
-            <span style={{ color: 'var(--border-hover)' }}>·</span>
-            <span className="text-base small-caps" style={{ color: 'var(--text-muted)' }}>Records</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <ThemeSelector />
-            <Link href="/admin"
-              className="text-base small-caps px-3 py-1.5 rounded-lg transition-colors"
-              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-              Admin
-            </Link>
-          </div>
-        </header>
+        <AppHeader back section="Records" items={[{ label: 'Admin', href: '/admin', icon: 'settings' }]} />
 
         <main className="max-w-3xl mx-auto px-6 py-10">
 

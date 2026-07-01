@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase'
 import { useCollectorCapture, CaptureMode } from '@/hooks/useCollectorCapture'
 import { useSessionPresence } from '@/hooks/useSessionPresence'
 import { getDeviceId } from '@/lib/deviceId'
-import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
+import { ThemeProvider } from '@/components/ThemeSelector'
+import AppHeader from '@/components/AppHeader'
 import { applyTheme, themeMap } from '@/lib/themes'
 import { useAppStore } from '@/lib/store'
 import type { Session, Team, ThemeId } from '@/lib/types'
@@ -82,25 +83,13 @@ export default function CollectPage() {
             style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 65%)' }} />
         </div>
 
-        {/* Header */}
-        <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
-          style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
-          <div className="flex items-center gap-3">
-            <img src="/app-icon.svg" alt="Audio Judge" className="w-6 h-6 shrink-0" />
-            <span className="text-base font-bold" style={{ color: 'var(--text-secondary)' }}>Audio Judge</span>
-            <span style={{ color: 'var(--text-muted)' }}>·</span>
-            <span className="text-base small-caps px-2 py-0.5 rounded-full font-semibold"
-              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-              Collector
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            {session && (
-              <span className="hidden sm:inline text-base truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
-            )}
-            <ThemeSelector />
-          </div>
-        </header>
+        <AppHeader
+          back
+          section="Collector"
+          rightSlot={session && (
+            <span className="hidden sm:inline text-sm truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
+          )}
+        />
 
         {/* Body */}
         {loading ? (

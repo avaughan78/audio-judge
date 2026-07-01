@@ -9,7 +9,8 @@ import { TranscriptSummary } from '@/components/TranscriptSummary'
 import { TranscriptTicker } from '@/components/TranscriptTicker'
 import { ScorePanel } from '@/components/ScorePanel'
 import { RecordingControl } from '@/components/RecordingControl'
-import { ThemeSelector, ThemeProvider } from '@/components/ThemeSelector'
+import { ThemeProvider } from '@/components/ThemeSelector'
+import AppHeader from '@/components/AppHeader'
 import { useAudioCapture } from '@/hooks/useAudioCapture'
 import { useSessionPresence } from '@/hooks/useSessionPresence'
 import type { CaptureMode } from '@/hooks/useCollectorCapture'
@@ -152,30 +153,16 @@ export default function JudgePage() {
         </div>
 
         {/* Header */}
-        <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
-          style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
-          <div className="flex items-center gap-3 min-w-0">
-            <img src="/app-icon.svg" alt="Audio Judge" className="w-6 h-6 shrink-0" />
-            <span className="text-base font-bold gradient-text shrink-0">Audio Judge</span>
-            {session && (
-              <>
-                <span className="hidden sm:inline" style={{ color: 'var(--text-muted)' }}>·</span>
-                <span className="hidden sm:inline text-base truncate" style={{ color: 'var(--text-muted)' }}>{session.name}</span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="hidden sm:flex items-center gap-3">
-              <ThemeSelector />
-              <div className="w-px h-4" style={{ background: 'var(--border)' }} />
-              <NavLink href="/display" target="_blank" label="Display" icon="external" />
-              <NavLink href="/collect" target="_blank" label="Collect" icon="mic" />
-              <NavLink href="/records" label="Records" icon="archive" />
-            </div>
-            <NavLink href="/admin" label="Admin" icon="settings" />
-          </div>
-        </header>
+        <AppHeader
+          section={session?.name}
+          sectionHiddenOnMobile
+          items={[
+            { label: 'Display', href: '/display', icon: 'external', target: '_blank', hideOnMobile: true },
+            { label: 'Collect', href: '/collect', icon: 'mic', target: '_blank', hideOnMobile: true },
+            { label: 'Records', href: '/records', icon: 'archive', hideOnMobile: true },
+            { label: 'Admin', href: '/admin', icon: 'settings' },
+          ]}
+        />
 
         {/* Missing API keys warning */}
         {missingKeys.length > 0 && (
@@ -396,36 +383,3 @@ export default function JudgePage() {
   )
 }
 
-function NavLink({ href, label, icon, target }: { href: string; label: string; icon: string; target?: string }) {
-  return (
-    <Link href={href} target={target}
-      className="flex items-center gap-1.5 text-base px-2.5 py-1.5 rounded-md transition-colors small-caps"
-      style={{ color: 'var(--text-muted)' }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-      {icon === 'external' ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-          <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-        </svg>
-      ) : icon === 'mic' ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
-        </svg>
-      ) : icon === 'archive' ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="21 8 21 21 3 21 3 8" />
-          <rect x="1" y="3" width="22" height="5" />
-          <line x1="10" y1="12" x2="14" y2="12" />
-        </svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2" />
-        </svg>
-      )}
-      {label}
-    </Link>
-  )
-}

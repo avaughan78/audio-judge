@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { Session, Criteria } from '@/lib/types'
-import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
+import { ThemeProvider } from '@/components/ThemeSelector'
+import AppHeader from '@/components/AppHeader'
 import { useAppStore } from '@/lib/store'
 
 // ── Templates ────────────────────────────────────────────────────────────────
@@ -462,51 +463,26 @@ export default function AdminClient() {
     <ThemeProvider>
       <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
-        {/* ── Top bar ─────────────────────────────────────────────────── */}
-        <header className="shrink-0 flex items-center justify-between px-6 h-14 sticky top-0 z-20"
-          style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)' }}>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--text-muted)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </Link>
-            <img src="/app-icon.svg" alt="Audio Judge" className="w-7 h-7 shrink-0" />
-            <span className="font-bold gradient-text">Audio Judge</span>
-            <span style={{ color: 'var(--border-hover)' }}>·</span>
-            <span className="text-base small-caps" style={{ color: 'var(--text-muted)' }}>Setup</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {liveSession && (
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
-                <span className="text-base font-medium" style={{ color: '#4ade80' }}>{liveSession.name} · Live</span>
-              </div>
-            )}
-            <Link href="/records"
-              className="flex items-center gap-1.5 text-base small-caps px-3 py-1.5 rounded-lg transition-colors"
-              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" />
-              </svg>
-              Records
-            </Link>
-            <ThemeSelector />
-            <div className="w-px h-4" style={{ background: 'var(--border)' }} />
-            <button
-              onClick={async () => { const { createClient } = await import('@/lib/supabase'); await createClient().auth.signOut(); window.location.href = '/login' }}
-              className="text-base small-caps px-3 py-1.5 rounded-lg transition-colors"
-              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-              Sign out
-            </button>
-          </div>
-        </header>
+        <AppHeader
+          back
+          section="Setup"
+          rightSlot={liveSession && (
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: '#4ade80' }} />
+              <span className="text-sm font-semibold tracking-wider uppercase" style={{ color: '#4ade80' }}>
+                {liveSession.name} · Live
+              </span>
+            </div>
+          )}
+          items={[
+            { label: 'Records', href: '/records', icon: 'archive' },
+            { label: 'Sign out', onClick: async () => {
+              const { createClient } = await import('@/lib/supabase')
+              await createClient().auth.signOut()
+              window.location.href = '/login'
+            }},
+          ]}
+        />
 
         <div className="flex flex-1 overflow-hidden">
 
