@@ -286,7 +286,7 @@ export default function AdminClient() {
       setBrief(data.brief || '')
       savedBriefRef.current = data.brief || ''
       setBriefStatus('saved')
-      setThemeId(data.theme_id || currentThemeId)
+      // Don't change the active theme when switching events
     }
   }
 
@@ -615,43 +615,133 @@ export default function AdminClient() {
           {/* ── Main content ──────────────────────────────────────────── */}
           <main className="flex-1 flex flex-col overflow-hidden">
             {!viewedEvent ? (
-              <div className="flex items-center justify-center flex-1 px-6">
-                <div className="w-full max-w-md rounded-2xl p-8 space-y-6"
-                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                  <div>
-                    <p className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-                      {events.length === 0 ? 'Create your first event' : 'Create a new event'}
-                    </p>
-                    <p className="text-base" style={{ color: 'var(--text-muted)' }}>
-                      {events.length === 0
-                        ? 'Give it a name to get started — you can rename it any time.'
-                        : 'Or select an existing event from the list.'}
-                    </p>
+              events.length === 0 ? (
+                /* ── Onboarding: new user, no events yet ── */
+                <div className="flex-1 overflow-y-auto px-8 py-12">
+                  <div className="max-w-xl mx-auto space-y-8">
+
+                    <div className="text-center space-y-2">
+                      <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Welcome to Audio Judge</p>
+                      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Here's how to run your first judging session in four steps.</p>
+                    </div>
+
+                    <div className="space-y-3">
+
+                      {/* Step 1 — active */}
+                      <div className="rounded-2xl p-6 space-y-4" style={{ border: '1.5px solid var(--accent)', background: 'var(--bg-card)' }}>
+                        <div className="flex items-start gap-4">
+                          <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
+                            style={{ background: 'var(--accent)', color: 'white' }}>1</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>Create an event</p>
+                            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                              Name your judging session — a hackathon, pitch competition, interview round, or any event you want to score.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            value={newEventName} onChange={e => setNewEventName(e.target.value)}
+                            placeholder="e.g. Q3 Hackathon, YC Interview Round…"
+                            autoFocus
+                            onKeyDown={e => { if (e.key === 'Enter') createEvent() }}
+                            className="flex-1 px-4 py-2.5 rounded-xl text-sm placeholder:text-[color:var(--text-muted)] focus:outline-none"
+                            style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                            onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+                            onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                          />
+                          <button onClick={createEvent} disabled={!newEventName.trim() || !userId}
+                            className="px-4 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
+                            style={{ background: 'var(--accent)', color: 'white' }}>
+                            Create →
+                          </button>
+                        </div>
+                        {dbError && (
+                          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                            {dbError}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Step 2 */}
+                      <div className="rounded-2xl p-6 opacity-50" style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                        <div className="flex items-start gap-4">
+                          <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
+                            style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>2</span>
+                          <div>
+                            <p className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>Define scoring criteria</p>
+                            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                              Set what you're judging — Innovation, Presentation, Feasibility. Paste a brief and auto-generate criteria with AI, or pick from a template.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Step 3 */}
+                      <div className="rounded-2xl p-6 opacity-50" style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                        <div className="flex items-start gap-4">
+                          <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
+                            style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>3</span>
+                          <div>
+                            <p className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>Add presenter slots</p>
+                            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                              Create a slot for each team or speaker. Switch between them on the scoring page — scores and transcripts are tracked separately per presenter.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Step 4 */}
+                      <div className="rounded-2xl p-6 opacity-50" style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+                        <div className="flex items-start gap-4">
+                          <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
+                            style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>4</span>
+                          <div>
+                            <p className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>Go live and score</p>
+                            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                              Activate your event, hit Record on the Scoring page, and AI evaluates each presentation against your criteria in real time. Results appear instantly.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <input
-                      value={newEventName} onChange={e => setNewEventName(e.target.value)}
-                      placeholder="e.g. Q3 Hackathon, YC Interview Round…"
-                      autoFocus
-                      onKeyDown={e => { if (e.key === 'Enter') createEvent() }}
-                      className="flex-1 px-4 py-3 rounded-xl text-base placeholder:text-[color:var(--text-muted)] focus:outline-none"
-                      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                      onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
-                      onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
-                    />
-                    <button onClick={createEvent} disabled={!newEventName.trim() || !userId}
-                      className="px-5 py-3 rounded-xl text-base font-semibold disabled:opacity-40 transition-all"
-                      style={{ background: 'var(--accent)', color: 'white' }}>
-                      Create
-                    </button>
-                  </div>
-                  {dbError && (
-                    <p className="text-sm px-4 py-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                      {dbError}
-                    </p>
-                  )}
                 </div>
-              </div>
+              ) : (
+                /* ── Returning user: create new event ── */
+                <div className="flex items-center justify-center flex-1 px-6">
+                  <div className="w-full max-w-md rounded-2xl p-8 space-y-6"
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                    <div>
+                      <p className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Create a new event</p>
+                      <p className="text-base" style={{ color: 'var(--text-muted)' }}>Or select an existing event from the list.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={newEventName} onChange={e => setNewEventName(e.target.value)}
+                        placeholder="e.g. Q3 Hackathon, YC Interview Round…"
+                        autoFocus
+                        onKeyDown={e => { if (e.key === 'Enter') createEvent() }}
+                        className="flex-1 px-4 py-3 rounded-xl text-base placeholder:text-[color:var(--text-muted)] focus:outline-none"
+                        style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                        onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+                        onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                      />
+                      <button onClick={createEvent} disabled={!newEventName.trim() || !userId}
+                        className="px-5 py-3 rounded-xl text-base font-semibold disabled:opacity-40 transition-all"
+                        style={{ background: 'var(--accent)', color: 'white' }}>
+                        Create
+                      </button>
+                    </div>
+                    {dbError && (
+                      <p className="text-sm px-4 py-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                        {dbError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
             ) : (
               <>
                 {/* ── Fixed top: event header + banners + tab bar ── */}

@@ -104,6 +104,8 @@ export default function JudgePage() {
   const [showNewPresenter, setShowNewPresenter] = useState(false)
   const [newPresenterName, setNewPresenterName] = useState('')
   const [creatingPresenter, setCreatingPresenter] = useState(false)
+  const [allEvents, setAllEvents] = useState<any[]>([])
+  const [activatingEventId, setActivatingEventId] = useState<string | null>(null)
 
   const { start, stop, pause, resume, isPaused, punctuate, rescore, clearBuffer } = useAudioCapture(captureMode)
 
@@ -147,6 +149,12 @@ export default function JudgePage() {
       .then(d => { if (!d.ok) setMissingKeys(d.missing) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (event) return
+    createClient().from('sessions').select('id, name, brief, created_at').order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setAllEvents(data) })
+  }, [event])
 
   useEffect(() => {
     const supabase = createClient()
@@ -208,6 +216,27 @@ export default function JudgePage() {
       unsub()
     }
   }, [])
+
+  const activateEvent = async (ev: any) => {
+    setActivatingEventId(ev.id)
+    const supabase = createClient()
+    await supabase.from('sessions').update({ is_active: false }).neq('id', ev.id)
+    const { data } = await supabase.from('sessions').update({ is_active: true }).eq('id', ev.id).select().single()
+    if (data) {
+      setEvent(data)
+      const [{ data: loadedSessions }, { data: loadedCriteria }] = await Promise.all([
+        supabase.from('teams').select('*').eq('session_id', data.id).order('order_index'),
+        supabase.from('criteria').select('*').eq('session_id', data.id).order('order_index'),
+      ])
+      if (loadedSessions) setSessions(loadedSessions)
+      if (loadedCriteria) setCriteria(loadedCriteria)
+      if (data.active_team_id && loadedSessions) {
+        const activeS = loadedSessions.find((t: any) => t.id === data.active_team_id)
+        if (activeS) setActiveSession(activeS)
+      }
+    }
+    setActivatingEventId(null)
+  }
 
   const createPresenter = async () => {
     const name = newPresenterName.trim()
@@ -431,12 +460,55 @@ export default function JudgePage() {
 
         {/* Body */}
         {!event ? (
-          <div className="relative z-10 flex-1 flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <div className="text-7xl">🎯</div>
-              <p className="text-2xl font-light" style={{ color: 'var(--text-muted)' }}>No active event</p>
-              <Link href="/admin" className="inline-block text-base underline underline-offset-4"
-                style={{ color: 'var(--accent)' }}>Go to Events →</Link>
+          <div className="relative z-10 flex-1 flex items-center justify-center px-6 py-10">
+            <div className="w-full max-w-sm space-y-6">
+              <div className="text-center space-y-1">
+                <p className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Select an event</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Go live to start scoring</p>
+              </div>
+              {allEvents.length === 0 ? (
+                <div className="text-center py-8 space-y-3">
+                  <div className="text-5xl">🎯</div>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No events yet</p>
+                  <Link href="/admin" className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl"
+                    style={{ background: 'var(--accent)', color: 'white' }}>
+                    Create an event
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {allEvents.map((ev) => (
+                    <button
+                      key={ev.id}
+                      onClick={() => activateEvent(ev)}
+                      disabled={!!activatingEventId}
+                      className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-all disabled:opacity-50"
+                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{ev.name}</p>
+                        {ev.brief && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{ev.brief}</p>}
+                      </div>
+                      {activatingEventId === ev.id ? (
+                        <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin shrink-0"
+                          style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+                      ) : (
+                        <span className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full"
+                          style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+                          Go live
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                  <div className="pt-2 text-center">
+                    <Link href="/admin" className="text-xs underline underline-offset-2" style={{ color: 'var(--text-muted)' }}>
+                      Manage events →
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : !activeSession ? (
@@ -502,9 +574,25 @@ export default function JudgePage() {
                 <div className="flex-1 overflow-y-auto pr-4 flex flex-col">
                 <div className="my-auto space-y-6 py-2">
                 {criteria.length === 0 ? (
-                  <p className="text-base" style={{ color: 'var(--text-muted)' }}>
-                    No criteria — configure in <Link href="/admin" className="underline underline-offset-2" style={{ color: 'var(--accent)' }}>Events</Link>
-                  </p>
+                  <div className="flex flex-col items-center justify-center gap-4 py-10 px-6 rounded-2xl text-center"
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="22" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>No scoring criteria</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Add criteria in{' '}
+                        <Link href="/admin" className="underline underline-offset-2 font-medium" style={{ color: 'var(--accent)' }}>Events</Link>
+                        {' '}before recording
+                      </p>
+                    </div>
+                  </div>
                 ) : criteria.map((c, i) => {
                   const score = scores[c.id]?.score ?? 0
                   const s = getBarStyle(score)
