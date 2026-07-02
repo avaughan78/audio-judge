@@ -365,31 +365,6 @@ export default function JudgePage() {
               )}
             </AnimatePresence>
 
-            {/* Rescore */}
-            <AnimatePresence>
-              {!isRecording && !isPaused && activeSession && (
-                <motion.button
-                  key="rescore"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  onClick={rescore}
-                  disabled={isSummarising}
-                  title="Rescore from full transcript"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all disabled:opacity-40"
-                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                    <path d="M3 3v5h5" />
-                  </svg>
-                  {isSummarising ? 'Scoring…' : 'Rescore'}
-                </motion.button>
-              )}
-            </AnimatePresence>
-
             {/* New presenter */}
             <AnimatePresence>
               {!isRecording && !isPaused && !!event && (
@@ -611,6 +586,33 @@ export default function JudgePage() {
                       </span>
                       {overall > 0 && <span className="text-lg mt-1" style={{ color: 'var(--text-muted)' }}>/100</span>}
                     </div>
+                    {/* Rescore button — top-right of circle */}
+                    <AnimatePresence>
+                      {!isRecording && !isPaused && activeSession && (
+                        <motion.button
+                          key="rescore-btn"
+                          initial={{ opacity: 0, scale: 0.7 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.7 }}
+                          onClick={rescore}
+                          disabled={isSummarising}
+                          title="Rescore from full transcript"
+                          className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-opacity"
+                          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+                        >
+                          {isSummarising ? (
+                            <div className="w-3.5 h-3.5 rounded-full border border-current border-t-transparent animate-spin" />
+                          ) : (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                              <path d="M3 3v5h5" />
+                            </svg>
+                          )}
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
 

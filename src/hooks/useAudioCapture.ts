@@ -375,7 +375,25 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   }, [runCycle, clearBuffer])
 
   // Rescore: manual full-transcript rescore when recording is stopped.
-  const rescore = useCallback(() => runCycle({ final: true }), [runCycle])
+  // Loads from DB first if the in-memory buffer is empty (e.g. after a page refresh).
+  const rescore = useCallback(async () => {
+    if (!bufferRef.current) {
+      const { event, activeSession } = useAppStore.getState()
+      if (event && activeSession) {
+        const { data: chunks } = await createSupabaseClient()
+          .from('transcript_chunks')
+          .select('content')
+          .eq('session_id', event.id)
+          .eq('team_id', activeSession.id)
+          .order('timestamp', { ascending: true })
+        if (chunks?.length) {
+          const words = chunks.map((c: any) => c.content).join(' ').split(/\s+/).filter(Boolean)
+          bufferRef.current = words.slice(-MAX_BUFFER_WORDS).join(' ')
+        }
+      }
+    }
+    await runCycle({ final: true })
+  }, [runCycle])
 
   return { start, pause, resume, stop, punctuate, rescore, isPaused, clearBuffer }
 }
