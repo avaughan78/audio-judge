@@ -311,6 +311,25 @@ export default function RecordsClient() {
   const [loading, setLoading] = useState(true)
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
   const [confirmDeleteEvent, setConfirmDeleteEvent] = useState<string | null>(null)
+  const [shareTokens, setShareTokens] = useState<Record<string, string>>({})
+  const [sharingId, setSharingId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const getShareLink = async (event: Event & { share_token?: string }) => {
+    setSharingId(event.id)
+    let token = event.share_token ?? shareTokens[event.id]
+    if (!token) {
+      token = crypto.randomUUID().replace(/-/g, '').slice(0, 8)
+      const supabase = createClient()
+      await supabase.from('sessions').update({ share_token: token }).eq('id', event.id)
+      setShareTokens(prev => ({ ...prev, [event.id]: token! }))
+    }
+    const url = `${window.location.origin}/share/${token}`
+    await navigator.clipboard.writeText(url)
+    setSharingId(null)
+    setCopiedId(event.id)
+    setTimeout(() => setCopiedId(prev => prev === event.id ? null : prev), 2000)
+  }
 
   const deleteEvent = async (id: string) => {
     const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
@@ -447,6 +466,26 @@ export default function RecordsClient() {
 
                       <div className="flex items-center gap-3 shrink-0">
                         {hasData && <OverallScore sessions={sessions} criteria={criteria} />}
+                        <button
+                          onClick={e => { e.stopPropagation(); getShareLink(event as any) }}
+                          disabled={sharingId === event.id}
+                          title="Copy share link"
+                          className="flex items-center gap-1.5 text-base px-2.5 py-1 rounded-lg transition-all disabled:opacity-50"
+                          style={{ color: copiedId === event.id ? 'var(--score-high)' : 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                          {copiedId === event.id ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          ) : (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                              <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+                            </svg>
+                          )}
+                          {copiedId === event.id ? 'Copied!' : 'Share'}
+                        </button>
                         <button
                           onClick={e => { e.stopPropagation(); setConfirmDeleteEvent(confirmDeleteEvent === event.id ? null : event.id) }}
                           className="flex items-center gap-1.5 text-base px-2.5 py-1 rounded-lg transition-all"
