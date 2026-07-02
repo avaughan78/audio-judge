@@ -99,8 +99,8 @@ function TeamCard({ team, criteria, scores, rank, index, token }: {
                   </div>
                 )
               })}
-              {scoredCriteria.length > 3 && (
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>+{scoredCriteria.length - 3}</span>
+              {scoredCriteria.length > 6 && (
+                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>+{scoredCriteria.length - 6}</span>
               )}
               <div className="w-px h-6 mx-1" style={{ background: 'var(--border)' }} />
               <div className="text-center">
