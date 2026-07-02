@@ -86,11 +86,7 @@ Return ONLY valid JSON in this exact format — no markdown, no code fences, no 
       messages: [
         {
           role: 'user',
-          content: `Transcript so far:\n\n${
-            transcript.length <= 8000
-              ? transcript
-              : transcript.slice(0, 5000) + '\n[...]\n' + transcript.slice(-3000)
-          }`,
+          content: `Transcript so far:\n\n${transcript}`,
         },
       ],
     })
