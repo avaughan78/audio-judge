@@ -100,7 +100,7 @@ export default function JudgePage() {
   const [showQR, setShowQR] = useState(false)
   const [showMeetingModal, setShowMeetingModal] = useState(false)
 
-  const { start, stop, punctuate } = useAudioCapture(captureMode)
+  const { start, stop, pause, resume, isPaused, punctuate } = useAudioCapture(captureMode)
 
   const setMode = (m: CaptureMode) => {
     setCaptureMode(m)
@@ -324,7 +324,7 @@ export default function JudgePage() {
               )}
             </AnimatePresence>
 
-            <RecordingControl compact onStart={start} onStop={stop} />
+            <RecordingControl compact onStart={start} onStop={stop} onPause={pause} onResume={resume} isPausedOverride={isPaused} />
 
             {/* Separator */}
             <div className="w-px h-4 shrink-0" style={{ background: 'var(--border)' }} />
@@ -495,11 +495,8 @@ export default function JudgePage() {
                   </div>
                 </div>
 
-                {/* Spacer */}
-                <div className="flex-1" />
-
-                {/* Expandable transcript — anchored bottom */}
-                <div className="shrink-0 flex flex-col items-end gap-2">
+                {/* Expandable transcript — fills remaining space, button always visible at bottom */}
+                <div className="flex-1 min-h-0 flex flex-col items-end justify-end gap-2 pt-4">
                   <AnimatePresence>
                     {showTranscript && (
                       <motion.div
@@ -508,10 +505,10 @@ export default function JudgePage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 8 }}
                         transition={{ duration: 0.18 }}
-                        className="w-full rounded-xl overflow-hidden"
+                        className="w-full rounded-xl overflow-hidden flex flex-col min-h-0"
                         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
                       >
-                        <div className="overflow-y-auto p-4" style={{ maxHeight: '400px' }}>
+                        <div className="overflow-y-auto p-4" style={{ maxHeight: 'min(400px, calc(100vh - 340px))' }}>
                           {isRecording && (
                             <div className="flex items-center gap-1.5 mb-3">
                               <span className="relative flex h-1.5 w-1.5 shrink-0">
@@ -536,7 +533,7 @@ export default function JudgePage() {
                   <button
                     onClick={() => setShowTranscript(v => !v)}
                     title={showTranscript ? 'Close transcript' : 'Show live transcript'}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-xl font-light transition-all"
+                    className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xl font-light transition-all"
                     style={{
                       background: showTranscript ? 'var(--accent)' : 'var(--bg-card)',
                       color: showTranscript ? 'white' : 'var(--text-muted)',
@@ -634,25 +631,37 @@ export default function JudgePage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center"
-              style={{ background: 'rgba(0,0,0,0.6)' }}
+              style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
               onClick={() => setShowQR(false)}
             >
               <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
+                initial={{ scale: 0.92, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="rounded-2xl p-8 flex flex-col items-center gap-4"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', backdropFilter: 'blur(12px)' }}
+                exit={{ scale: 0.92, opacity: 0 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                className="rounded-3xl p-8 flex flex-col items-center gap-5"
+                style={{
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border-hover)',
+                  boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+                  minWidth: '300px',
+                }}
                 onClick={e => e.stopPropagation()}
               >
                 <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Scan to open</p>
-                <div className="rounded-xl overflow-hidden p-3" style={{ background: '#fff' }}>
-                  <QRCodeSVG value={typeof window !== 'undefined' ? `${window.location.origin}/collect` : ''} size={200} />
+                <div className="rounded-2xl p-4" style={{ background: '#ffffff' }}>
+                  <QRCodeSVG value="https://audiojudge.awoken.dev/collect" size={180} />
                 </div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{typeof window !== 'undefined' ? `${window.location.origin}/collect` : ''}</p>
-                <button onClick={() => setShowQR(false)} className="text-xs px-4 py-1.5 rounded-lg"
-                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Close</button>
+                <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>audiojudge.awoken.dev/collect</p>
+                <button
+                  onClick={() => setShowQR(false)}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+                >
+                  Close
+                </button>
               </motion.div>
             </motion.div>
           )}

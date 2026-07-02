@@ -12,32 +12,33 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
   const streamRef = useRef<MediaStream | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const stoppedRef = useRef(false)
-  const wakeLockRef = useRef<any>(null)
+  const noSleepRef = useRef<any>(null)
 
   const [isRecording, setIsRecording] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
 
-  const acquireWakeLock = useCallback(async () => {
-    if (!('wakeLock' in navigator)) return
+  const enableNoSleep = useCallback(async () => {
     try {
-      wakeLockRef.current = await (navigator as any).wakeLock.request('screen')
-      wakeLockRef.current.addEventListener('release', () => { wakeLockRef.current = null })
+      if (!noSleepRef.current) {
+        const NoSleep = (await import('nosleep.js')).default
+        noSleepRef.current = new NoSleep()
+      }
+      await noSleepRef.current.enable()
     } catch (_) {}
   }, [])
 
-  const releaseWakeLock = useCallback(() => {
-    wakeLockRef.current?.release().catch(() => {})
-    wakeLockRef.current = null
+  const disableNoSleep = useCallback(() => {
+    try { noSleepRef.current?.disable() } catch (_) {}
   }, [])
 
-  // Re-acquire wake lock when tab becomes visible again (iOS/Android release it on hide)
+  // Re-acquire wake prevention when tab becomes visible again
   const handleVisibilityChange = useCallback(() => {
-    if (document.visibilityState === 'visible' && isRecording && !wakeLockRef.current) {
-      acquireWakeLock()
+    if (document.visibilityState === 'visible' && isRecording) {
+      enableNoSleep()
     }
-  }, [isRecording, acquireWakeLock])
+  }, [isRecording, enableNoSleep])
 
   const start = useCallback(async () => {
     if (!sessionId || !activeTeamId) return
@@ -60,6 +61,13 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       if (tokenData.error) throw new Error(`Deepgram token error: ${tokenData.error}`)
       const key: string = tokenData.key
       if (!key) throw new Error('Deepgram token missing')
+
+      // If stop() was called while we were awaiting (race condition), bail now
+      if (stoppedRef.current) {
+        rawStream.getTracks().forEach((t) => t.stop())
+        setIsConnecting(false)
+        return
+      }
 
       if (!rawStream.getAudioTracks().length) {
         rawStream.getTracks().forEach((t) => t.stop())
@@ -90,7 +98,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
         if (mediaRecorderRef.current) return
         setIsConnecting(false)
         setIsRecording(true)
-        acquireWakeLock()
+        enableNoSleep()
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
         const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -122,7 +130,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
             mediaRecorderRef.current = null
             connectionRef.current = null
             streamRef.current = null
-            releaseWakeLock()
+            disableNoSleep()
             setIsRecording(false)
             setIsConnecting(false)
             setInterimTranscript('')
@@ -162,7 +170,7 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
       console.error('[collector] Start error:', e)
       setIsConnecting(false)
     }
-  }, [sessionId, activeTeamId, mode, acquireWakeLock, handleVisibilityChange])
+  }, [sessionId, activeTeamId, mode, enableNoSleep, handleVisibilityChange])
 
   const stop = useCallback(() => {
     stoppedRef.current = true
@@ -172,12 +180,12 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
     mediaRecorderRef.current = null
     connectionRef.current = null
     streamRef.current = null
-    releaseWakeLock()
+    disableNoSleep()
     document.removeEventListener('visibilitychange', handleVisibilityChange)
     setIsRecording(false)
     setIsConnecting(false)
     setInterimTranscript('')
-  }, [releaseWakeLock, handleVisibilityChange])
+  }, [disableNoSleep, handleVisibilityChange])
 
   return {
     start,
@@ -187,6 +195,5 @@ export function useCollectorCapture(sessionId: string | null, activeTeamId: stri
     transcript,
     interimTranscript,
     deviceId: deviceId.current,
-    hasWakeLock: typeof window !== 'undefined' && 'wakeLock' in navigator,
   }
 }

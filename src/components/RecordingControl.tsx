@@ -27,9 +27,12 @@ interface RecordingControlProps {
   compact?: boolean
   onStart?: () => Promise<void>
   onStop?: () => Promise<void>
+  onPause?: () => void
+  onResume?: () => void
+  isPausedOverride?: boolean
 }
 
-export function RecordingControl({ compact = false, onStart, onStop }: RecordingControlProps) {
+export function RecordingControl({ compact = false, onStart, onStop, onPause, onResume, isPausedOverride }: RecordingControlProps) {
   const isRecording = useAppStore((s) => s.isRecording)
   const isConnecting = useAppStore((s) => s.isConnecting)
   const isSummarising = useAppStore((s) => s.isSummarising)
@@ -38,9 +41,12 @@ export function RecordingControl({ compact = false, onStart, onStop }: Recording
   const lastJudgedAt = useAppStore((s) => s.lastJudgedAt)
   const recordingStartedAt = useAppStore((s) => s.recordingStartedAt)
   const elapsed = useElapsedTime(recordingStartedAt)
-  const { start: hookStart, stop: hookStop, pause, resume, isPaused } = useAudioCapture()
+  const { start: hookStart, stop: hookStop, pause: hookPause, resume: hookResume, isPaused: hookIsPaused } = useAudioCapture()
   const start = onStart ?? hookStart
   const stop = onStop ?? hookStop
+  const pause = onPause ?? hookPause
+  const resume = onResume ?? hookResume
+  const isPaused = isPausedOverride !== undefined ? isPausedOverride : hookIsPaused
 
   const canRecord = !!event && !isConnecting
 

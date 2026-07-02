@@ -181,7 +181,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         const { event: currentEvent } = useAppStore.getState()
         if (currentEvent) {
           collectorChannelRef.current = supabase
-            .channel('collector-chunks')
+            .channel(`collector-chunks-${Date.now()}`)
             .on('postgres_changes', {
               event: 'INSERT', schema: 'public', table: 'transcript_chunks',
               filter: `session_id=eq.${currentEvent.id}`,

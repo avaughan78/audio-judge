@@ -28,6 +28,7 @@ export default function CollectPage() {
   const startRef = useRef<(() => Promise<void>) | null>(null)
   const stopRef = useRef<(() => void) | null>(null)
   const recordingStartedRef = useRef(false)
+  const noSleepRef = useRef<any>(null)
 
   const { start, stop, isRecording, isConnecting, transcript, interimTranscript } =
     useCollectorCapture(sessionId, activeTeamId)
@@ -106,27 +107,27 @@ export default function CollectPage() {
     }
   }, [isReady, isPaused, sessionId, activeTeamId, isMainRecording])
 
-  // 5. Hold wake lock to prevent display sleep (standby + recording)
+  // 5. Keep screen awake while active (nosleep.js handles iOS + Android + desktop)
   useEffect(() => {
-    if (!isReady || isPaused) return
-    let lock: any = null
-    const acquire = async () => {
-      if (!('wakeLock' in navigator)) return
-      try { lock = await (navigator as any).wakeLock.request('screen') } catch (_) {}
+    if (!isReady || isPaused) {
+      noSleepRef.current?.disable()
+      return
     }
-    acquire()
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && !lock) acquire()
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => {
-      lock?.release().catch(() => {})
-      document.removeEventListener('visibilitychange', handleVisibility)
-    }
+    // nosleep must be enabled from a user gesture — it was already enabled in activate()
+    // This effect just ensures it stays on when isReady flips (e.g. after auth)
+    if (noSleepRef.current) noSleepRef.current.enable().catch(() => {})
   }, [isReady, isPaused])
 
   const activate = useCallback(async () => {
     setSetupError(null)
+    // Enable nosleep from this user gesture (required for iOS video trick)
+    try {
+      if (!noSleepRef.current) {
+        const NoSleep = (await import('nosleep.js')).default
+        noSleepRef.current = new NoSleep()
+      }
+      await noSleepRef.current.enable()
+    } catch (_) {}
     if (isPaused) { setIsPaused(false); return }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -140,6 +141,7 @@ export default function CollectPage() {
 
   const deactivate = useCallback(() => {
     setIsPaused(true)
+    try { noSleepRef.current?.disable() } catch (_) {}
   }, [])
 
   if (!authChecked) return null
