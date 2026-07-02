@@ -99,9 +99,11 @@ export default function JudgePage() {
   const [nameValue, setNameValue] = useState('')
   const [showQR, setShowQR] = useState(false)
   const [showMeetingModal, setShowMeetingModal] = useState(false)
-  const [pendingNextSession, setPendingNextSession] = useState(false)
+  const [showNewPresenter, setShowNewPresenter] = useState(false)
+  const [newPresenterName, setNewPresenterName] = useState('')
+  const [creatingPresenter, setCreatingPresenter] = useState(false)
 
-  const { start, stop, pause, resume, isPaused, punctuate } = useAudioCapture(captureMode)
+  const { start, stop, pause, resume, isPaused, punctuate, clearBuffer } = useAudioCapture(captureMode)
 
   const setMode = (m: CaptureMode) => {
     setCaptureMode(m)
@@ -205,7 +207,27 @@ export default function JudgePage() {
     }
   }, [])
 
-  useEffect(() => { if (activeSession) setPendingNextSession(false) }, [activeSession])
+  const createPresenter = async () => {
+    const name = newPresenterName.trim()
+    if (!name || !event) return
+    setCreatingPresenter(true)
+    const supabase = createClient()
+    const { count } = await supabase.from('teams').select('*', { count: 'exact', head: true }).eq('session_id', event.id)
+    const { data: newTeam, error } = await supabase
+      .from('teams')
+      .insert({ session_id: event.id, name, order_index: count ?? 0 })
+      .select()
+      .single()
+    if (!error && newTeam) {
+      await supabase.from('sessions').update({ active_team_id: newTeam.id }).eq('id', event.id)
+      setActiveSession(newTeam)
+      useAppStore.setState((s: any) => ({ sessions: [...s.sessions, newTeam] }))
+      clearBuffer()
+    }
+    setCreatingPresenter(false)
+    setShowNewPresenter(false)
+    setNewPresenterName('')
+  }
 
   const handlePunctuate = async () => {
     setConfirmPunctuate(false)
@@ -327,25 +349,25 @@ export default function JudgePage() {
               )}
             </AnimatePresence>
 
-            {/* Next presenter — clears the display so the next team can be recorded */}
+            {/* New presenter */}
             <AnimatePresence>
-              {!isRecording && !isPaused && !!activeSession && (
+              {!isRecording && !isPaused && !!event && (
                 <motion.button
-                  key="next-session"
+                  key="new-presenter"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  onClick={() => { setPendingNextSession(true); setActiveSession(null) }}
-                  title="Clear scores and await next presenter"
+                  onClick={() => { setShowNewPresenter(true); setNewPresenterName('') }}
+                  title="Create a new presenter slot"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                   style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="9 18 15 12 9 6" />
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                   </svg>
-                  Next
+                  New Presenter
                 </motion.button>
               )}
             </AnimatePresence>
@@ -383,11 +405,24 @@ export default function JudgePage() {
                 style={{ color: 'var(--accent)' }}>Go to Events →</Link>
             </div>
           </div>
-        ) : (!activeSession && !pendingNextSession) ? (
+        ) : !activeSession ? (
           <div className="relative z-0 flex-1 flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <div className="text-7xl">🎯</div>
-              <p className="text-2xl font-light" style={{ color: 'var(--text-muted)' }}>Waiting for presentation...</p>
+            <div className="flex flex-col items-center gap-6">
+              <div className="text-7xl">🎤</div>
+              <div className="text-center space-y-2">
+                <p className="text-2xl font-light" style={{ color: 'var(--text-primary)' }}>Ready when you are</p>
+                <p className="text-base" style={{ color: 'var(--text-muted)' }}>Create a presenter slot to begin scoring</p>
+              </div>
+              <button
+                onClick={() => { setShowNewPresenter(true); setNewPresenterName('') }}
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold"
+                style={{ background: 'var(--accent)', color: 'white', boxShadow: '0 4px 24px var(--glow-accent)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                New Presenter
+              </button>
             </div>
           </div>
         ) : (
@@ -401,14 +436,12 @@ export default function JudgePage() {
 
                 {/* Team name */}
                 <AnimatePresence mode="wait">
-                  <motion.div key={activeSession?.id ?? 'pending'} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+                  <motion.div key={activeSession.id} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 20 }} className="mb-8 shrink-0">
                     <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
                       Now Presenting
                     </p>
-                    {!activeSession ? (
-                      <h1 className="text-6xl font-black tracking-tight" style={{ opacity: 0.2, color: 'var(--text-primary)' }}>—</h1>
-                    ) : editingName ? (
+                    {editingName ? (
                       <input
                         value={nameValue}
                         onChange={e => setNameValue(e.target.value)}
@@ -425,7 +458,7 @@ export default function JudgePage() {
                         title="Click to rename"
                       >{activeSession.name}</h1>
                     )}
-                    {activeSession?.description && (
+                    {activeSession.description && (
                       <p className="text-lg mt-2" style={{ color: 'var(--text-muted)' }}>{activeSession.description}</p>
                     )}
                   </motion.div>
@@ -575,6 +608,59 @@ export default function JudgePage() {
             </div>
           </div>
         )}
+
+        {/* New Presenter modal */}
+        <AnimatePresence>
+          {showNewPresenter && (
+            <motion.div
+              key="new-presenter-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center"
+              style={{ background: 'rgba(0,0,0,0.6)' }}
+              onClick={() => setShowNewPresenter(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.92, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.92, opacity: 0 }}
+                transition={{ duration: 0.16 }}
+                className="rounded-2xl p-7 max-w-sm w-full mx-4 flex flex-col gap-5"
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <h2 className="text-base font-bold">New Presenter</h2>
+                <input
+                  autoFocus
+                  value={newPresenterName}
+                  onChange={e => setNewPresenterName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') createPresenter(); if (e.key === 'Escape') setShowNewPresenter(false) }}
+                  placeholder="Presenter / team name"
+                  className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border-hover)', color: 'var(--text-primary)' }}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={createPresenter}
+                    disabled={!newPresenterName.trim() || creatingPresenter}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
+                    style={{ background: 'var(--accent)', color: 'white' }}
+                  >
+                    {creatingPresenter ? 'Creating…' : 'Create'}
+                  </button>
+                  <button
+                    onClick={() => setShowNewPresenter(false)}
+                    className="px-4 py-2.5 rounded-xl text-sm transition-all"
+                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Meeting mode modal */}
         <AnimatePresence>

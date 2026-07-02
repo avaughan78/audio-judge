@@ -260,13 +260,13 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     }
   }, [runCycle, captureMode])
 
-  // Start: creates a new session slot then connects Deepgram.
+  // Start: connects Deepgram for the current session slot (slot must already exist).
   const start = useCallback(async () => {
     if (isStartingRef.current) return
     isStartingRef.current = true
 
-    const { event, setActiveSession } = useAppStore.getState()
-    if (!event) { isStartingRef.current = false; return }
+    const { event, activeSession } = useAppStore.getState()
+    if (!event || !activeSession) { isStartingRef.current = false; return }
 
     // Initiate media acquisition synchronously — getDisplayMedia must be called
     // within the user-activation window before any awaited fetches expire it.
@@ -275,22 +275,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           .catch(() => navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }))
       : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
 
-    const transitionRes = await fetch('/api/auto-transition', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: event.id, manual: true }),
-    })
-    const transitionData = await transitionRes.json()
-    if (!transitionData.transition || !transitionData.team) {
-      rawStreamPromise.then(s => s.getTracks().forEach(t => t.stop())).catch(() => {})
-      console.error('[audio] Failed to create session slot')
-      isStartingRef.current = false
-      return
-    }
-    setActiveSession(transitionData.team)
-    useAppStore.setState((s: any) => ({ sessions: [...s.sessions, transitionData.team] }))
     createSupabaseClient().from('sessions').update({ is_recording: true }).eq('id', event.id).then(() => {})
-
     stoppedRef.current = false
     setIsPaused(false)
     await connectDeepgram(rawStreamPromise)
@@ -366,25 +351,11 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     clearBuffer()
   }, [runCycle, clearBuffer])
 
-  // Punctuate: snapshot + advance to next presenter while keeping Deepgram open.
+  // Punctuate: snapshot scores for the current presenter mid-recording, then clear buffer to start fresh.
   const punctuate = useCallback(async () => {
-    const { event, setActiveSession } = useAppStore.getState()
-    if (!event) return
-
     await runCycle({ final: true })
-
-    const res = await fetch('/api/auto-transition', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: event.id, manual: true }),
-    })
-    const data = await res.json()
-    if (!data.transition || !data.team) return
-
-    setActiveSession(data.team)
-    useAppStore.setState((s: any) => ({ sessions: [...s.sessions, data.team] }))
     clearBuffer()
   }, [runCycle, clearBuffer])
 
-  return { start, pause, resume, stop, punctuate, isPaused }
+  return { start, pause, resume, stop, punctuate, isPaused, clearBuffer }
 }
