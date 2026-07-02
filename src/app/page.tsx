@@ -577,9 +577,9 @@ export default function JudgePage() {
               >
                 <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Scan to open</p>
                 <div className="rounded-xl overflow-hidden p-3" style={{ background: '#fff' }}>
-                  <QRCodeSVG value={typeof window !== 'undefined' ? window.location.origin : ''} size={200} />
+                  <QRCodeSVG value={typeof window !== 'undefined' ? `${window.location.origin}/collect` : ''} size={200} />
                 </div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{typeof window !== 'undefined' ? window.location.origin : ''}</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{typeof window !== 'undefined' ? `${window.location.origin}/collect` : ''}</p>
                 <button onClick={() => setShowQR(false)} className="text-xs px-4 py-1.5 rounded-lg"
                   style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Close</button>
               </motion.div>
