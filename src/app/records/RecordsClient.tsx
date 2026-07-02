@@ -56,7 +56,7 @@ function TranscriptView({ sessionId, teamId }: { sessionId: string; teamId: stri
       .select('content')
       .eq('session_id', sessionId)
       .eq('team_id', teamId)
-      .order('created_at')
+      .order('timestamp')
     setChunks(data?.map((c: any) => c.content) ?? [])
     setLoading(false)
   }
@@ -368,7 +368,11 @@ export default function RecordsClient() {
     <ThemeProvider>
       <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
-        <AppHeader back section="Records" items={[{ label: 'Events', href: '/admin' }]} />
+        <AppHeader items={[
+          { label: 'Events', href: '/admin' },
+          { label: 'Scoring', href: '/' },
+          { label: 'Records', href: '/records', active: true },
+        ]} />
 
         <main className="max-w-3xl mx-auto px-6 py-10">
 

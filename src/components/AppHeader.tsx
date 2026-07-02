@@ -11,6 +11,7 @@ export interface NavItem {
   onClick?: () => void
   icon?: 'external' | 'mic' | 'archive' | 'settings'
   hideOnMobile?: boolean
+  active?: boolean
 }
 
 interface AppHeaderProps {
@@ -32,14 +33,16 @@ function ItemIcon({ type }: { type: NonNullable<NavItem['icon']> }) {
 
 const CLS = 'flex items-center gap-1.5 text-sm font-medium px-2 py-1 rounded-lg transition-colors'
 const STYLE = { color: 'var(--text-muted)' as const }
+const ACTIVE_STYLE = { color: 'var(--accent)' as const }
 const enter = (e: React.MouseEvent<HTMLElement>) => { ;(e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }
 const leave = (e: React.MouseEvent<HTMLElement>) => { ;(e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }
 
 function NavItemEl({ item }: { item: NavItem }) {
   const inner = <>{item.icon && <ItemIcon type={item.icon} />}{item.label}</>
+  const style = item.active ? ACTIVE_STYLE : STYLE
   return item.href
-    ? <Link href={item.href} target={item.target} className={CLS} style={{ ...STYLE }} onMouseEnter={enter} onMouseLeave={leave}>{inner}</Link>
-    : <button onClick={item.onClick} className={CLS} style={{ ...STYLE }} onMouseEnter={enter} onMouseLeave={leave}>{inner}</button>
+    ? <Link href={item.href} target={item.target} className={CLS} style={style} onMouseEnter={item.active ? undefined : enter} onMouseLeave={item.active ? undefined : leave}>{inner}</Link>
+    : <button onClick={item.onClick} className={CLS} style={style} onMouseEnter={item.active ? undefined : enter} onMouseLeave={item.active ? undefined : leave}>{inner}</button>
 }
 
 export default function AppHeader({

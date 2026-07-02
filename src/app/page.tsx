@@ -6,7 +6,8 @@ import { motion, AnimatePresence, useSpring } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import { useAppStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase'
-import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
+import { ThemeProvider } from '@/components/ThemeSelector'
+import AppHeader from '@/components/AppHeader'
 import { RecordingControl } from '@/components/RecordingControl'
 import { useAudioCapture } from '@/hooks/useAudioCapture'
 import type { CaptureMode } from '@/hooks/useCollectorCapture'
@@ -260,16 +261,15 @@ export default function JudgePage() {
         )}
 
         {/* Header */}
-        <div className="relative z-10 flex items-center justify-between px-12 py-5 shrink-0"
-          style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="flex items-center gap-3">
-            <img src="/app-icon.svg" alt="Audio Judge" className="w-8 h-8" />
-            <span className="text-base font-bold" style={{ color: 'var(--text-muted)' }}>{event?.name || 'Audio Judge'}</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <ThemeSelector />
-            <span className="text-base tabular-nums" style={{ color: 'var(--text-muted)' }}>
+        <AppHeader
+          items={[
+            { label: 'Events', href: '/admin' },
+            { label: 'Scoring', href: '/', active: true },
+            { label: 'Records', href: '/records' },
+          ]}
+          rightSlot={<>
+            {/* Clock */}
+            <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
               {clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
 
@@ -329,27 +329,14 @@ export default function JudgePage() {
 
             <RecordingControl compact onStart={start} onStop={stop} />
 
-            {/* Nav */}
-            <div className="flex items-center gap-4 pl-4" style={{ borderLeft: '1px solid var(--border)' }}>
-              <Link href="/records" className="text-sm font-medium transition-colors"
-                style={{ color: 'var(--text-muted)' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-                Records
-              </Link>
-              <Link href="/admin" className="text-sm font-medium transition-colors"
-                style={{ color: 'var(--text-muted)' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-                Events
-              </Link>
-            </div>
+            {/* Separator */}
+            <div className="w-px h-4 shrink-0" style={{ background: 'var(--border)' }} />
 
             {/* QR code button */}
             <button
               onClick={() => setShowQR(v => !v)}
               title="Show collector QR code"
-              className="p-2 rounded-lg transition-all"
+              className="p-1.5 rounded-lg transition-all"
               style={{ color: showQR ? 'var(--accent)' : 'var(--text-muted)', background: showQR ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)' }}
               onMouseEnter={e => { if (!showQR) (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
               onMouseLeave={e => { if (!showQR) (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}
@@ -360,8 +347,8 @@ export default function JudgePage() {
                 <path d="M14 14h2v2h-2zM18 14h3M14 18v3M18 18h3v3h-3z"/>
               </svg>
             </button>
-          </div>
-        </div>
+          </>}
+        />
 
         {/* Body */}
         {!event ? (

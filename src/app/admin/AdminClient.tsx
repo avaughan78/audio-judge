@@ -234,13 +234,6 @@ export default function AdminClient() {
       setDbError(null)
       if (data) {
         setEvents(data)
-        const toView = data.find(s => s.is_active) ?? data[0] ?? null
-        if (toView) {
-          setViewedEvent(toView)
-          setBrief(toView.brief || '')
-          savedBriefRef.current = toView.brief || ''
-          if (toView.is_active) setThemeId(toView.theme_id || 'midnight')
-        }
       }
     }
     load()
@@ -478,12 +471,11 @@ export default function AdminClient() {
     <ThemeProvider>
       <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
-        <AppHeader
-          section="Events"
-          items={[
-            { label: 'Records', href: '/records', icon: 'archive', hideOnMobile: true },
-          ]}
-        />
+        <AppHeader items={[
+          { label: 'Events', href: '/admin', active: true },
+          { label: 'Scoring', href: '/' },
+          { label: 'Records', href: '/records' },
+        ]} />
 
         <div className="flex flex-1 overflow-hidden">
 
@@ -610,8 +602,14 @@ export default function AdminClient() {
               <div className="flex items-center justify-center flex-1 px-6">
                 <div className="w-full max-w-md space-y-6 text-center">
                   <div>
-                    <p className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Create your first event</p>
-                    <p className="text-base" style={{ color: 'var(--text-muted)' }}>Give it a name to get started — you can rename it any time.</p>
+                    <p className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                      {events.length === 0 ? 'Create your first event' : 'Create a new event'}
+                    </p>
+                    <p className="text-base" style={{ color: 'var(--text-muted)' }}>
+                      {events.length === 0
+                        ? 'Give it a name to get started — you can rename it any time.'
+                        : 'Or select an existing event from the list.'}
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <input
