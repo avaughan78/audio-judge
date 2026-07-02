@@ -23,6 +23,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const collectorChannelRef = useRef<any>(null)
   const isStartingRef = useRef(false)
   const connectionIdRef = useRef(0)
+  const newWordsThisSessionRef = useRef(0)
 
   const [isPaused, setIsPaused] = useState(false)
 
@@ -218,6 +219,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         useAppStore.getState().setInterimTranscript('')
         appendTranscript(alt.transcript)
         bufferRef.current += ' ' + alt.transcript
+        newWordsThisSessionRef.current += alt.transcript.split(/\s+/).filter(Boolean).length
 
         const words = bufferRef.current.split(/\s+/).filter(Boolean)
         if (words.length > MAX_BUFFER_WORDS) {
@@ -299,6 +301,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       }
     }
 
+    newWordsThisSessionRef.current = 0
     createSupabaseClient().from('sessions').update({ is_recording: true }).eq('id', event.id).then(() => {})
     stoppedRef.current = false
     setIsPaused(false)
@@ -371,7 +374,12 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     const { event } = useAppStore.getState()
     if (event) createSupabaseClient().from('sessions').update({ is_recording: false }).eq('id', event.id).then(() => {})
     setIsPaused(false)
-    await runCycle({ final: true })
+    // Only run the final (potentially score-lowering) cycle if enough new content
+    // was captured this session. Guards against a failed buffer restore sending
+    // a thin transcript to the AI and overwriting good scores with worse ones.
+    if (newWordsThisSessionRef.current >= 50) {
+      await runCycle({ final: true })
+    }
     clearBuffer()
   }, [runCycle, clearBuffer])
 

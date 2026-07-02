@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Rate limited — please wait a moment' }, { status: 429 })
     }
 
-    const { transcript, teamId, sessionId, brief } = await request.json()
+    const { transcript, teamId, sessionId, brief, final: isFinal } = await request.json()
 
     if (!transcript?.trim()) {
       return NextResponse.json({ error: 'No transcript provided' }, { status: 400 })
@@ -114,8 +114,9 @@ Return ONLY valid JSON in this exact format — no markdown, no code fences, no 
       return NextResponse.json({ error: 'AI response missing scores array' }, { status: 500 })
     }
 
-    // AI scores only ever increase — they represent the best evidence observed so far.
-    // Manual overrides (via /api/scores) can set any value and are unaffected by this rule.
+    // Intermediate cycles: scores only go up (partial transcript, AI hasn't seen everything yet).
+    // Final cycle: scores can move in either direction — definitive assessment of the full transcript.
+    // Manual overrides (via /api/scores) bypass this entirely.
     const { data: existing } = await supabase
       .from('scores')
       .select('criteria_id, score')
@@ -125,7 +126,7 @@ Return ONLY valid JSON in this exact format — no markdown, no code fences, no 
     for (const row of existing ?? []) existingMap[row.criteria_id] = row.score
 
     const normalised = result.scores.map((s) => ({ ...s, score: Math.max(0, Math.min(100, Math.round(s.score))) }))
-    const toUpsert = normalised.filter((s) => s.score > (existingMap[s.criteria_id] ?? 0))
+    const toUpsert = isFinal ? normalised : normalised.filter((s) => s.score > (existingMap[s.criteria_id] ?? 0))
 
     if (toUpsert.length > 0) {
       const { error: upsertErr } = await supabase.from('scores').upsert(
