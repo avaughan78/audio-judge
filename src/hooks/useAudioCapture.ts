@@ -22,6 +22,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const stoppedRef = useRef(false)
   const collectorChannelRef = useRef<any>(null)
   const isStartingRef = useRef(false)
+  const connectionIdRef = useRef(0)
 
   const [isPaused, setIsPaused] = useState(false)
 
@@ -93,6 +94,11 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const connectDeepgram = useCallback(async (rawStreamPromise: Promise<MediaStream>) => {
     const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt } = useAppStore.getState()
 
+    // Unique ID for this connection — prevents stale close/error/message callbacks
+    // from a previous connection affecting state after a rapid stop→start.
+    connectionIdRef.current += 1
+    const myId = connectionIdRef.current
+
     setConnecting(true)
     try {
       const [tokenData, rawStream] = await Promise.all([
@@ -132,7 +138,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       connectionRef.current = conn
 
       conn.on('open', () => {
-        if (stoppedRef.current) return
+        if (myId !== connectionIdRef.current || stoppedRef.current) return
         setConnecting(false)
         setRecording(true)
         if (mediaRecorderRef.current) return
@@ -160,7 +166,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
 
         rawStream.getTracks().forEach((track) => {
           track.addEventListener('ended', () => {
-            if (stoppedRef.current) return
+            if (myId !== connectionIdRef.current || stoppedRef.current) return
             stoppedRef.current = true
             if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
             try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
@@ -201,7 +207,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       })
 
       conn.on('message', (message: any) => {
-        if (stoppedRef.current) return
+        if (myId !== connectionIdRef.current || stoppedRef.current) return
         if (message?.type !== 'Results') return
         const alt = message?.channel?.alternatives?.[0]
         if (!alt?.transcript?.trim()) return
@@ -239,14 +245,14 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       })
 
       conn.on('error', (e: any) => {
-        if (stoppedRef.current) return
+        if (myId !== connectionIdRef.current || stoppedRef.current) return
         console.error('[deepgram] Error:', e)
         useAppStore.getState().setConnecting(false)
         useAppStore.getState().setRecording(false)
       })
 
       conn.on('close', () => {
-        if (stoppedRef.current) return
+        if (myId !== connectionIdRef.current || stoppedRef.current) return
         useAppStore.getState().setRecording(false)
       })
 
