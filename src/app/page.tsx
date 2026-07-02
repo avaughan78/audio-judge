@@ -234,6 +234,7 @@ export default function JudgePage() {
   const switchToPresenter = async (team: any) => {
     setShowPresenterPanel(false)
     if (team.id === activeSession?.id) return
+    clearBuffer()
     setActiveSession(team)
     const supabase = createClient()
     const { data } = await supabase.from('scores').select('*')
