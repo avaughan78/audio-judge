@@ -344,7 +344,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     await connectDeepgram(rawStreamPromise)
   }, [connectDeepgram, captureMode])
 
-  // Stop: tears down Deepgram and preserves the buffer so Rescore can use it.
+  // Stop: tears down Deepgram, scores from the full buffer, then preserves the buffer for Rescore.
   const stop = useCallback(async () => {
     stoppedRef.current = true
     isStartingRef.current = false
@@ -358,7 +358,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     mediaRecorderRef.current = null
     connectionRef.current = null
     streamRef.current = null
-    wordCountAtLastJudgeRef.current = 0
     useAppStore.getState().setInterimTranscript('')
     useAppStore.getState().setRecordingStartedAt(null)
     useAppStore.getState().setConnecting(false)
@@ -366,7 +365,8 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     const { event } = useAppStore.getState()
     if (event) createSupabaseClient().from('sessions').update({ is_recording: false }).eq('id', event.id).then(() => {})
     setIsPaused(false)
-  }, [])
+    await runCycle({ final: true })
+  }, [runCycle])
 
   // Punctuate: snapshot scores for the current presenter mid-recording, then clear buffer to start fresh.
   const punctuate = useCallback(async () => {
