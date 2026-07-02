@@ -99,6 +99,7 @@ export default function JudgePage() {
   const [nameValue, setNameValue] = useState('')
   const [showQR, setShowQR] = useState(false)
   const [showMeetingModal, setShowMeetingModal] = useState(false)
+  const [pendingNextSession, setPendingNextSession] = useState(false)
 
   const { start, stop, pause, resume, isPaused, punctuate } = useAudioCapture(captureMode)
 
@@ -203,6 +204,8 @@ export default function JudgePage() {
       unsub()
     }
   }, [])
+
+  useEffect(() => { if (activeSession) setPendingNextSession(false) }, [activeSession])
 
   const handlePunctuate = async () => {
     setConfirmPunctuate(false)
@@ -332,7 +335,7 @@ export default function JudgePage() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  onClick={() => setActiveSession(null)}
+                  onClick={() => { setPendingNextSession(true); setActiveSession(null) }}
                   title="Clear scores and await next presenter"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                   style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
@@ -380,7 +383,7 @@ export default function JudgePage() {
                 style={{ color: 'var(--accent)' }}>Go to Events →</Link>
             </div>
           </div>
-        ) : !activeSession ? (
+        ) : (!activeSession && !pendingNextSession) ? (
           <div className="relative z-0 flex-1 flex items-center justify-center">
             <div className="text-center space-y-4">
               <div className="text-7xl">🎯</div>
@@ -398,12 +401,14 @@ export default function JudgePage() {
 
                 {/* Team name */}
                 <AnimatePresence mode="wait">
-                  <motion.div key={activeSession.id} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+                  <motion.div key={activeSession?.id ?? 'pending'} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 20 }} className="mb-8 shrink-0">
                     <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
                       Now Presenting
                     </p>
-                    {editingName ? (
+                    {!activeSession ? (
+                      <h1 className="text-6xl font-black tracking-tight" style={{ opacity: 0.2, color: 'var(--text-primary)' }}>—</h1>
+                    ) : editingName ? (
                       <input
                         value={nameValue}
                         onChange={e => setNameValue(e.target.value)}
@@ -420,7 +425,7 @@ export default function JudgePage() {
                         title="Click to rename"
                       >{activeSession.name}</h1>
                     )}
-                    {activeSession.description && (
+                    {activeSession?.description && (
                       <p className="text-lg mt-2" style={{ color: 'var(--text-muted)' }}>{activeSession.description}</p>
                     )}
                   </motion.div>
