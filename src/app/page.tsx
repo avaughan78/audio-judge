@@ -76,6 +76,7 @@ function ScoreOverrideInput({ criteriaId, current, onClose }: { criteriaId: stri
 export default function JudgePage() {
   const { event, setEvent, setSessions, setCriteria, updateScore, setActiveSession, setScores, patchActiveSession } = useAppStore()
   const activeSession = useAppStore((s) => s.activeSession)
+  const sessions = useAppStore((s) => s.sessions)
   const isRecording = useAppStore((s) => s.isRecording)
   const isSummarising = useAppStore((s) => s.isSummarising)
   const judgeError = useAppStore((s) => s.judgeError)
@@ -99,6 +100,7 @@ export default function JudgePage() {
   const [nameValue, setNameValue] = useState('')
   const [showQR, setShowQR] = useState(false)
   const [showMeetingModal, setShowMeetingModal] = useState(false)
+  const [showPresenterPanel, setShowPresenterPanel] = useState(false)
   const [showNewPresenter, setShowNewPresenter] = useState(false)
   const [newPresenterName, setNewPresenterName] = useState('')
   const [creatingPresenter, setCreatingPresenter] = useState(false)
@@ -227,6 +229,20 @@ export default function JudgePage() {
     setCreatingPresenter(false)
     setShowNewPresenter(false)
     setNewPresenterName('')
+  }
+
+  const switchToPresenter = async (team: any) => {
+    setShowPresenterPanel(false)
+    if (team.id === activeSession?.id) return
+    setActiveSession(team)
+    const supabase = createClient()
+    const { data } = await supabase.from('scores').select('*')
+      .eq('session_id', event!.id).eq('team_id', team.id)
+    if (data?.length) {
+      const map: Record<string, any> = {}
+      data.forEach((s: any) => { map[s.criteria_id] = s })
+      setScores(map)
+    }
   }
 
   const handlePunctuate = async () => {
@@ -392,6 +408,23 @@ export default function JudgePage() {
                 <path d="M14 14h2v2h-2zM18 14h3M14 18v3M18 18h3v3h-3z"/>
               </svg>
             </button>
+
+            {/* Presenter list panel toggle */}
+            {!!event && (
+              <button
+                onClick={() => setShowPresenterPanel(v => !v)}
+                title="Browse presenters"
+                className="p-1.5 rounded-lg transition-all"
+                style={{ color: showPresenterPanel ? 'var(--accent)' : 'var(--text-muted)', background: showPresenterPanel ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)' }}
+                onMouseEnter={e => { if (!showPresenterPanel) (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
+                onMouseLeave={e => { if (!showPresenterPanel) (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                  <circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/>
+                </svg>
+              </button>
+            )}
           </>}
         />
 
@@ -778,6 +811,100 @@ export default function JudgePage() {
                 </button>
               </motion.div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Presenter list panel */}
+        <AnimatePresence>
+          {showPresenterPanel && (
+            <>
+              <motion.div
+                key="presenter-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 z-40"
+                style={{ background: 'rgba(0,0,0,0.35)' }}
+                onClick={() => setShowPresenterPanel(false)}
+              />
+              <motion.div
+                key="presenter-panel"
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', stiffness: 340, damping: 32 }}
+                className="fixed right-0 top-0 bottom-0 z-50 flex flex-col"
+                style={{ width: '280px', background: 'var(--bg)', borderLeft: '1px solid var(--border)' }}
+              >
+                {/* Panel header */}
+                <div className="flex items-center justify-between px-5 shrink-0"
+                  style={{ height: '56px', borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm font-bold tracking-wide">Presenters</span>
+                  <button
+                    onClick={() => setShowPresenterPanel(false)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-lg font-light transition-all"
+                    style={{ color: 'var(--text-muted)', background: 'transparent' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                  >×</button>
+                </div>
+
+                {/* Presenter list */}
+                <div className="flex-1 overflow-y-auto py-2">
+                  {sessions.length === 0 ? (
+                    <p className="px-5 py-4 text-sm" style={{ color: 'var(--text-muted)' }}>
+                      No presenters yet
+                    </p>
+                  ) : sessions.map((team: any) => {
+                    const isActive = team.id === activeSession?.id
+                    const disabled = isRecording && !isActive
+                    return (
+                      <button
+                        key={team.id}
+                        onClick={() => switchToPresenter(team)}
+                        disabled={disabled}
+                        className="w-full text-left px-4 py-3 flex items-center gap-3 transition-all disabled:opacity-30"
+                        style={{ background: isActive ? 'var(--accent-dim)' : 'transparent' }}
+                        onMouseEnter={e => { if (!disabled && !isActive) (e.currentTarget as HTMLElement).style.background = 'var(--bg-card)' }}
+                        onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                      >
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ background: isActive ? 'var(--accent)' : 'var(--border-hover)' }}
+                        />
+                        <span
+                          className="text-sm font-medium truncate"
+                          style={{ color: isActive ? 'var(--accent)' : 'var(--text-primary)' }}
+                        >
+                          {team.name}
+                        </span>
+                        {isActive && isRecording && (
+                          <span className="ml-auto shrink-0 w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--score-low)' }} />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* New presenter */}
+                <div className="shrink-0 p-4" style={{ borderTop: '1px solid var(--border)' }}>
+                  <button
+                    onClick={() => { setShowPresenterPanel(false); setShowNewPresenter(true); setNewPresenterName('') }}
+                    disabled={isRecording}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-40"
+                    style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'transparent' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    New Presenter
+                  </button>
+                </div>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
 
