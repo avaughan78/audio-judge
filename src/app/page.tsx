@@ -601,7 +601,7 @@ export default function JudgePage() {
                 <div className="my-auto space-y-6 py-2">
                 {criteria.length === 0 ? (
                   <div className="flex items-center gap-4 px-5 py-4 rounded-xl"
-                    style={{ border: '1px dashed var(--border-hover)', background: 'var(--bg-card)' }}>
+                    style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
                     <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
                       style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
