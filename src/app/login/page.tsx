@@ -102,8 +102,10 @@ function LoginForm() {
       {/* Nav */}
       <nav style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 40px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <img src="/app-icon.svg" alt="" style={{ width: '80px', height: '80px', borderRadius: '20px', boxShadow: '0 0 80px rgba(101,163,13,0.2), 0 0 24px rgba(101,163,13,0.1)' }} />
-          <span style={{ fontWeight: 800, fontSize: '26px', letterSpacing: '-0.03em', color: '#f8fafc' }}>Audio Judge</span>
+          <span style={{ fontWeight: 800, fontSize: '26px', letterSpacing: '-0.03em' }}>
+            <span style={{ color: '#f8fafc' }}>Audio</span>{' '}
+            <span style={{ color: '#65A30D' }}>Judge</span>
+          </span>
         </div>
         <button onClick={handleGitHubSignIn} disabled={loading}
           style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 15px', borderRadius: '12px', fontSize: '13px', fontWeight: 600, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.09)', cursor: 'pointer', transition: 'all 0.15s' }}

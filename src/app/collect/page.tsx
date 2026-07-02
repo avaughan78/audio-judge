@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
 import { useCollectorCapture } from '@/hooks/useCollectorCapture'
@@ -9,60 +10,76 @@ import { useCollectorCapture } from '@/hooks/useCollectorCapture'
 export default function CollectPage() {
   const router = useRouter()
 
-  // Auth
   const [authChecked, setAuthChecked] = useState(false)
-
-  // Active session state (driven by realtime)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null)
   const [eventName, setEventName] = useState<string | null>(null)
+  const [teamName, setTeamName] = useState<string | null>(null)
 
-  // Mic permission + ready state
+  // isReady = mic permission granted. isPaused = user manually deactivated.
   const [isReady, setIsReady] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  const [needsManualActivation, setNeedsManualActivation] = useState(false)
   const [setupError, setSetupError] = useState<string | null>(null)
 
-  const prevActiveTeamId = useRef<string | null>(null)
+  // Stable refs to start/stop so the drive-effect doesn't stale-close
+  const startRef = useRef<(() => Promise<void>) | null>(null)
+  const stopRef = useRef<(() => void) | null>(null)
+  const recordingStartedRef = useRef(false)
 
   const { start, stop, isRecording, isConnecting, transcript, interimTranscript } =
     useCollectorCapture(sessionId, activeTeamId)
 
-  // Auth check — redirect to login if not signed in
+  useEffect(() => { startRef.current = start }, [start])
+  useEffect(() => { stopRef.current = stop }, [stop])
+
+  // 1. Auth check
   useEffect(() => {
     createClient().auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        router.push('/login?from=/collect')
-      }
-      setAuthChecked(true)
+      if (!data.user) router.push('/login?from=/collect')
+      else setAuthChecked(true)
     })
   }, [router])
 
-  // Subscribe to active session realtime (only once ready + authed)
+  // 2. Auto-request mic on load (no button required)
+  useEffect(() => {
+    if (!authChecked) return
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => { stream.getTracks().forEach(t => t.stop()); setIsReady(true) })
+      .catch(() => setNeedsManualActivation(true))
+  }, [authChecked])
+
+  // 3. Subscribe to session realtime once mic is ready
   useEffect(() => {
     if (!isReady || !authChecked) return
     const supabase = createClient()
 
     async function loadActive() {
       const { data } = await supabase
-        .from('sessions')
-        .select('id, name, active_team_id')
-        .eq('is_active', true)
-        .maybeSingle()
-      if (data) {
-        setSessionId(data.id)
-        setActiveTeamId(data.active_team_id)
-        setEventName(data.name)
+        .from('sessions').select('id, name, active_team_id').eq('is_active', true).maybeSingle()
+      if (!data) return
+      setSessionId(data.id)
+      setEventName(data.name)
+      setActiveTeamId(data.active_team_id ?? null)
+      if (data.active_team_id) {
+        const { data: team } = await supabase.from('teams').select('name').eq('id', data.active_team_id).single()
+        setTeamName(team?.name ?? null)
       }
     }
 
     loadActive()
 
-    const channel = supabase
-      .channel('collector-watch')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions' }, (payload: any) => {
-        if (payload.new?.is_active) {
-          setSessionId(payload.new.id)
-          setActiveTeamId(payload.new.active_team_id ?? null)
-          setEventName(payload.new.name)
+    const channel = supabase.channel('collector-watch')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions' }, async (payload: any) => {
+        if (!payload.new?.is_active) return
+        setSessionId(payload.new.id)
+        setEventName(payload.new.name)
+        setActiveTeamId(payload.new.active_team_id ?? null)
+        if (payload.new.active_team_id) {
+          const { data: team } = await supabase.from('teams').select('name').eq('id', payload.new.active_team_id).single()
+          setTeamName(team?.name ?? null)
+        } else {
+          setTeamName(null)
         }
       })
       .subscribe()
@@ -70,182 +87,225 @@ export default function CollectPage() {
     return () => { supabase.removeChannel(channel) }
   }, [isReady, authChecked])
 
-  // Auto start/stop based on activeTeamId transitions
+  // 4. Drive recording from session state — ref-based to avoid stale closures
   useEffect(() => {
-    if (!isReady) return
-    const prev = prevActiveTeamId.current
-    prevActiveTeamId.current = activeTeamId
-
-    if (!prev && activeTeamId) {
-      start()
-    } else if (prev && !activeTeamId) {
-      stop()
+    const shouldRecord = isReady && !isPaused && !!sessionId && !!activeTeamId
+    if (shouldRecord && !recordingStartedRef.current) {
+      recordingStartedRef.current = true
+      startRef.current?.()
+    } else if (!shouldRecord && recordingStartedRef.current) {
+      recordingStartedRef.current = false
+      stopRef.current?.()
     }
-  }, [activeTeamId, isReady, start, stop])
+  }, [isReady, isPaused, sessionId, activeTeamId])
 
-  // One-time mic permission tap
   const activate = useCallback(async () => {
     setSetupError(null)
+    if (isPaused) { setIsPaused(false); return }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       stream.getTracks().forEach(t => t.stop())
+      setNeedsManualActivation(false)
       setIsReady(true)
     } catch (e: any) {
       setSetupError(e.message ?? 'Microphone access denied')
     }
-  }, [])
+  }, [isPaused])
 
   const deactivate = useCallback(() => {
-    stop()
-    prevActiveTeamId.current = null
-    setIsReady(false)
-    setSessionId(null)
-    setActiveTeamId(null)
-  }, [stop])
+    setIsPaused(true)
+  }, [])
 
   if (!authChecked) return null
+
+  const showActivation = needsManualActivation || isPaused
+  const isActive = isReady && !isPaused
 
   return (
     <ThemeProvider>
       <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
-        {/* Ambient */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full opacity-[0.07]"
-            style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 65%)' }} />
+        {/* Animated ambient glows */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+          <motion.div
+            className="absolute -top-32 left-1/3 w-[600px] h-[600px] rounded-full opacity-10"
+            style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 65%)' }}
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 9, repeat: Infinity }}
+          />
+          <motion.div
+            className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full opacity-[0.07]"
+            style={{ background: 'radial-gradient(circle, var(--accent-secondary) 0%, transparent 65%)' }}
+            animate={{ scale: [1.1, 1, 1.1] }}
+            transition={{ duration: 9, repeat: Infinity }}
+          />
         </div>
 
-        {/* Header: brand + "Collector" label + ThemeSelector only — no nav links */}
+        {/* Header: brand + Collector label + ThemeSelector only */}
         <header className="relative z-10 shrink-0 flex items-center justify-between px-5 h-14"
           style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)' }}>
           <div className="flex items-center gap-3">
-            <img src="/app-icon.svg" alt="Audio Judge" className="w-7 h-7" />
-            <span className="font-bold gradient-text">Audio Judge</span>
+            <span style={{ fontWeight: 800, letterSpacing: '-0.03em' }}>
+              <span style={{ color: 'var(--text-primary)' }}>Audio</span>{' '}
+              <span style={{ color: '#65A30D' }}>Judge</span>
+            </span>
             <span style={{ color: 'var(--border-hover)' }}>·</span>
             <span className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
               Collector
             </span>
           </div>
-          <ThemeSelector />
+          <div className="flex items-center gap-3">
+            {eventName && (
+              <span className="text-sm truncate max-w-[160px]" style={{ color: 'var(--text-muted)' }}>{eventName}</span>
+            )}
+            <ThemeSelector />
+          </div>
         </header>
 
         {/* Body */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-8 p-8 text-center">
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <AnimatePresence mode="wait">
 
-          {!isReady ? (
-            /* ── Activation screen ── */
-            <div className="flex flex-col items-center gap-6 max-w-sm">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center"
-                style={{ background: 'var(--accent-dim)', border: '1px solid var(--border-hover)' }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
-                  style={{ color: 'var(--accent)' }}>
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
-                </svg>
-              </div>
+            {showActivation ? (
+              /* ── Activation screen ── */
+              <motion.div key="activation"
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                className="flex flex-col items-center gap-6 max-w-sm w-full">
 
-              <div>
-                <h1 className="text-2xl font-bold mb-2">Collector mode</h1>
-                <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                  This device will follow the recording session automatically —
-                  no controls needed. Tap below to allow mic access and stand by.
-                </p>
-              </div>
+                <div className="w-20 h-20 rounded-full flex items-center justify-center"
+                  style={{ background: 'var(--accent-dim)', border: '1px solid var(--border-hover)' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    style={{ color: 'var(--accent)' }}>
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
+                  </svg>
+                </div>
 
-              {setupError && (
-                <p className="text-sm px-4 py-2 rounded-lg w-full"
-                  style={{ color: 'var(--score-low)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                  {setupError}
-                </p>
-              )}
+                <div>
+                  <h1 className="text-2xl font-bold mb-2">
+                    {isPaused ? 'Collector paused' : 'Allow microphone'}
+                  </h1>
+                  <p className="text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    {isPaused
+                      ? 'Tap to resume. Recording will follow the session automatically.'
+                      : 'Tap to grant mic access. Recording will start and stop automatically — no controls needed.'}
+                  </p>
+                </div>
 
-              <button
-                onClick={activate}
-                className="w-full px-8 py-4 rounded-2xl text-base font-bold transition-all"
-                style={{ background: 'var(--accent)', color: 'white', boxShadow: '0 4px 24px var(--glow-accent)' }}
-              >
-                Allow mic &amp; stand by
-              </button>
-            </div>
+                {setupError && (
+                  <p className="text-sm px-4 py-2 rounded-lg w-full"
+                    style={{ color: 'var(--score-low)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    {setupError}
+                  </p>
+                )}
 
-          ) : (
-            /* ── Status screen ── */
-            <div className="flex flex-col items-center gap-6 max-w-sm w-full">
+                <button onClick={activate}
+                  className="w-full px-8 py-4 rounded-2xl text-base font-bold"
+                  style={{ background: 'var(--accent)', color: 'white', boxShadow: '0 4px 24px var(--glow-accent)' }}>
+                  {isPaused ? 'Resume' : 'Allow mic & stand by'}
+                </button>
+              </motion.div>
 
-              {isRecording ? (
-                <>
-                  {/* Pulsing record dot */}
-                  <div className="relative w-24 h-24 flex items-center justify-center">
-                    <span className="absolute w-24 h-24 rounded-full animate-ping opacity-20"
-                      style={{ background: 'var(--score-low)' }} />
-                    <span className="w-16 h-16 rounded-full flex items-center justify-center"
-                      style={{ background: 'rgba(239,68,68,0.12)', border: '2px solid var(--score-low)' }}>
-                      <span className="w-6 h-6 rounded-full" style={{ background: 'var(--score-low)' }} />
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold tracking-widest uppercase mb-1"
-                      style={{ color: 'var(--score-low)' }}>Recording</p>
-                    {eventName && (
-                      <p className="text-lg font-semibold">{eventName}</p>
-                    )}
-                  </div>
+            ) : isRecording ? (
+              /* ── Recording ── */
+              <motion.div key="recording"
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-6 max-w-sm w-full">
 
-                  {/* Live transcript preview */}
-                  {(transcript || interimTranscript) && (
-                    <div className="w-full rounded-xl p-4 text-left overflow-y-auto"
-                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', maxHeight: '200px' }}>
-                      <p className="text-xs font-bold tracking-widest uppercase mb-2"
-                        style={{ color: 'var(--text-muted)' }}>Captured</p>
-                      <p className="text-sm leading-relaxed font-mono"
-                        style={{ color: 'var(--text-secondary)' }}>
-                        {transcript}
-                        {interimTranscript && (
-                          <span className="opacity-50 italic"> {interimTranscript}</span>
-                        )}
-                      </p>
-                    </div>
+                <div className="relative w-28 h-28 flex items-center justify-center">
+                  <motion.span className="absolute w-28 h-28 rounded-full opacity-20"
+                    style={{ background: 'var(--score-low)' }}
+                    animate={{ scale: [1, 1.4, 1], opacity: [0.2, 0, 0.2] }}
+                    transition={{ duration: 2, repeat: Infinity }} />
+                  <span className="w-20 h-20 rounded-full flex items-center justify-center"
+                    style={{ background: 'rgba(239,68,68,0.12)', border: '2px solid var(--score-low)' }}>
+                    <span className="w-8 h-8 rounded-full" style={{ background: 'var(--score-low)' }} />
+                  </span>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--score-low)' }}>
+                    Recording
+                  </p>
+                  {teamName && (
+                    <AnimatePresence mode="wait">
+                      <motion.div key={teamName}
+                        initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
+                        <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>
+                          Now presenting
+                        </p>
+                        <p className="text-2xl font-black">{teamName}</p>
+                      </motion.div>
+                    </AnimatePresence>
                   )}
-                </>
-              ) : isConnecting ? (
-                <>
-                  <div className="w-10 h-10 rounded-full border-2 animate-spin"
-                    style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
-                  <p className="text-base" style={{ color: 'var(--text-muted)' }}>Connecting…</p>
-                </>
-              ) : (
-                <>
-                  {/* Standby */}
-                  <div className="w-20 h-20 rounded-full flex items-center justify-center"
-                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
-                      style={{ color: 'var(--text-muted)' }}>
-                      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-xl font-semibold mb-1">Standing by</p>
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                      {eventName
-                        ? `Waiting for ${eventName} to start recording`
-                        : 'Waiting for a session to go live…'}
+                </div>
+
+                {(transcript || interimTranscript) && (
+                  <div className="w-full rounded-xl p-4 text-left overflow-y-auto"
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', maxHeight: '180px' }}>
+                    <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Captured</p>
+                    <p className="text-sm leading-relaxed font-mono" style={{ color: 'var(--text-secondary)' }}>
+                      {transcript}
+                      {interimTranscript && <span className="opacity-50 italic"> {interimTranscript}</span>}
                     </p>
                   </div>
-                </>
-              )}
+                )}
 
-              <button
-                onClick={deactivate}
-                className="text-xs px-3 py-1.5 rounded-lg mt-2 transition-all"
-                style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}
-              >
-                Deactivate
-              </button>
-            </div>
-          )}
+                <button onClick={deactivate} className="text-xs px-3 py-1.5 rounded-lg transition-all"
+                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                  Pause
+                </button>
+              </motion.div>
+
+            ) : isConnecting ? (
+              /* ── Connecting ── */
+              <motion.div key="connecting"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-4">
+                <div className="w-10 h-10 rounded-full border-2 animate-spin"
+                  style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+                <p className="text-base" style={{ color: 'var(--text-secondary)' }}>Connecting…</p>
+              </motion.div>
+
+            ) : (
+              /* ── Standby ── */
+              <motion.div key="standby"
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-6 max-w-sm w-full">
+
+                <motion.div
+                  className="w-20 h-20 rounded-full flex items-center justify-center"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                  animate={{ scale: [1, 1.04, 1] }}
+                  transition={{ duration: 3, repeat: Infinity }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    style={{ color: 'var(--text-muted)' }}>
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
+                  </svg>
+                </motion.div>
+
+                <div>
+                  <p className="text-xl font-bold mb-1">Standing by</p>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {eventName
+                      ? `Waiting for ${eventName} to start recording`
+                      : 'Waiting for a session to go live…'}
+                  </p>
+                </div>
+
+                <button onClick={deactivate} className="text-xs px-3 py-1.5 rounded-lg transition-all"
+                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
+                  Pause
+                </button>
+              </motion.div>
+            )}
+
+          </AnimatePresence>
         </div>
       </div>
     </ThemeProvider>

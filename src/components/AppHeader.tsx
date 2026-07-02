@@ -3,6 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { ThemeSelector } from '@/components/ThemeSelector'
+import BrandName from '@/components/BrandName'
 
 export interface NavItem {
   label: string
@@ -67,8 +68,7 @@ export default function AppHeader({
             </svg>
           </Link>
         )}
-        <img src="/app-icon.svg" alt="Audio Judge" className="w-7 h-7 shrink-0" />
-        <span className="font-bold gradient-text shrink-0">Audio Judge</span>
+        <BrandName className="shrink-0" />
         {section && (
           <>
             <span className="shrink-0" style={{ color: 'var(--border-hover)' }}>·</span>
