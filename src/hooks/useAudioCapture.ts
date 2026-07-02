@@ -281,6 +281,24 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           .catch(() => navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }))
       : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
 
+    // Restore transcript buffer from DB if empty so the AI scores cumulatively
+    // rather than overwriting previous scores with only the new recording's content.
+    // This also covers page-refresh recovery.
+    if (!bufferRef.current) {
+      const { data: chunks } = await createSupabaseClient()
+        .from('transcript_chunks')
+        .select('content')
+        .eq('session_id', event.id)
+        .eq('team_id', activeSession.id)
+        .order('created_at', { ascending: true })
+      if (chunks?.length) {
+        const words = chunks.map((c: any) => c.content).join(' ').split(/\s+/).filter(Boolean)
+        bufferRef.current = words.slice(-MAX_BUFFER_WORDS).join(' ')
+        // Don't trigger a scoring cycle immediately — only when new words arrive
+        wordCountAtLastJudgeRef.current = bufferRef.current.split(/\s+/).filter(Boolean).length
+      }
+    }
+
     createSupabaseClient().from('sessions').update({ is_recording: true }).eq('id', event.id).then(() => {})
     stoppedRef.current = false
     setIsPaused(false)
