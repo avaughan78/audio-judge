@@ -249,6 +249,30 @@ export default function JudgePage() {
           </div>
         )}
 
+        {/* Meeting mode notice */}
+        <AnimatePresence>
+          {captureMode === 'online' && (
+            <motion.div
+              key="meeting-notice"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.18 }}
+              className="relative z-10 overflow-hidden"
+            >
+              <div className="flex items-center gap-2.5 px-5 py-2"
+                style={{ background: 'rgba(59,130,246,0.07)', borderBottom: '1px solid rgba(59,130,246,0.18)' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" className="shrink-0">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p className="text-xs" style={{ color: '#93c5fd' }}>
+                  Meeting mode captures audio from a browser tab. When the browser asks, select your meeting tab and tick <strong style={{ color: '#bfdbfe' }}>"Share tab audio"</strong>. Chrome only — won't work in Safari.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Judge error banner */}
         {judgeError && (
           <div className="relative z-10 flex items-center gap-3 px-5 py-2"
@@ -276,19 +300,13 @@ export default function JudgePage() {
             {/* Capture mode toggle */}
             <div className="flex rounded-lg overflow-hidden"
               style={{ border: '1px solid var(--border)', opacity: isRecording ? 0.35 : 1, pointerEvents: isRecording ? 'none' : 'auto' }}>
-              <button onClick={() => setMode('local')} title="Local mic" className="px-2 py-1.5 transition-all"
+              <button onClick={() => setMode('local')} className="px-3 py-1.5 text-xs font-medium transition-all"
                 style={{ background: captureMode === 'local' ? 'var(--accent-dim)' : 'transparent', color: captureMode === 'local' ? 'var(--accent)' : 'var(--text-muted)', borderRight: '1px solid var(--border)' }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
-                </svg>
+                In-person
               </button>
-              <button onClick={() => setMode('online')} title="Meeting audio" className="px-2 py-1.5 transition-all"
+              <button onClick={() => setMode('online')} className="px-3 py-1.5 text-xs font-medium transition-all"
                 style={{ background: captureMode === 'online' ? 'var(--accent-dim)' : 'transparent', color: captureMode === 'online' ? 'var(--accent)' : 'var(--text-muted)' }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <rect x="2" y="7" width="15" height="12" rx="2" />
-                  <path d="M17 11l4-3v8l-4-3" />
-                </svg>
+                Meeting
               </button>
             </div>
 
