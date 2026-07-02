@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
 import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
 import { useCollectorCapture } from '@/hooks/useCollectorCapture'
+import BrandName from '@/components/BrandName'
 
 export default function CollectPage() {
   const router = useRouter()
@@ -170,10 +171,7 @@ export default function CollectPage() {
         <header className="relative z-10 shrink-0 flex items-center justify-between px-5 h-14"
           style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)' }}>
           <div className="flex items-center gap-3">
-            <span style={{ fontWeight: 800, letterSpacing: '-0.03em' }}>
-              <span style={{ color: 'var(--text-primary)' }}>Audio</span>{' '}
-              <span style={{ color: '#65A30D' }}>Judge</span>
-            </span>
+            <BrandName />
             <span style={{ color: 'var(--border-hover)' }}>·</span>
             <span className="text-sm font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
               Collector

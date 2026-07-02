@@ -101,7 +101,8 @@ function LoginForm() {
 
       {/* Nav */}
       <nav style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 40px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/logo-mark.svg" alt="" style={{ width: '28px', height: '28px' }} />
           <span style={{ fontWeight: 800, fontSize: '26px', letterSpacing: '-0.03em' }}>
             <span style={{ color: '#f8fafc' }}>Audio</span>{' '}
             <span style={{ color: '#65A30D' }}>Judge</span>
