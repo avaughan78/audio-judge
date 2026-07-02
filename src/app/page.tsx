@@ -324,6 +324,29 @@ export default function JudgePage() {
               )}
             </AnimatePresence>
 
+            {/* Next presenter — clears the display so the next team can be recorded */}
+            <AnimatePresence>
+              {!isRecording && !isPaused && !!activeSession && (
+                <motion.button
+                  key="next-session"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={() => setActiveSession(null)}
+                  title="Clear scores and await next presenter"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                  Next
+                </motion.button>
+              )}
+            </AnimatePresence>
+
             <RecordingControl compact onStart={start} onStop={stop} onPause={pause} onResume={resume} isPausedOverride={isPaused} />
 
             {/* Separator */}
