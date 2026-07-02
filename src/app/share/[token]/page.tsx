@@ -90,7 +90,7 @@ function TeamCard({ team, criteria, scores, rank, index, token }: {
         <div className="flex items-center gap-3 shrink-0">
           {scoredCriteria.length > 0 ? (
             <div className="flex items-center gap-2">
-              {scoredCriteria.slice(0, 3).map(c => {
+              {scoredCriteria.slice(0, 6).map(c => {
                 const score = teamScores.find(s => s.criteria_id === c.id)?.score ?? 0
                 return (
                   <div key={c.id} className="text-center">
@@ -225,7 +225,7 @@ export default function SharePage() {
           </span>
         </header>
 
-        <main className="max-w-2xl mx-auto px-6 py-10">
+        <main className="max-w-5xl mx-auto px-6 py-10">
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <div className="w-5 h-5 rounded-full border-2 animate-spin"
