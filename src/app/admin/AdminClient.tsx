@@ -477,7 +477,7 @@ export default function AdminClient() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <ThemeProvider>
-      <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
+      <div className="h-screen flex flex-col" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
         <AppHeader items={[
           { label: 'Events', href: '/admin', active: true, onClick: deselectEvent },
@@ -500,11 +500,12 @@ export default function AdminClient() {
           {/* ── Sidebar ──────────────────────────────────────────────── */}
           <aside
             className={`w-64 shrink-0 flex-col overflow-hidden z-40 ${showSidebar ? 'flex fixed left-0 bottom-0' : 'hidden md:flex'}`}
-            style={{ borderRight: '1px solid var(--border)', background: 'var(--bg)', top: '56px', height: 'calc(100dvh - 56px)', position: showSidebar ? 'fixed' : 'sticky' }}>
+            style={{ borderRight: '1px solid var(--border)', background: 'var(--bg)', top: '56px', height: 'calc(100dvh - 56px)', position: showSidebar ? 'fixed' : 'sticky' }}
+            onClick={deselectEvent}>
 
             {/* ── Scrollable event list ── */}
             <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              <div className="flex gap-1.5 mb-3">
+              <div className="flex gap-1.5 mb-3" onClick={e => e.stopPropagation()}>
                 <input
                   value={newEventName} onChange={e => setNewEventName(e.target.value)}
                   placeholder="New event…"
@@ -545,7 +546,7 @@ export default function AdminClient() {
                   <div key={ev.id}
                     className="group relative rounded-lg transition-all cursor-pointer"
                     style={{ background: isViewed ? 'var(--accent-dim)' : 'transparent' }}
-                    onClick={() => selectEvent(ev)}>
+                    onClick={e => { e.stopPropagation(); selectEvent(ev) }}>
                     <div className="flex items-center gap-2 px-2.5 py-2">
                       <span className="relative shrink-0 w-3 h-3 flex items-center justify-center">
                         <span className={`absolute h-1.5 w-1.5 rounded-full transition-opacity${isViewed ? ' group-hover:opacity-0' : ''}`}
@@ -575,7 +576,7 @@ export default function AdminClient() {
             </div>
 
             {/* ── Pinned bottom section ── */}
-            <div className="shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="shrink-0" style={{ borderTop: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
               {/* Settings + Sign out */}
               <div className="flex items-center justify-between px-3 py-2.5">
                 <button
