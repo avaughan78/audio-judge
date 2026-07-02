@@ -25,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const [{ data: teams }, { data: criteria }, { data: scores }] = await Promise.all([
-    supabase.from('teams').select('id, name, order_index, created_at').eq('session_id', session.id).order('order_index'),
+    supabase.from('teams').select('id, name, summary, order_index, created_at').eq('session_id', session.id).order('order_index'),
     supabase.from('criteria').select('id, name, weight, description, order_index').eq('session_id', session.id).order('order_index'),
     supabase.from('scores').select('team_id, criteria_id, score, reasoning').eq('session_id', session.id),
   ])

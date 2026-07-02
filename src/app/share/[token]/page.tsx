@@ -12,8 +12,47 @@ function getScoreStyle(score: number) {
   return { color: 'var(--score-low)' }
 }
 
-function TeamCard({ team, criteria, scores, rank, index }: {
-  team: any; criteria: any[]; scores: any[]; rank: number; index: number
+function TranscriptToggle({ token, teamId }: { token: string; teamId: string }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'loaded'>('idle')
+  const [transcript, setTranscript] = useState('')
+  const [visible, setVisible] = useState(false)
+
+  const load = async () => {
+    setState('loading')
+    const res = await fetch(`/api/share/${token}/transcript/${teamId}`)
+    const data = await res.json()
+    setTranscript(data.transcript ?? '')
+    setState('loaded')
+    setVisible(true)
+  }
+
+  if (state === 'loading') {
+    return <div className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin mt-1" style={{ color: 'var(--accent)' }} />
+  }
+  if (state === 'idle') {
+    return (
+      <button onClick={load} className="text-xs font-medium underline underline-offset-2 mt-1" style={{ color: 'var(--accent)' }}>
+        Show transcript
+      </button>
+    )
+  }
+  if (!transcript) {
+    return <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>No transcript recorded.</p>
+  }
+  return (
+    <div>
+      <button onClick={() => setVisible(v => !v)} className="text-xs font-medium underline underline-offset-2 mt-1" style={{ color: 'var(--accent)' }}>
+        {visible ? 'Hide transcript' : 'Show transcript'}
+      </button>
+      {visible && (
+        <p className="text-sm leading-relaxed mt-2 whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>{transcript}</p>
+      )}
+    </div>
+  )
+}
+
+function TeamCard({ team, criteria, scores, rank, index, token }: {
+  team: any; criteria: any[]; scores: any[]; rank: number; index: number; token: string
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -86,9 +125,20 @@ function TeamCard({ team, criteria, scores, rank, index }: {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden">
-            <div className="px-5 pb-5 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="px-5 pb-5 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+              {team.summary && (
+                <div className="pt-4">
+                  <p className="text-xs font-semibold tracking-widest uppercase mb-1.5" style={{ color: 'var(--text-muted)' }}>Summary</p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{team.summary}</p>
+                </div>
+              )}
+              <div className={team.summary ? '' : 'pt-4'}>
+                <p className="text-xs font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Transcript</p>
+                <TranscriptToggle token={token} teamId={team.id} />
+              </div>
               {criteria.length > 0 && (
-                <div className="pt-4 space-y-4">
+                <div className="space-y-4 pt-2">
+                  <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Scores</p>
                   {criteria.map(c => {
                     const entry = teamScores.find(s => s.criteria_id === c.id)
                     const score = entry?.score ?? 0
@@ -205,6 +255,7 @@ export default function SharePage() {
                     scores={data.scores}
                     rank={i + 1}
                     index={i}
+                    token={token}
                   />
                 ))
               )}
