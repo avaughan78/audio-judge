@@ -615,7 +615,7 @@ export default function JudgePage() {
                       <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Define what you're judging before you start recording</p>
                     </div>
                     <Link
-                      href="/admin"
+                      href={`/admin?event=${event?.id ?? ''}`}
                       className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
                       style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}
                     >

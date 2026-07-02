@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
@@ -142,6 +143,7 @@ function Section({ title, subtitle, children, action }: {
 export default function AdminClient() {
   const { setThemeId, themeId: currentThemeId } = useAppStore()
   const supabase = createClient()
+  const searchParams = useSearchParams()
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -234,6 +236,11 @@ export default function AdminClient() {
       setDbError(null)
       if (data) {
         setEvents(data)
+        const focusId = searchParams.get('event')
+        if (focusId) {
+          const target = data.find((e: Event) => e.id === focusId)
+          if (target) selectEvent(target)
+        }
       }
     }
     load()
