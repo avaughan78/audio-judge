@@ -47,6 +47,7 @@ function OverallScore({ sessions, criteria }: { sessions: (Session & { scores: S
 function TranscriptView({ sessionId, teamId }: { sessionId: string; teamId: string }) {
   const [chunks, setChunks] = useState<string[] | null>(null)
   const [loading, setLoading] = useState(false)
+  const [visible, setVisible] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -59,9 +60,14 @@ function TranscriptView({ sessionId, teamId }: { sessionId: string; teamId: stri
       .order('timestamp')
     setChunks(data?.map((c: any) => c.content) ?? [])
     setLoading(false)
+    setVisible(true)
   }
 
-  if (!chunks && !loading) {
+  if (loading) {
+    return <div className="w-3 h-3 rounded-full border animate-spin mt-1" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+  }
+
+  if (!chunks) {
     return (
       <button onClick={load} className="text-xs font-medium underline underline-offset-2 mt-1"
         style={{ color: 'var(--accent)' }}>
@@ -69,16 +75,23 @@ function TranscriptView({ sessionId, teamId }: { sessionId: string; teamId: stri
       </button>
     )
   }
-  if (loading) {
-    return <div className="w-3 h-3 rounded-full border animate-spin mt-1" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
-  }
-  if (!chunks?.length) {
+
+  if (!chunks.length) {
     return <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>No transcript recorded.</p>
   }
+
   return (
-    <p className="text-sm leading-relaxed mt-2 whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
-      {chunks.join(' ')}
-    </p>
+    <div>
+      <button onClick={() => setVisible(v => !v)} className="text-xs font-medium underline underline-offset-2 mt-1"
+        style={{ color: 'var(--accent)' }}>
+        {visible ? 'Hide transcript' : 'Show transcript'}
+      </button>
+      {visible && (
+        <p className="text-sm leading-relaxed mt-2 whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
+          {chunks.join(' ')}
+        </p>
+      )}
+    </div>
   )
 }
 
