@@ -105,7 +105,7 @@ export default function JudgePage() {
   const [newPresenterName, setNewPresenterName] = useState('')
   const [creatingPresenter, setCreatingPresenter] = useState(false)
 
-  const { start, stop, pause, resume, isPaused, punctuate, clearBuffer } = useAudioCapture(captureMode)
+  const { start, stop, pause, resume, isPaused, punctuate, rescore, clearBuffer } = useAudioCapture(captureMode)
 
   const setMode = (m: CaptureMode) => {
     setCaptureMode(m)
@@ -362,6 +362,31 @@ export default function JudgePage() {
                     </button>
                   )}
                 </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Rescore */}
+            <AnimatePresence>
+              {!isRecording && !isPaused && activeSession && (
+                <motion.button
+                  key="rescore"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  onClick={rescore}
+                  disabled={isSummarising}
+                  title="Rescore from full transcript"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all disabled:opacity-40"
+                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                  </svg>
+                  {isSummarising ? 'Scoring…' : 'Rescore'}
+                </motion.button>
               )}
             </AnimatePresence>
 

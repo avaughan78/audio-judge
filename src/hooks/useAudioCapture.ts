@@ -7,7 +7,6 @@ import { getDeviceId } from '@/lib/deviceId'
 import type { CaptureMode } from './useCollectorCapture'
 
 const WORDS_PER_CYCLE = 40
-const CYCLE_INTERVAL_MS = 12_000
 const MAX_BUFFER_WORDS = 8_000
 
 export function useAudioCapture(captureMode: CaptureMode = 'local') {
@@ -16,14 +15,12 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const streamRef = useRef<MediaStream | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const bufferRef = useRef('')
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isJudgingRef = useRef(false)
   const wordCountAtLastJudgeRef = useRef(0)
   const stoppedRef = useRef(false)
   const collectorChannelRef = useRef<any>(null)
   const isStartingRef = useRef(false)
   const connectionIdRef = useRef(0)
-  const newWordsThisSessionRef = useRef(0)
 
   const [isPaused, setIsPaused] = useState(false)
 
@@ -169,7 +166,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
           track.addEventListener('ended', () => {
             if (myId !== connectionIdRef.current || stoppedRef.current) return
             stoppedRef.current = true
-            if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
             try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
             mediaRecorderRef.current = null
             connectionRef.current = null
@@ -182,8 +178,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
             useAppStore.getState().setRecordingStartedAt(null)
           })
         })
-
-        timerRef.current = setInterval(runCycle, CYCLE_INTERVAL_MS)
 
         const { event: currentEvent } = useAppStore.getState()
         if (currentEvent) {
@@ -219,7 +213,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         useAppStore.getState().setInterimTranscript('')
         appendTranscript(alt.transcript)
         bufferRef.current += ' ' + alt.transcript
-        newWordsThisSessionRef.current += alt.transcript.split(/\s+/).filter(Boolean).length
 
         const words = bufferRef.current.split(/\s+/).filter(Boolean)
         if (words.length > MAX_BUFFER_WORDS) {
@@ -303,7 +296,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       }
     }
 
-    newWordsThisSessionRef.current = 0
     createSupabaseClient().from('sessions').update({ is_recording: true }).eq('id', event.id).then(() => {})
     stoppedRef.current = false
     setIsPaused(false)
@@ -314,7 +306,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   // The session stays open — resume() reconnects and continues from where we left off.
   const pause = useCallback(async () => {
     stoppedRef.current = true
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
     if (collectorChannelRef.current) {
       try { createSupabaseClient().removeChannel(collectorChannelRef.current) } catch (_) {}
       collectorChannelRef.current = null
@@ -353,11 +344,10 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     await connectDeepgram(rawStreamPromise)
   }, [connectDeepgram, captureMode])
 
-  // Stop: runs a final scoring cycle, then clears the session.
+  // Stop: tears down Deepgram and preserves the buffer so Rescore can use it.
   const stop = useCallback(async () => {
     stoppedRef.current = true
     isStartingRef.current = false
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
     if (collectorChannelRef.current) {
       try { createSupabaseClient().removeChannel(collectorChannelRef.current) } catch (_) {}
       collectorChannelRef.current = null
@@ -376,14 +366,7 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     const { event } = useAppStore.getState()
     if (event) createSupabaseClient().from('sessions').update({ is_recording: false }).eq('id', event.id).then(() => {})
     setIsPaused(false)
-    // Only run the final (potentially score-lowering) cycle if enough new content
-    // was captured this session. Guards against a failed buffer restore sending
-    // a thin transcript to the AI and overwriting good scores with worse ones.
-    if (newWordsThisSessionRef.current >= 50) {
-      await runCycle({ final: true })
-    }
-    clearBuffer()
-  }, [runCycle, clearBuffer])
+  }, [])
 
   // Punctuate: snapshot scores for the current presenter mid-recording, then clear buffer to start fresh.
   const punctuate = useCallback(async () => {
@@ -391,5 +374,8 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     clearBuffer()
   }, [runCycle, clearBuffer])
 
-  return { start, pause, resume, stop, punctuate, isPaused, clearBuffer }
+  // Rescore: manual full-transcript rescore when recording is stopped.
+  const rescore = useCallback(() => runCycle({ final: true }), [runCycle])
+
+  return { start, pause, resume, stop, punctuate, rescore, isPaused, clearBuffer }
 }
