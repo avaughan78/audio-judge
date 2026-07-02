@@ -292,12 +292,14 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         .select('content')
         .eq('session_id', event.id)
         .eq('team_id', activeSession.id)
-        .order('created_at', { ascending: true })
+        .order('timestamp', { ascending: true })
       if (chunks?.length) {
         const words = chunks.map((c: any) => c.content).join(' ').split(/\s+/).filter(Boolean)
         bufferRef.current = words.slice(-MAX_BUFFER_WORDS).join(' ')
-        // Don't trigger a scoring cycle immediately — only when new words arrive
         wordCountAtLastJudgeRef.current = bufferRef.current.split(/\s+/).filter(Boolean).length
+        // Immediately score from restored content — handles switching back to a
+        // previous presenter and wanting up-to-date scores without new speech.
+        runCycle()
       }
     }
 
