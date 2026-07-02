@@ -259,7 +259,14 @@ export default function AdminClient() {
   // ── Event management ───────────────────────────────────────────────────────
 
   const selectEvent = (ev: Event) => {
-    if (ev.id === viewedEvent?.id) return
+    if (ev.id === viewedEvent?.id) {
+      setViewedEvent(null)
+      setBrief('')
+      savedBriefRef.current = ''
+      setCriteria([])
+      setBriefStatus('saved')
+      return
+    }
     setViewedEvent(ev)
     setBrief(ev.brief || '')
     savedBriefRef.current = ev.brief || ''
@@ -539,8 +546,15 @@ export default function AdminClient() {
                     style={{ background: isViewed ? 'var(--accent-dim)' : 'transparent' }}
                     onClick={() => selectEvent(ev)}>
                     <div className="flex items-center gap-2 px-2.5 py-2">
-                      <span className="h-1.5 w-1.5 rounded-full shrink-0"
-                        style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
+                      <span className="relative shrink-0 w-3 h-3 flex items-center justify-center">
+                        <span className={`absolute h-1.5 w-1.5 rounded-full transition-opacity${isViewed ? ' group-hover:opacity-0' : ''}`}
+                          style={{ background: isLive ? '#4ade80' : 'var(--border-hover)' }} />
+                        {isViewed && (
+                          <svg className="absolute opacity-0 group-hover:opacity-60 transition-opacity" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ color: 'var(--accent)' }}>
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        )}
+                      </span>
                       <span className="text-sm flex-1 truncate"
                         style={{ color: isViewed ? 'var(--accent)' : 'var(--text-secondary)' }}>
                         {ev.name}
