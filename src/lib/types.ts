@@ -7,6 +7,7 @@ export interface Event {
   event_date: string | null
   is_active: boolean
   active_team_id: string | null
+  is_recording: boolean
   theme_id: ThemeId
   detection_mode: 'manual' | 'automatic'
   created_at: string

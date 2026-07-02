@@ -10,6 +10,7 @@ create table if not exists public.sessions (
   event_date    date,
   is_active     boolean not null default false,
   active_team_id uuid,
+  is_recording  boolean not null default false,
   theme_id      text not null default 'midnight',
   created_at    timestamptz not null default now()
 );

@@ -122,6 +122,9 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     setActiveSession(transitionData.team)
     useAppStore.setState((s: any) => ({ sessions: [...s.sessions, transitionData.team] }))
 
+    // Signal to collector devices that recording has started
+    createSupabaseClient().from('sessions').update({ is_recording: true }).eq('id', event.id).then(() => {})
+
     stoppedRef.current = false
     setConnecting(true)
     try {
@@ -203,6 +206,8 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
             mediaRecorderRef.current = null
             connectionRef.current = null
             streamRef.current = null
+            const { event: ev } = useAppStore.getState()
+            if (ev) createSupabaseClient().from('sessions').update({ is_recording: false }).eq('id', ev.id).then(() => {})
             useAppStore.getState().setRecording(false)
             useAppStore.getState().setConnecting(false)
             useAppStore.getState().setInterimTranscript('')
@@ -315,6 +320,9 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     // Update UI immediately so the button responds at once
     useAppStore.getState().setConnecting(false)
     useAppStore.getState().setRecording(false)
+    // Signal to collector devices that recording has stopped
+    const { event } = useAppStore.getState()
+    if (event) createSupabaseClient().from('sessions').update({ is_recording: false }).eq('id', event.id).then(() => {})
 
     await runCycle({ final: true })
     clearBuffer()

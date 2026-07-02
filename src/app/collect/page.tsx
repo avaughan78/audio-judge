@@ -15,6 +15,7 @@ export default function CollectPage() {
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null)
   const [eventName, setEventName] = useState<string | null>(null)
   const [teamName, setTeamName] = useState<string | null>(null)
+  const [isMainRecording, setIsMainRecording] = useState(false)
 
   // isReady = mic permission granted. isPaused = user manually deactivated.
   const [isReady, setIsReady] = useState(false)
@@ -41,7 +42,7 @@ export default function CollectPage() {
     })
   }, [router])
 
-  // 2. Auto-request mic on load (no button required)
+  // 2. Auto-request mic on load (no button required for the happy path)
   useEffect(() => {
     if (!authChecked) return
     navigator.mediaDevices.getUserMedia({ audio: true })
@@ -56,11 +57,15 @@ export default function CollectPage() {
 
     async function loadActive() {
       const { data } = await supabase
-        .from('sessions').select('id, name, active_team_id').eq('is_active', true).maybeSingle()
+        .from('sessions')
+        .select('id, name, active_team_id, is_recording')
+        .eq('is_active', true)
+        .maybeSingle()
       if (!data) return
       setSessionId(data.id)
       setEventName(data.name)
       setActiveTeamId(data.active_team_id ?? null)
+      setIsMainRecording(data.is_recording ?? false)
       if (data.active_team_id) {
         const { data: team } = await supabase.from('teams').select('name').eq('id', data.active_team_id).single()
         setTeamName(team?.name ?? null)
@@ -75,6 +80,7 @@ export default function CollectPage() {
         setSessionId(payload.new.id)
         setEventName(payload.new.name)
         setActiveTeamId(payload.new.active_team_id ?? null)
+        setIsMainRecording(payload.new.is_recording ?? false)
         if (payload.new.active_team_id) {
           const { data: team } = await supabase.from('teams').select('name').eq('id', payload.new.active_team_id).single()
           setTeamName(team?.name ?? null)
@@ -87,9 +93,9 @@ export default function CollectPage() {
     return () => { supabase.removeChannel(channel) }
   }, [isReady, authChecked])
 
-  // 4. Drive recording from session state — ref-based to avoid stale closures
+  // 4. Drive recording from main page's is_recording state
   useEffect(() => {
-    const shouldRecord = isReady && !isPaused && !!sessionId && !!activeTeamId
+    const shouldRecord = isReady && !isPaused && !!sessionId && !!activeTeamId && isMainRecording
     if (shouldRecord && !recordingStartedRef.current) {
       recordingStartedRef.current = true
       startRef.current?.()
@@ -97,7 +103,26 @@ export default function CollectPage() {
       recordingStartedRef.current = false
       stopRef.current?.()
     }
-  }, [isReady, isPaused, sessionId, activeTeamId])
+  }, [isReady, isPaused, sessionId, activeTeamId, isMainRecording])
+
+  // 5. Hold wake lock to prevent display sleep (standby + recording)
+  useEffect(() => {
+    if (!isReady || isPaused) return
+    let lock: any = null
+    const acquire = async () => {
+      if (!('wakeLock' in navigator)) return
+      try { lock = await (navigator as any).wakeLock.request('screen') } catch (_) {}
+    }
+    acquire()
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && !lock) acquire()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      lock?.release().catch(() => {})
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [isReady, isPaused])
 
   const activate = useCallback(async () => {
     setSetupError(null)
@@ -141,7 +166,7 @@ export default function CollectPage() {
           />
         </div>
 
-        {/* Header: brand + Collector label + ThemeSelector only */}
+        {/* Header */}
         <header className="relative z-10 shrink-0 flex items-center justify-between px-5 h-14"
           style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)' }}>
           <div className="flex items-center gap-3">
@@ -167,7 +192,7 @@ export default function CollectPage() {
           <AnimatePresence mode="wait">
 
             {showActivation ? (
-              /* ── Activation screen ── */
+              /* ── Activation / Paused screen ── */
               <motion.div key="activation"
                 initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                 className="flex flex-col items-center gap-6 max-w-sm w-full">
@@ -267,6 +292,16 @@ export default function CollectPage() {
                 <div className="w-10 h-10 rounded-full border-2 animate-spin"
                   style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
                 <p className="text-base" style={{ color: 'var(--text-secondary)' }}>Connecting…</p>
+              </motion.div>
+
+            ) : isActive && isMainRecording ? (
+              /* ── Main is recording but collector not yet connected ── */
+              <motion.div key="starting"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-4">
+                <div className="w-10 h-10 rounded-full border-2 animate-spin"
+                  style={{ borderColor: 'var(--border)', borderTopColor: 'var(--score-low)' }} />
+                <p className="text-base" style={{ color: 'var(--text-secondary)' }}>Starting…</p>
               </motion.div>
 
             ) : (
