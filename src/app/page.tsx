@@ -600,23 +600,23 @@ export default function JudgePage() {
                 <div className="flex-1 overflow-y-auto pr-4 flex flex-col">
                 <div className="my-auto space-y-6 py-2">
                 {criteria.length === 0 ? (
-                  <div className="flex items-center gap-4 px-5 py-4 rounded-xl"
+                  <div className="flex flex-col items-center text-center gap-5 px-8 py-10 rounded-2xl mx-auto w-full max-w-sm"
                     style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center"
                       style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
                         <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                         <line x1="12" y1="19" x2="12" y2="22" />
                       </svg>
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="space-y-1">
                       <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>No scoring criteria</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Define what you're judging before you start recording</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Define what you're judging before you start recording</p>
                     </div>
                     <Link
                       href={`/admin?event=${event?.id ?? ''}`}
-                      className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                      className="text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
                       style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}
                     >
                       Set up in Events →
