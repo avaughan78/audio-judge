@@ -11,6 +11,7 @@ import { ScorePanel } from '@/components/ScorePanel'
 import { RecordingControl } from '@/components/RecordingControl'
 import { ThemeProvider } from '@/components/ThemeSelector'
 import AppHeader from '@/components/AppHeader'
+import { QRCodeSVG } from 'qrcode.react'
 import { useAudioCapture } from '@/hooks/useAudioCapture'
 import { useSessionPresence } from '@/hooks/useSessionPresence'
 import type { CaptureMode } from '@/hooks/useCollectorCapture'
@@ -32,6 +33,8 @@ export default function JudgePage() {
   const [captureMode, setCaptureMode] = useState<CaptureMode>(() => {
     try { return (localStorage.getItem('aj_capture_mode') as CaptureMode) ?? 'local' } catch { return 'local' }
   })
+  const [collectorCode, setCollectorCode] = useState<string | null>(null)
+  const [showQR, setShowQR] = useState(false)
   const { start, stop, punctuate } = useAudioCapture(captureMode)
 
   const setMode = (m: CaptureMode) => {
@@ -61,6 +64,12 @@ export default function JudgePage() {
       .then(r => r.json())
       .then(d => { if (!d.ok) setMissingKeys(d.missing) })
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/profile').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.collector_code) setCollectorCode(d.collector_code)
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -158,8 +167,47 @@ export default function JudgePage() {
             { label: 'Display', href: '/display', icon: 'external', target: '_blank', hideOnMobile: true },
             { label: 'Collect', href: '/collect', icon: 'mic', target: '_blank', hideOnMobile: true },
             { label: 'Records', href: '/records', icon: 'archive', hideOnMobile: true },
-            { label: 'Events', href: '/admin', icon: 'settings' },
+            { label: 'Events', href: '/admin' },
           ]}
+          rightSlot={collectorCode ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowQR(v => !v)}
+                title="Show collector QR code"
+                className="p-1.5 rounded-lg transition-colors"
+                style={{ color: showQR ? 'var(--accent)' : 'var(--text-muted)', background: showQR ? 'var(--accent-dim)' : 'transparent' }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+                  <rect x="14" y="14" width="3" height="3" fill="currentColor" stroke="none"/><rect x="18" y="14" width="3" height="3" fill="currentColor" stroke="none"/>
+                  <rect x="14" y="18" width="3" height="3" fill="currentColor" stroke="none"/><rect x="18" y="18" width="3" height="3" fill="currentColor" stroke="none"/>
+                </svg>
+              </button>
+              <AnimatePresence>
+                {showQR && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowQR(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 p-4 rounded-2xl z-50"
+                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
+                    >
+                      <div className="p-3 rounded-xl" style={{ background: 'white' }}>
+                        <QRCodeSVG
+                          value={`${typeof window !== 'undefined' ? window.location.origin : ''}/collect/${collectorCode}`}
+                          size={140} bgColor="white" fgColor="#0f172a" level="M"
+                        />
+                      </div>
+                      <p className="text-xs text-center mt-2 font-medium" style={{ color: 'var(--text-muted)' }}>Scan to collect audio</p>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : undefined}
         />
 
         {/* Missing API keys warning */}

@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSpring } from 'framer-motion'
-import { QRCodeSVG } from 'qrcode.react'
 import { createClient } from '@/lib/supabase'
 import { Event, Session, Criteria, Score } from '@/lib/types'
 import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
@@ -33,7 +32,6 @@ export default function DisplayClient() {
   const [scores, setScores] = useState<Record<string, Score>>({})
   const [transcriptBuffer, setTranscriptBuffer] = useState<string[]>([])
   const [clock, setClock] = useState(new Date())
-  const [collectorCode, setCollectorCode] = useState<string | null>(null)
   // Ref rather than state because it's read inside the Supabase Realtime callback,
   // which is a closure that would always see the stale initial value if it used state.
   const activeSessionIdRef = useRef<string | null>(null)
@@ -42,12 +40,6 @@ export default function DisplayClient() {
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000)
     return () => clearInterval(t)
-  }, [])
-
-  useEffect(() => {
-    fetch('/api/profile').then(r => r.ok ? r.json() : null).then(d => {
-      if (d?.collector_code) setCollectorCode(d.collector_code)
-    }).catch(() => {})
   }, [])
 
   // Initialise display for a given event (called on load and when event goes live mid-display)
@@ -200,50 +192,26 @@ export default function DisplayClient() {
       </div>
 
       {!activeSession ? (
-        <div className="relative z-0 flex-1 flex items-center justify-center gap-20 px-16">
+        <div className="relative z-0 flex-1 flex items-center justify-center px-16">
           <div className="text-center space-y-4">
             <div className="text-7xl">🎯</div>
             <p className="text-2xl font-light" style={{ color: 'var(--text-muted)' }}>Waiting for presentation...</p>
           </div>
-          {collectorCode && (
-            <div className="flex flex-col items-center gap-3 shrink-0">
-              <div className="p-4 rounded-2xl" style={{ background: 'white' }}>
-                <QRCodeSVG
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/collect/${collectorCode}`}
-                  size={160} bgColor="white" fgColor="#0f172a" level="M"
-                />
-              </div>
-              <span className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Scan to collect audio</span>
-            </div>
-          )}
         </div>
       ) : (
         <div className="relative z-0 flex-1 flex flex-col min-h-0 pb-16 px-12 pt-6">
 
-          {/* Team name + QR */}
+          {/* Team name */}
           <AnimatePresence mode="wait">
             <motion.div key={activeSession.id} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }} className="mb-8 shrink-0 flex items-center gap-8">
-              {collectorCode && (
-                <div className="flex flex-col items-center gap-2 shrink-0">
-                  <div className="p-2.5 rounded-xl" style={{ background: 'white' }}>
-                    <QRCodeSVG
-                      value={`${typeof window !== 'undefined' ? window.location.origin : ''}/collect/${collectorCode}`}
-                      size={88} bgColor="white" fgColor="#0f172a" level="M"
-                    />
-                  </div>
-                  <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Scan to join</span>
-                </div>
+              exit={{ opacity: 0, y: 20 }} className="mb-8 shrink-0">
+              <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
+                Now Presenting
+              </p>
+              <h1 className="text-6xl font-black tracking-tight gradient-text">{activeSession.name}</h1>
+              {activeSession.description && (
+                <p className="text-lg mt-2" style={{ color: 'var(--text-muted)' }}>{activeSession.description}</p>
               )}
-              <div>
-                <p className="text-base font-bold tracking-[0.35em] uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
-                  Now Presenting
-                </p>
-                <h1 className="text-6xl font-black tracking-tight gradient-text">{activeSession.name}</h1>
-                {activeSession.description && (
-                  <p className="text-lg mt-2" style={{ color: 'var(--text-muted)' }}>{activeSession.description}</p>
-                )}
-              </div>
             </motion.div>
           </AnimatePresence>
 
@@ -298,7 +266,7 @@ export default function DisplayClient() {
 
             {/* Overall circular gauge */}
             <div className="w-64 shrink-0 flex flex-col items-center justify-center">
-              <p className="text-base font-bold tracking-[0.35em] uppercase mb-6" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-base font-bold tracking-widest uppercase mb-6" style={{ color: 'var(--text-muted)' }}>
                 Overall
               </p>
               <div className="relative w-56 h-56">
@@ -330,7 +298,7 @@ export default function DisplayClient() {
 
       {/* Transcript ticker */}
       {transcriptBuffer.length > 0 && (
-        <div className="absolute bottom-0 inset-x-0 px-12 py-3" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)' }}>
+        <div className="absolute bottom-0 inset-x-0 px-12 py-3" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)' }}>
           <div className="flex items-center gap-4 overflow-hidden">
             <span className="text-base font-bold tracking-widest uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
               Transcript

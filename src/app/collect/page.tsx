@@ -88,8 +88,8 @@ export default function CollectPage() {
         ) : !event ? (
           <div className="relative z-10 flex-1 flex items-center justify-center text-center px-8">
             <div className="space-y-3">
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>No active session</p>
-              <p className="text-base" style={{ color: 'var(--text-muted)' }}>Ask the organiser to activate a session in Admin.</p>
+              <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>No active event</p>
+              <p className="text-base" style={{ color: 'var(--text-muted)' }}>Ask the organiser to go live on an event in Admin.</p>
             </div>
           </div>
         ) : (
@@ -97,7 +97,7 @@ export default function CollectPage() {
 
             {/* Current presenter */}
             <div className="text-center">
-              <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
                 Now presenting
               </p>
               <AnimatePresence mode="wait">
@@ -206,7 +206,7 @@ export default function CollectPage() {
 
         {/* Live transcript strip */}
         <div className="shrink-0 flex items-center gap-3 px-5 py-2.5 relative z-10"
-          style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(8px)', minHeight: '38px' }}>
+          style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-glass)', backdropFilter: 'blur(12px)', minHeight: '38px' }}>
           {isRecording && (
             <span className="relative flex h-1.5 w-1.5 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: 'var(--score-low)' }} />

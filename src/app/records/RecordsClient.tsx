@@ -101,7 +101,7 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+      transition={{ delay: index * 0.07 }}
       className="rounded-xl overflow-hidden"
       style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
 
@@ -201,21 +201,21 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
               {/* Summary */}
               {session.summary && (
                 <div className="pt-4">
-                  <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Summary</p>
+                  <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Summary</p>
                   <p className="text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{session.summary}</p>
                 </div>
               )}
 
               {/* Transcript */}
               <div className="pt-2">
-                <p className="text-base font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Transcript</p>
+                <p className="text-xs font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Transcript</p>
                 <TranscriptView sessionId={session.session_id} teamId={session.id} />
               </div>
 
               {/* Criteria scores */}
               {criteria.length > 0 && (
                 <div>
-                  <p className="text-base font-bold tracking-widest uppercase mb-3 pt-2" style={{ color: 'var(--text-muted)' }}>Scores</p>
+                  <p className="text-xs font-semibold tracking-widest uppercase mb-3 pt-2" style={{ color: 'var(--text-muted)' }}>Scores</p>
                   <div className="space-y-3">
                     {criteria.map(c => {
                       const scoreEntry = session.scores.find(s => s.criteria_id === c.id)
@@ -331,7 +331,7 @@ export default function RecordsClient() {
     <ThemeProvider>
       <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
-        <AppHeader back section="Records" items={[{ label: 'Admin', href: '/admin', icon: 'settings' }]} />
+        <AppHeader back section="Records" items={[{ label: 'Events', href: '/admin' }]} />
 
         <main className="max-w-3xl mx-auto px-6 py-10">
 
@@ -447,7 +447,7 @@ export default function RecordsClient() {
                               <>
                                 {event.brief && (
                                   <div className="px-1 py-3">
-                                    <p className="text-base font-bold tracking-widest uppercase mb-1.5" style={{ color: 'var(--text-muted)' }}>Context</p>
+                                    <p className="text-xs font-semibold tracking-widest uppercase mb-1.5" style={{ color: 'var(--text-muted)' }}>Context</p>
                                     <p className="text-base leading-relaxed" style={{ color: 'var(--text-muted)' }}>{event.brief}</p>
                                   </div>
                                 )}

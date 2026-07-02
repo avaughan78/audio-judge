@@ -82,7 +82,7 @@ export function ScoreBar({ name, description, score, reasoning, weight = 1, inde
         </div>
 
         <div
-          className={`flex items-baseline gap-1 shrink-0 ${onScoreClick ? 'cursor-pointer rounded-lg px-1 -mx-1 transition-colors hover:bg-white/5' : ''}`}
+          className={`flex items-baseline gap-1 shrink-0 ${onScoreClick ? 'cursor-pointer rounded-xl px-1 -mx-1 transition-colors hover:bg-white/5' : ''}`}
           onClick={onScoreClick}
           title={onScoreClick ? 'Click to override score' : undefined}
         >

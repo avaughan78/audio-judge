@@ -152,7 +152,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Overall Score</p>
+                  <p className="text-xs font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Overall Score</p>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Weighted average · click a score to override</p>
                 </div>
               </motion.div>
@@ -166,7 +166,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
-        <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
           Scoring Criteria
         </span>
       </div>
@@ -213,7 +213,7 @@ export function ScorePanel({ fullscreen = false }: ScorePanelProps) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Overall Score</p>
+                  <p className="text-xs font-semibold tracking-widest uppercase mb-1" style={{ color: 'var(--text-muted)' }}>Overall Score</p>
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Weighted average</p>
                 </div>
                 <div className="relative w-20 h-20">

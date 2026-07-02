@@ -106,7 +106,7 @@ function LoginForm() {
           <span style={{ fontWeight: 800, fontSize: '26px', letterSpacing: '-0.03em', color: '#f8fafc' }}>Audio Judge</span>
         </div>
         <button onClick={handleGitHubSignIn} disabled={loading}
-          style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 15px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.09)', cursor: 'pointer', transition: 'all 0.15s' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: '7px 15px', borderRadius: '12px', fontSize: '13px', fontWeight: 600, background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.09)', cursor: 'pointer', transition: 'all 0.15s' }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.09)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.09)' }}>
           {GITHUB_ICON}
@@ -189,7 +189,7 @@ function LoginForm() {
           Set up your scoring criteria and start judging in minutes.
         </p>
         <button onClick={handleGitHubSignIn} disabled={loading}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '9px', padding: '12px 26px', borderRadius: '10px', fontSize: '14px', fontWeight: 700, background: 'rgba(255,255,255,0.06)', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.15s' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '9px', padding: '12px 26px', borderRadius: '12px', fontSize: '14px', fontWeight: 700, background: 'rgba(255,255,255,0.06)', color: '#e2e8f0', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'all 0.15s' }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.18)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.1)' }}>
           {GITHUB_ICON}
