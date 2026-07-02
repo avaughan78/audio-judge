@@ -683,9 +683,9 @@ export default function AdminClient() {
                           <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
                             style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>3</span>
                           <div>
-                            <p className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>Add presenter slots</p>
+                            <p className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>Go to the Scoring page</p>
                             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                              Create a slot for each team or speaker. Switch between them on the scoring page — scores and transcripts are tracked separately per presenter.
+                              Activate your event and head to Scoring. Add a presenter slot for each team or speaker — scores and transcripts are tracked separately per presenter.
                             </p>
                           </div>
                         </div>
@@ -697,9 +697,9 @@ export default function AdminClient() {
                           <span className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
                             style={{ background: 'var(--bg-glass)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>4</span>
                           <div>
-                            <p className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>Go live and score</p>
+                            <p className="text-sm font-bold mb-0.5" style={{ color: 'var(--text-primary)' }}>Hit Record and score live</p>
                             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                              Activate your event, hit Record on the Scoring page, and AI evaluates each presentation against your criteria in real time. Results appear instantly.
+                              Select a presenter and hit Record. AI listens and evaluates against your criteria in real time — scores update as each presentation unfolds.
                             </p>
                           </div>
                         </div>
