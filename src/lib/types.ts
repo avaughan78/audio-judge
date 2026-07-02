@@ -1,4 +1,4 @@
-export type ThemeId = 'midnight' | 'aurora' | 'daylight' | 'carbon'
+export type ThemeId = 'midnight' | 'daylight'
 
 export interface Event {
   id: string

@@ -263,9 +263,20 @@ export default function CollectPage() {
                   )}
                 </div>
 
-                {(transcript || interimTranscript) && (
+                {/* Listening animation or transcript */}
+                {!transcript && !interimTranscript ? (
+                  <div className="flex items-center gap-2">
+                    {[0, 1, 2].map(i => (
+                      <motion.div key={i} className="w-1.5 h-1.5 rounded-full"
+                        style={{ background: 'var(--score-low)' }}
+                        animate={{ opacity: [0.3, 1, 0.3] }}
+                        transition={{ duration: 1.2, delay: i * 0.2, repeat: Infinity }} />
+                    ))}
+                    <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Listening…</span>
+                  </div>
+                ) : (
                   <div className="w-full rounded-xl p-4 text-left overflow-y-auto"
-                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', maxHeight: '180px' }}>
+                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', maxHeight: '200px' }}>
                     <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>Captured</p>
                     <p className="text-sm leading-relaxed font-mono" style={{ color: 'var(--text-secondary)' }}>
                       {transcript}
@@ -273,13 +284,6 @@ export default function CollectPage() {
                     </p>
                   </div>
                 )}
-
-                <button onClick={deactivate} className="text-xs px-3 py-1.5 rounded-lg transition-all"
-                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-                  Pause
-                </button>
               </motion.div>
 
             ) : isConnecting ? (
@@ -329,12 +333,6 @@ export default function CollectPage() {
                   </p>
                 </div>
 
-                <button onClick={deactivate} className="text-xs px-3 py-1.5 rounded-lg transition-all"
-                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}>
-                  Pause
-                </button>
               </motion.div>
             )}
 

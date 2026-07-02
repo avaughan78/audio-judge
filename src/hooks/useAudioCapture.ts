@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useState } from 'react'
 import { useAppStore } from '@/lib/store'
 import { createClient as createSupabaseClient } from '@/lib/supabase'
 import { getDeviceId } from '@/lib/deviceId'
@@ -22,6 +22,8 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
   const stoppedRef = useRef(false)
   const collectorChannelRef = useRef<any>(null)
   const isStartingRef = useRef(false)
+
+  const [isPaused, setIsPaused] = useState(false)
 
   const runCycle = useCallback(async (options?: { final?: boolean }) => {
     if (isJudgingRef.current) return
@@ -86,46 +88,11 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     } catch (_) {}
   }, [])
 
-  const start = useCallback(async () => {
-    if (isStartingRef.current) return
-    isStartingRef.current = true
+  // Internal — sets up Deepgram + MediaRecorder given a media stream promise.
+  // Does NOT create a new session slot or clear the transcript buffer.
+  const connectDeepgram = useCallback(async (rawStreamPromise: Promise<MediaStream>) => {
+    const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt } = useAppStore.getState()
 
-    const { setConnecting, setRecording, appendTranscript, setRecordingStartedAt, setActiveSession } =
-      useAppStore.getState()
-    const { event } = useAppStore.getState()
-
-    if (!event) { isStartingRef.current = false; return }
-
-    // Initiate media acquisition synchronously — getDisplayMedia must be called
-    // within the user-activation window (the click), before any awaited fetches
-    // that would expire it.
-    // Try audio-only tab capture (Chrome 121+); fall back to video:true on older builds.
-    const rawStreamPromise: Promise<MediaStream> = captureMode === 'online'
-      ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: false })
-          .catch(() => navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }))
-      : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-
-    // Create fresh session slot — runs in parallel while the user is picking
-    // a screen/tab in the browser's share picker
-    const transitionRes = await fetch('/api/auto-transition', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: event.id, manual: true }),
-    })
-    const transitionData = await transitionRes.json()
-    if (!transitionData.transition || !transitionData.team) {
-      rawStreamPromise.then(s => s.getTracks().forEach(t => t.stop())).catch(() => {})
-      console.error('[audio] Failed to create session slot')
-      isStartingRef.current = false
-      return
-    }
-    setActiveSession(transitionData.team)
-    useAppStore.setState((s: any) => ({ sessions: [...s.sessions, transitionData.team] }))
-
-    // Signal to collector devices that recording has started
-    createSupabaseClient().from('sessions').update({ is_recording: true }).eq('id', event.id).then(() => {})
-
-    stoppedRef.current = false
     setConnecting(true)
     try {
       const [tokenData, rawStream] = await Promise.all([
@@ -145,9 +112,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         useAppStore.getState().setJudgeError(msg)
         throw new Error(msg)
       }
-      // For display capture with video tracks, create an audio-only stream for
-      // MediaRecorder. Do NOT stop the video track — that ends the entire capture
-      // session and kills audio too. Keep rawStream in streamRef for cleanup.
       const stream = rawStream.getVideoTracks().length > 0
         ? new MediaStream(rawStream.getAudioTracks())
         : rawStream
@@ -194,9 +158,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
         }
         mediaRecorderRef.current = mr
 
-        // When screen share ends externally, clean up so state stays in sync.
-        // Listen on rawStream — for display capture the video track fires 'ended'
-        // when the user stops sharing; stream may be audio-only and miss this.
         rawStream.getTracks().forEach((track) => {
           track.addEventListener('ended', () => {
             if (stoppedRef.current) return
@@ -217,7 +178,6 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
 
         timerRef.current = setInterval(runCycle, CYCLE_INTERVAL_MS)
 
-        // Subscribe to transcript chunks from collector devices on the same event
         const { event: currentEvent } = useAppStore.getState()
         if (currentEvent) {
           collectorChannelRef.current = supabase
@@ -293,13 +253,93 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
       isStartingRef.current = false
       conn.connect()
     } catch (e: any) {
-      console.error('Start recording error:', e)
+      console.error('Connect error:', e)
       useAppStore.getState().setConnecting(false)
       useAppStore.getState().setJudgeError(e?.message ?? 'Failed to start recording')
       isStartingRef.current = false
     }
-  }, [runCycle, clearBuffer, captureMode])
+  }, [runCycle, captureMode])
 
+  // Start: creates a new session slot then connects Deepgram.
+  const start = useCallback(async () => {
+    if (isStartingRef.current) return
+    isStartingRef.current = true
+
+    const { event, setActiveSession } = useAppStore.getState()
+    if (!event) { isStartingRef.current = false; return }
+
+    // Initiate media acquisition synchronously — getDisplayMedia must be called
+    // within the user-activation window before any awaited fetches expire it.
+    const rawStreamPromise: Promise<MediaStream> = captureMode === 'online'
+      ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: false })
+          .catch(() => navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }))
+      : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+
+    const transitionRes = await fetch('/api/auto-transition', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: event.id, manual: true }),
+    })
+    const transitionData = await transitionRes.json()
+    if (!transitionData.transition || !transitionData.team) {
+      rawStreamPromise.then(s => s.getTracks().forEach(t => t.stop())).catch(() => {})
+      console.error('[audio] Failed to create session slot')
+      isStartingRef.current = false
+      return
+    }
+    setActiveSession(transitionData.team)
+    useAppStore.setState((s: any) => ({ sessions: [...s.sessions, transitionData.team] }))
+    createSupabaseClient().from('sessions').update({ is_recording: true }).eq('id', event.id).then(() => {})
+
+    stoppedRef.current = false
+    setIsPaused(false)
+    await connectDeepgram(rawStreamPromise)
+  }, [connectDeepgram, captureMode])
+
+  // Pause: tears down Deepgram but preserves the session slot and transcript buffer.
+  // The session stays open — resume() reconnects and continues from where we left off.
+  const pause = useCallback(async () => {
+    stoppedRef.current = true
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    if (collectorChannelRef.current) {
+      try { createSupabaseClient().removeChannel(collectorChannelRef.current) } catch (_) {}
+      collectorChannelRef.current = null
+    }
+    mediaRecorderRef.current?.stop()
+    try { connectionRef.current?.sendCloseStream({}) } catch (_) {}
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    mediaRecorderRef.current = null
+    connectionRef.current = null
+    streamRef.current = null
+    useAppStore.getState().setInterimTranscript('')
+    useAppStore.getState().setRecordingStartedAt(null)
+    useAppStore.getState().setConnecting(false)
+    useAppStore.getState().setRecording(false)
+    const { event } = useAppStore.getState()
+    if (event) createSupabaseClient().from('sessions').update({ is_recording: false }).eq('id', event.id).then(() => {})
+    setIsPaused(true)
+  }, [])
+
+  // Resume: reconnects Deepgram using the existing session slot and buffer.
+  const resume = useCallback(async () => {
+    if (isStartingRef.current) return
+    isStartingRef.current = true
+
+    const { event } = useAppStore.getState()
+    if (!event) { isStartingRef.current = false; return }
+
+    const rawStreamPromise: Promise<MediaStream> = captureMode === 'online'
+      ? navigator.mediaDevices.getDisplayMedia({ audio: true, video: false })
+          .catch(() => navigator.mediaDevices.getDisplayMedia({ audio: true, video: true }))
+      : navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+
+    createSupabaseClient().from('sessions').update({ is_recording: true }).eq('id', event.id).then(() => {})
+    stoppedRef.current = false
+    setIsPaused(false)
+    await connectDeepgram(rawStreamPromise)
+  }, [connectDeepgram, captureMode])
+
+  // Stop: runs a final scoring cycle, then clears the session.
   const stop = useCallback(async () => {
     stoppedRef.current = true
     isStartingRef.current = false
@@ -317,20 +357,16 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     wordCountAtLastJudgeRef.current = 0
     useAppStore.getState().setInterimTranscript('')
     useAppStore.getState().setRecordingStartedAt(null)
-    // Update UI immediately so the button responds at once
     useAppStore.getState().setConnecting(false)
     useAppStore.getState().setRecording(false)
-    // Signal to collector devices that recording has stopped
     const { event } = useAppStore.getState()
     if (event) createSupabaseClient().from('sessions').update({ is_recording: false }).eq('id', event.id).then(() => {})
-
+    setIsPaused(false)
     await runCycle({ final: true })
     clearBuffer()
   }, [runCycle, clearBuffer])
 
-  // Snapshot the current session: run a final scoring cycle, create the next
-  // session slot on the server, then reset the buffer. The Deepgram connection
-  // stays open so audio capture is seamless.
+  // Punctuate: snapshot + advance to next presenter while keeping Deepgram open.
   const punctuate = useCallback(async () => {
     const { event, setActiveSession } = useAppStore.getState()
     if (!event) return
@@ -345,11 +381,10 @@ export function useAudioCapture(captureMode: CaptureMode = 'local') {
     const data = await res.json()
     if (!data.transition || !data.team) return
 
-    // setActiveSession clears scores/transcript/summary in the store
     setActiveSession(data.team)
     useAppStore.setState((s: any) => ({ sessions: [...s.sessions, data.team] }))
     clearBuffer()
   }, [runCycle, clearBuffer])
 
-  return { start, stop, punctuate }
+  return { start, pause, resume, stop, punctuate, isPaused }
 }
