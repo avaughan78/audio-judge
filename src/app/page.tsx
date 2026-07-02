@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence, useSpring } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
@@ -106,6 +106,8 @@ export default function JudgePage() {
   const [creatingPresenter, setCreatingPresenter] = useState(false)
   const [allEvents, setAllEvents] = useState<any[]>([])
   const [activatingEventId, setActivatingEventId] = useState<string | null>(null)
+  const transcriptScrollRef = useRef<HTMLDivElement>(null)
+  const [transcriptAutoScroll, setTranscriptAutoScroll] = useState(true)
 
   const { start, stop, pause, resume, isPaused, punctuate, rescore, clearBuffer } = useAudioCapture(captureMode)
 
@@ -215,6 +217,30 @@ export default function JudgePage() {
       if (scoreChannel) rt.removeChannel(scoreChannel)
       unsub()
     }
+  }, [])
+
+  // Auto-scroll transcript to bottom when new content arrives, unless user has scrolled up
+  useEffect(() => {
+    if (!transcriptAutoScroll || !showTranscript) return
+    const el = transcriptScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [transcript, interimTranscript, transcriptAutoScroll, showTranscript])
+
+  // Re-enable auto-scroll when transcript panel opens
+  useEffect(() => {
+    if (showTranscript) setTranscriptAutoScroll(true)
+  }, [showTranscript])
+
+  const handleTranscriptScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+    setTranscriptAutoScroll(nearBottom)
+  }, [])
+
+  const scrollTranscriptToLatest = useCallback(() => {
+    const el = transcriptScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+    setTranscriptAutoScroll(true)
   }, [])
 
   const activateEvent = async (ev: any) => {
@@ -715,10 +741,15 @@ export default function JudgePage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 8 }}
                         transition={{ duration: 0.18 }}
-                        className="w-full rounded-xl overflow-hidden flex flex-col min-h-0"
+                        className="relative w-full rounded-xl overflow-hidden flex flex-col min-h-0"
                         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
                       >
-                        <div className="overflow-y-auto p-4" style={{ maxHeight: 'min(400px, calc(100vh - 340px))' }}>
+                        <div
+                          ref={transcriptScrollRef}
+                          onScroll={handleTranscriptScroll}
+                          className="overflow-y-auto p-4 relative"
+                          style={{ maxHeight: 'min(400px, calc(100vh - 340px))' }}
+                        >
                           {isRecording && (
                             <div className="flex items-center gap-1.5 mb-3">
                               <span className="relative flex h-1.5 w-1.5 shrink-0">
@@ -737,6 +768,29 @@ export default function JudgePage() {
                             }
                           </p>
                         </div>
+                        {/* Jump to latest button — shown when user has scrolled up */}
+                        <AnimatePresence>
+                          {!transcriptAutoScroll && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 4 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none"
+                            >
+                              <button
+                                onClick={scrollTranscriptToLatest}
+                                className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg"
+                                style={{ background: 'var(--accent)', color: 'white' }}
+                              >
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                  <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                                Jump to latest
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </motion.div>
                     )}
                   </AnimatePresence>
