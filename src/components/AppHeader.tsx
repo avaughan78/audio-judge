@@ -42,7 +42,7 @@ function NavItemEl({ item }: { item: NavItem }) {
   const inner = <>{item.icon && <ItemIcon type={item.icon} />}{item.label}</>
   const style = item.active ? ACTIVE_STYLE : STYLE
   return item.href
-    ? <Link href={item.href} target={item.target} className={CLS} style={style} onMouseEnter={item.active ? undefined : enter} onMouseLeave={item.active ? undefined : leave}>{inner}</Link>
+    ? <Link href={item.href} target={item.target} onClick={item.onClick} className={CLS} style={style} onMouseEnter={item.active ? undefined : enter} onMouseLeave={item.active ? undefined : leave}>{inner}</Link>
     : <button onClick={item.onClick} className={CLS} style={style} onMouseEnter={item.active ? undefined : enter} onMouseLeave={item.active ? undefined : leave}>{inner}</button>
 }
 

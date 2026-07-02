@@ -258,15 +258,16 @@ export default function AdminClient() {
 
   // ── Event management ───────────────────────────────────────────────────────
 
+  const deselectEvent = () => {
+    setViewedEvent(null)
+    setBrief('')
+    savedBriefRef.current = ''
+    setCriteria([])
+    setBriefStatus('saved')
+  }
+
   const selectEvent = (ev: Event) => {
-    if (ev.id === viewedEvent?.id) {
-      setViewedEvent(null)
-      setBrief('')
-      savedBriefRef.current = ''
-      setCriteria([])
-      setBriefStatus('saved')
-      return
-    }
+    if (ev.id === viewedEvent?.id) { deselectEvent(); return }
     setViewedEvent(ev)
     setBrief(ev.brief || '')
     savedBriefRef.current = ev.brief || ''
@@ -479,7 +480,7 @@ export default function AdminClient() {
       <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
         <AppHeader items={[
-          { label: 'Events', href: '/admin', active: true },
+          { label: 'Events', href: '/admin', active: true, onClick: deselectEvent },
           { label: 'Scoring', href: '/' },
           { label: 'Records', href: '/records' },
         ]} />
@@ -614,7 +615,8 @@ export default function AdminClient() {
           <main className="flex-1 flex flex-col overflow-hidden">
             {!viewedEvent ? (
               <div className="flex items-center justify-center flex-1 px-6">
-                <div className="w-full max-w-md space-y-6 text-center">
+                <div className="w-full max-w-md rounded-2xl p-8 space-y-6"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                   <div>
                     <p className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
                       {events.length === 0 ? 'Create your first event' : 'Create a new event'}
@@ -716,6 +718,19 @@ export default function AdminClient() {
                             Go live
                           </button>
                         )}
+
+                        {/* Close / deselect */}
+                        <button
+                          onClick={deselectEvent}
+                          title="Back to events"
+                          className="p-1.5 rounded-lg transition-all"
+                          style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
 
                         {/* ··· overflow menu */}
                         <div className="relative" ref={overflowRef}>
