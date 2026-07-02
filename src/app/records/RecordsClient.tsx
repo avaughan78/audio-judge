@@ -85,6 +85,19 @@ function TranscriptView({ sessionId, teamId }: { sessionId: string; teamId: stri
 function SessionCard({ session, criteria, index, onDelete }: { session: Session & { scores: Score[] }; criteria: Criteria[]; index: number; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState(session.name)
+  const [displayName, setDisplayName] = useState(session.name)
+
+  const saveSessionName = async () => {
+    const trimmed = nameValue.trim()
+    setEditingName(false)
+    if (!trimmed || trimmed === displayName) return
+    const supabase = createClient()
+    const { error } = await supabase.from('teams').update({ name: trimmed }).eq('id', session.id)
+    if (!error) setDisplayName(trimmed)
+    else setNameValue(displayName)
+  }
   const scoredCriteria = criteria.filter(c => (session.scores.find(s => s.criteria_id === c.id)?.score ?? 0) > 0)
 
   const weighted = scoredCriteria.length > 0
@@ -108,11 +121,35 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
       {/* Session header */}
       <button
         onClick={() => setExpanded(v => !v)}
-        className="w-full flex items-center gap-4 px-5 py-4 text-left transition-all"
+        className="group w-full flex items-center gap-4 px-5 py-4 text-left transition-all"
         style={{ background: expanded ? 'var(--bg-card-hover)' : 'transparent' }}>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{session.name}</span>
+          <div className="flex items-center gap-2">
+            {editingName ? (
+              <input
+                value={nameValue}
+                onChange={e => setNameValue(e.target.value)}
+                autoFocus
+                onBlur={saveSessionName}
+                onKeyDown={e => { if (e.key === 'Enter') saveSessionName(); if (e.key === 'Escape') { setNameValue(displayName); setEditingName(false) } }}
+                onClick={e => e.stopPropagation()}
+                className="text-base font-bold bg-transparent border-b outline-none"
+                style={{ borderColor: 'var(--accent)', color: 'var(--text-primary)' }}
+              />
+            ) : (
+              <span className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{displayName}</span>
+            )}
+            <button
+              onClick={e => { e.stopPropagation(); setNameValue(displayName); setEditingName(true) }}
+              title="Rename"
+              className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
             {createdAt && (
               <span className="text-base" style={{ color: 'var(--text-muted)' }}>
                 {createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

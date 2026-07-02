@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence, useSpring } from 'framer-motion'
+import { QRCodeSVG } from 'qrcode.react'
 import { useAppStore } from '@/lib/store'
 import { createClient } from '@/lib/supabase'
 import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
@@ -72,7 +73,7 @@ function ScoreOverrideInput({ criteriaId, current, onClose }: { criteriaId: stri
 }
 
 export default function JudgePage() {
-  const { event, setEvent, setSessions, setCriteria, updateScore, setActiveSession, setScores } = useAppStore()
+  const { event, setEvent, setSessions, setCriteria, updateScore, setActiveSession, setScores, patchActiveSession } = useAppStore()
   const activeSession = useAppStore((s) => s.activeSession)
   const isRecording = useAppStore((s) => s.isRecording)
   const isSummarising = useAppStore((s) => s.isSummarising)
@@ -93,6 +94,9 @@ export default function JudgePage() {
   const [clock, setClock] = useState(new Date())
   const [editingCriteriaId, setEditingCriteriaId] = useState<string | null>(null)
   const [showTranscript, setShowTranscript] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+  const [showQR, setShowQR] = useState(false)
 
   const { start, stop, punctuate } = useAudioCapture(captureMode)
 
@@ -203,6 +207,15 @@ export default function JudgePage() {
     setIsPunctuating(true)
     await punctuate()
     setIsPunctuating(false)
+  }
+
+  const saveSessionName = async () => {
+    const trimmed = nameValue.trim()
+    setEditingName(false)
+    if (!activeSession || !trimmed || trimmed === activeSession.name) return
+    const supabase = createClient()
+    const { error } = await supabase.from('teams').update({ name: trimmed }).eq('id', activeSession.id)
+    if (!error) patchActiveSession({ name: trimmed })
   }
 
   return (
@@ -331,6 +344,22 @@ export default function JudgePage() {
                 Events
               </Link>
             </div>
+
+            {/* QR code button */}
+            <button
+              onClick={() => setShowQR(v => !v)}
+              title="Show collector QR code"
+              className="p-2 rounded-lg transition-all"
+              style={{ color: showQR ? 'var(--accent)' : 'var(--text-muted)', background: showQR ? 'var(--accent-dim)' : 'transparent', border: '1px solid var(--border)' }}
+              onMouseEnter={e => { if (!showQR) (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
+              onMouseLeave={e => { if (!showQR) (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <path d="M14 14h2v2h-2zM18 14h3M14 18v3M18 18h3v3h-3z"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -354,25 +383,45 @@ export default function JudgePage() {
         ) : (
           <div className="relative z-0 flex-1 flex flex-col min-h-0 px-12 pt-6 pb-6">
 
-            {/* Team name */}
-            <AnimatePresence mode="wait">
-              <motion.div key={activeSession.id} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }} className="mb-8 shrink-0">
-                <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
-                  Now Presenting
-                </p>
-                <h1 className="text-6xl font-black tracking-tight gradient-text">{activeSession.name}</h1>
-                {activeSession.description && (
-                  <p className="text-lg mt-2" style={{ color: 'var(--text-muted)' }}>{activeSession.description}</p>
-                )}
-              </motion.div>
-            </AnimatePresence>
-
             {/* Content row */}
             <div className="flex gap-12 flex-1 min-h-0">
 
-              {/* Criteria bars */}
-              <div className="flex-1 flex flex-col justify-center space-y-6 overflow-y-auto pr-4">
+              {/* Left: heading + criteria bars */}
+              <div className="flex-1 flex flex-col min-h-0">
+
+                {/* Team name */}
+                <AnimatePresence mode="wait">
+                  <motion.div key={activeSession.id} initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }} className="mb-8 shrink-0">
+                    <p className="text-base font-bold tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>
+                      Now Presenting
+                    </p>
+                    {editingName ? (
+                      <input
+                        value={nameValue}
+                        onChange={e => setNameValue(e.target.value)}
+                        autoFocus
+                        onBlur={saveSessionName}
+                        onKeyDown={e => { if (e.key === 'Enter') saveSessionName(); if (e.key === 'Escape') setEditingName(false) }}
+                        className="text-6xl font-black tracking-tight bg-transparent border-b-2 outline-none w-full"
+                        style={{ borderColor: 'var(--accent)', color: 'var(--text-primary)' }}
+                      />
+                    ) : (
+                      <h1
+                        className="text-6xl font-black tracking-tight gradient-text cursor-pointer"
+                        onClick={() => { setNameValue(activeSession.name); setEditingName(true) }}
+                        title="Click to rename"
+                      >{activeSession.name}</h1>
+                    )}
+                    {activeSession.description && (
+                      <p className="text-lg mt-2" style={{ color: 'var(--text-muted)' }}>{activeSession.description}</p>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* Criteria bars */}
+                <div className="flex-1 overflow-y-auto pr-4 flex flex-col">
+                <div className="my-auto space-y-6 py-2">
                 {criteria.length === 0 ? (
                   <p className="text-base" style={{ color: 'var(--text-muted)' }}>
                     No criteria — configure in <Link href="/admin" className="underline underline-offset-2" style={{ color: 'var(--accent)' }}>Events</Link>
@@ -425,13 +474,16 @@ export default function JudgePage() {
                     </motion.div>
                   )
                 })}
-              </div>
+                </div>{/* end my-auto wrapper */}
+                </div>{/* end criteria scroll */}
+
+              </div>{/* end left col */}
 
               {/* Right column: gauge (top) + transcript toggle (bottom) */}
               <div className="w-64 shrink-0 flex flex-col min-h-0">
 
                 {/* Overall gauge — anchored top */}
-                <div className="flex flex-col items-center pt-2 shrink-0">
+                <div className="flex flex-col items-center shrink-0">
                   <p className="text-base font-bold tracking-widest uppercase mb-6" style={{ color: 'var(--text-muted)' }}>
                     Overall
                   </p>
@@ -475,7 +527,7 @@ export default function JudgePage() {
                         className="w-full rounded-xl overflow-hidden"
                         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
                       >
-                        <div className="overflow-y-auto p-4" style={{ maxHeight: '240px' }}>
+                        <div className="overflow-y-auto p-4" style={{ maxHeight: '400px' }}>
                           {isRecording && (
                             <div className="flex items-center gap-1.5 mb-3">
                               <span className="relative flex h-1.5 w-1.5 shrink-0">
@@ -514,6 +566,39 @@ export default function JudgePage() {
             </div>
           </div>
         )}
+
+        {/* QR modal */}
+        <AnimatePresence>
+          {showQR && (
+            <motion.div
+              key="qr-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center"
+              style={{ background: 'rgba(0,0,0,0.6)' }}
+              onClick={() => setShowQR(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="rounded-2xl p-8 flex flex-col items-center gap-4"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', backdropFilter: 'blur(12px)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <p className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Scan to open</p>
+                <div className="rounded-xl overflow-hidden p-3" style={{ background: '#fff' }}>
+                  <QRCodeSVG value={typeof window !== 'undefined' ? window.location.origin : ''} size={200} />
+                </div>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{typeof window !== 'undefined' ? window.location.origin : ''}</p>
+                <button onClick={() => setShowQR(false)} className="text-xs px-4 py-1.5 rounded-lg"
+                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Close</button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Session transition flash */}
         <AnimatePresence>

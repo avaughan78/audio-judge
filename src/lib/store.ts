@@ -23,6 +23,7 @@ interface AppState {
   setSessions: (t: Session[]) => void
   setCriteria: (c: Criteria[]) => void
   setActiveSession: (t: Session | null) => void
+  patchActiveSession: (patch: Partial<Session>) => void
   setScores: (scores: Record<string, Score>) => void
   updateScore: (score: Score) => void
   appendTranscript: (text: string) => void
@@ -62,6 +63,8 @@ export const useAppStore = create<AppState>()(
       setCriteria: (criteria) => set({ criteria }),
       setActiveSession: (activeSession) =>
         set({ activeSession, scores: {}, transcript: '', interimTranscript: '', summary: '' }),
+      patchActiveSession: (patch) =>
+        set((state) => ({ activeSession: state.activeSession ? { ...state.activeSession, ...patch } : null })),
       setScores: (scores) => set({ scores }),
       updateScore: (score) =>
         set((state) => ({
