@@ -402,7 +402,7 @@ export default function RecordsClient() {
 
         <AppHeader items={[
           { label: 'Events', href: '/admin' },
-          { label: 'Scoring', href: '/' },
+          { label: "Let's Record", href: '/' },
           { label: 'Records', href: '/records', active: true },
         ]} />
 

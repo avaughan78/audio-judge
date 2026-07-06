@@ -488,7 +488,7 @@ export default function AdminClient() {
 
         <AppHeader items={[
           { label: 'Events', href: '/admin', active: true, onClick: deselectEvent },
-          { label: 'Scoring', href: '/' },
+          { label: "Let's Record", href: '/' },
           { label: 'Records', href: '/records' },
         ]} />
 

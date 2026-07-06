@@ -362,7 +362,7 @@ export default function JudgePage() {
         <AppHeader
           items={[
             { label: 'Events', href: '/admin' },
-            { label: 'Scoring', href: '/', active: true },
+            { label: "Let's Record", href: '/', active: true },
             { label: 'Records', href: '/records' },
           ]}
           rightSlot={<>
