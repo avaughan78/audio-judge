@@ -361,9 +361,9 @@ export default function JudgePage() {
         {/* Header */}
         <AppHeader
           items={[
-            { label: 'Events', href: '/admin' },
+            { label: 'Create & View Events', href: '/admin' },
             { label: "Let's Record", href: '/', active: true },
-            { label: 'Records', href: '/records' },
+            { label: 'Analytics', href: '/records' },
           ]}
           rightSlot={<>
             {/* Clock */}

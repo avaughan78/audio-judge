@@ -487,9 +487,9 @@ export default function AdminClient() {
       <div className="h-screen flex flex-col" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
         <AppHeader items={[
-          { label: 'Events', href: '/admin', active: true, onClick: deselectEvent },
+          { label: 'Create & View Events', href: '/admin', active: true, onClick: deselectEvent },
           { label: "Let's Record", href: '/' },
-          { label: 'Records', href: '/records' },
+          { label: 'Analytics', href: '/records' },
         ]} />
 
         <div className="flex flex-1 overflow-hidden">

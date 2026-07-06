@@ -401,9 +401,9 @@ export default function RecordsClient() {
       <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
 
         <AppHeader items={[
-          { label: 'Events', href: '/admin' },
+          { label: 'Create & View Events', href: '/admin' },
           { label: "Let's Record", href: '/' },
-          { label: 'Records', href: '/records', active: true },
+          { label: 'Analytics', href: '/records', active: true },
         ]} />
 
         <main className="max-w-5xl mx-auto px-6 py-10">
