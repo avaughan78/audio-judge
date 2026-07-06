@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ThemeProvider } from '@/components/ThemeSelector'
+import { ThemeProvider, ThemeSelector } from '@/components/ThemeSelector'
 import BrandName from '@/components/BrandName'
 
 function getScoreStyle(score: number) {
@@ -219,10 +219,13 @@ export default function SharePage() {
               </>
             )}
           </div>
-          <span className="text-xs font-semibold tracking-widest uppercase px-2 py-1 rounded"
-            style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
-            Results
-          </span>
+          <div className="flex items-center gap-2">
+            <ThemeSelector />
+            <span className="text-xs font-semibold tracking-widest uppercase px-2 py-1 rounded"
+              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid var(--border-hover)' }}>
+              Results
+            </span>
+          </div>
         </header>
 
         <main className="max-w-5xl mx-auto px-6 py-10">

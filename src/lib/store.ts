@@ -55,7 +55,7 @@ export const useAppStore = create<AppState>()(
       isSummarising: false,
       lastJudgedAt: 0,
       recordingStartedAt: null,
-      themeId: 'midnight',
+      themeId: 'daylight',
       judgeError: null,
 
       setEvent: (event) => set({ event }),
