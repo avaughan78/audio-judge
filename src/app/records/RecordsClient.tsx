@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase'
@@ -12,6 +13,34 @@ interface EventRecord {
   event: Event
   sessions: (Session & { scores: Score[] })[]
   criteria: Criteria[]
+}
+
+function MenuPortal({ anchorRef, onClose, children }: {
+  anchorRef: React.RefObject<HTMLElement | null>
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
+
+  useEffect(() => {
+    if (!anchorRef.current) return
+    const r = anchorRef.current.getBoundingClientRect()
+    setPos({ top: r.bottom + 4, right: window.innerWidth - r.right })
+
+    const close = (e: MouseEvent) => {
+      if (!anchorRef.current?.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [anchorRef, onClose])
+
+  if (!pos) return null
+  return createPortal(
+    <div style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999 }}>
+      {children}
+    </div>,
+    document.body
+  )
 }
 
 function getScoreStyle(score: number) {
@@ -100,6 +129,7 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [editingName, setEditingName] = useState(false)
+  const sessionMenuRef = useRef<HTMLButtonElement>(null)
   const [nameValue, setNameValue] = useState(session.name)
   const [displayName, setDisplayName] = useState(session.name)
 
@@ -200,8 +230,9 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
           ) : (
             <span className="text-base" style={{ color: 'var(--text-muted)' }}>No scores</span>
           )}
-          <div className="relative" onClick={e => e.stopPropagation()}>
+          <div onClick={e => e.stopPropagation()}>
             <button
+              ref={sessionMenuRef}
               onClick={() => setMenuOpen(v => !v)}
               className="flex items-center justify-center w-7 h-7 rounded-lg transition-all"
               style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
@@ -212,20 +243,22 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
               </svg>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 z-50 rounded-xl overflow-hidden shadow-xl"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', minWidth: '130px' }}>
-                <button
-                  onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors"
-                  style={{ color: 'var(--score-low)' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
-                  </svg>
-                  Delete
-                </button>
-              </div>
+              <MenuPortal anchorRef={sessionMenuRef} onClose={() => setMenuOpen(false)}>
+                <div className="rounded-xl overflow-hidden shadow-xl"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', minWidth: '130px' }}>
+                  <button
+                    onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors"
+                    style={{ color: 'var(--score-low)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+              </MenuPortal>
             )}
           </div>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -365,6 +398,7 @@ export default function RecordsClient() {
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
   const [confirmDeleteEvent, setConfirmDeleteEvent] = useState<string | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const eventMenuRef = useRef<HTMLButtonElement>(null)
   const [shareTokens, setShareTokens] = useState<Record<string, string>>({})
   const [sharingId, setSharingId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -520,8 +554,9 @@ export default function RecordsClient() {
 
                       <div className="flex items-center gap-3 shrink-0">
                         {hasData && <OverallScore sessions={sessions} criteria={criteria} />}
-                        <div className="relative" onClick={e => e.stopPropagation()}>
+                        <div onClick={e => e.stopPropagation()}>
                           <button
+                            ref={eventMenuRef}
                             onClick={() => setMenuOpenId(menuOpenId === event.id ? null : event.id)}
                             className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
                             style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
@@ -532,35 +567,37 @@ export default function RecordsClient() {
                             </svg>
                           </button>
                           {menuOpenId === event.id && (
-                            <div className="absolute right-0 top-full mt-1 z-50 rounded-xl overflow-hidden shadow-xl"
-                              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', minWidth: '150px' }}>
-                              <button
-                                onClick={() => { setMenuOpenId(null); getShareLink(event as any) }}
-                                disabled={sharingId === event.id}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors disabled:opacity-50"
-                                style={{ color: copiedId === event.id ? 'var(--score-high)' : 'var(--text-secondary)' }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                                {copiedId === event.id ? (
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
-                                ) : (
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                                )}
-                                {copiedId === event.id ? 'Copied!' : 'Share link'}
-                              </button>
-                              <div style={{ height: '1px', background: 'var(--border)' }} />
-                              <button
-                                onClick={() => { setMenuOpenId(null); setConfirmDeleteEvent(event.id) }}
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors"
-                                style={{ color: 'var(--score-low)' }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
-                                </svg>
-                                Delete
-                              </button>
-                            </div>
+                            <MenuPortal anchorRef={eventMenuRef} onClose={() => setMenuOpenId(null)}>
+                              <div className="rounded-xl overflow-hidden shadow-xl"
+                                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', minWidth: '150px' }}>
+                                <button
+                                  onClick={() => { setMenuOpenId(null); getShareLink(event as any) }}
+                                  disabled={sharingId === event.id}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors disabled:opacity-50"
+                                  style={{ color: copiedId === event.id ? 'var(--score-high)' : 'var(--text-secondary)' }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                                  {copiedId === event.id ? (
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                                  ) : (
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                                  )}
+                                  {copiedId === event.id ? 'Copied!' : 'Share link'}
+                                </button>
+                                <div style={{ height: '1px', background: 'var(--border)' }} />
+                                <button
+                                  onClick={() => { setMenuOpenId(null); setConfirmDeleteEvent(event.id) }}
+                                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors"
+                                  style={{ color: 'var(--score-low)' }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                                  </svg>
+                                  Delete
+                                </button>
+                              </div>
+                            </MenuPortal>
                           )}
                         </div>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
