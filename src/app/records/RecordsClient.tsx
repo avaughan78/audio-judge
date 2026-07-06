@@ -98,6 +98,7 @@ function TranscriptView({ sessionId, teamId }: { sessionId: string; teamId: stri
 function SessionCard({ session, criteria, index, onDelete }: { session: Session & { scores: Score[] }; criteria: Criteria[]; index: number; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(session.name)
   const [displayName, setDisplayName] = useState(session.name)
@@ -199,16 +200,34 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
           ) : (
             <span className="text-base" style={{ color: 'var(--text-muted)' }}>No scores</span>
           )}
-          <button
-            onClick={e => { e.stopPropagation(); setConfirmDelete(v => !v) }}
-            className="p-1.5 rounded-lg transition-all"
-            style={{ color: 'var(--score-low)', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.14)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.06)' }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
-            </svg>
-          </button>
+          <div className="relative" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setMenuOpen(v => !v)}
+              className="flex items-center justify-center w-7 h-7 rounded-lg transition-all"
+              style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-1 z-50 rounded-xl overflow-hidden shadow-xl"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', minWidth: '130px' }}>
+                <button
+                  onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors"
+                  style={{ color: 'var(--score-low)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                  </svg>
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
             style={{ color: 'var(--text-muted)', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
             <polyline points="9 18 15 12 9 6" />
@@ -216,24 +235,58 @@ function SessionCard({ session, criteria, index, onDelete }: { session: Session 
         </div>
       </button>
 
-      {/* Delete confirm */}
+      {/* Delete confirm modal */}
       <AnimatePresence>
         {confirmDelete && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden">
-            <div className="flex items-center gap-3 px-5 py-2.5 text-sm"
-              style={{ background: 'rgba(239,68,68,0.06)', borderTop: '1px solid rgba(239,68,68,0.15)', color: '#f87171' }}>
-              <span className="flex-1">Delete <strong>{session.name}</strong> and all its scores?</span>
-              <button onClick={async () => {
-                const res = await fetch(`/api/teams/${session.id}`, { method: 'DELETE' })
-                if (res.ok) onDelete(session.id)
-                else console.error('Delete failed:', await res.text())
-              }} className="px-3 py-1 rounded-lg font-medium"
-                style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
-                Delete
-              </button>
-              <button onClick={() => setConfirmDelete(false)} style={{ color: 'var(--text-muted)' }}>Cancel</button>
-            </div>
+          <motion.div
+            key="session-delete-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+            onClick={() => setConfirmDelete(false)}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="w-full max-w-sm rounded-2xl p-6 space-y-4"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Delete recording?</p>
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                    <strong style={{ color: 'var(--text-secondary)' }}>{displayName}</strong> and all its scores will be permanently deleted.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 py-2 rounded-xl text-sm font-medium"
+                  style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    const res = await fetch(`/api/teams/${session.id}`, { method: 'DELETE' })
+                    if (res.ok) onDelete(session.id)
+                    else console.error('Delete failed:', await res.text())
+                  }}
+                  className="flex-1 py-2 rounded-xl text-sm font-semibold"
+                  style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171' }}>
+                  Delete
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -311,6 +364,7 @@ export default function RecordsClient() {
   const [loading, setLoading] = useState(true)
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
   const [confirmDeleteEvent, setConfirmDeleteEvent] = useState<string | null>(null)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [shareTokens, setShareTokens] = useState<Record<string, string>>({})
   const [sharingId, setSharingId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -466,37 +520,49 @@ export default function RecordsClient() {
 
                       <div className="flex items-center gap-3 shrink-0">
                         {hasData && <OverallScore sessions={sessions} criteria={criteria} />}
-                        <button
-                          onClick={e => { e.stopPropagation(); getShareLink(event as any) }}
-                          disabled={sharingId === event.id}
-                          title="Copy share link"
-                          className="flex items-center gap-1.5 text-base px-2.5 py-1 rounded-lg transition-all disabled:opacity-50"
-                          style={{ color: copiedId === event.id ? 'var(--score-high)' : 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
-                          {copiedId === event.id ? (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <polyline points="20 6 9 17 4 12" />
+                        <div className="relative" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => setMenuOpenId(menuOpenId === event.id ? null : event.id)}
+                            className="flex items-center justify-center w-8 h-8 rounded-lg transition-all"
+                            style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-hover)' }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
                             </svg>
-                          ) : (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                              <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
-                            </svg>
+                          </button>
+                          {menuOpenId === event.id && (
+                            <div className="absolute right-0 top-full mt-1 z-50 rounded-xl overflow-hidden shadow-xl"
+                              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', minWidth: '150px' }}>
+                              <button
+                                onClick={() => { setMenuOpenId(null); getShareLink(event as any) }}
+                                disabled={sharingId === event.id}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors disabled:opacity-50"
+                                style={{ color: copiedId === event.id ? 'var(--score-high)' : 'var(--text-secondary)' }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-card-hover)' }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                                {copiedId === event.id ? (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                                ) : (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                                )}
+                                {copiedId === event.id ? 'Copied!' : 'Share link'}
+                              </button>
+                              <div style={{ height: '1px', background: 'var(--border)' }} />
+                              <button
+                                onClick={() => { setMenuOpenId(null); setConfirmDeleteEvent(event.id) }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors"
+                                style={{ color: 'var(--score-low)' }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                                </svg>
+                                Delete
+                              </button>
+                            </div>
                           )}
-                          {copiedId === event.id ? 'Copied!' : 'Share'}
-                        </button>
-                        <button
-                          onClick={e => { e.stopPropagation(); setConfirmDeleteEvent(confirmDeleteEvent === event.id ? null : event.id) }}
-                          className="flex items-center gap-1.5 text-base px-2.5 py-1 rounded-lg transition-all"
-                          style={{ color: 'var(--score-low)', border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)' }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.12)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.06)' }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
-                          </svg>
-                          Delete
-                        </button>
+                        </div>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                           style={{ color: 'var(--text-muted)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>
                           <polyline points="9 18 15 12 9 6" />
@@ -504,24 +570,6 @@ export default function RecordsClient() {
                       </div>
                     </div>
 
-                    {/* Delete confirm */}
-                    <AnimatePresence>
-                      {confirmDeleteEvent === event.id && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden">
-                          <div className="flex items-center gap-3 px-6 py-3 text-sm"
-                            style={{ background: 'rgba(239,68,68,0.06)', borderTop: '1px solid rgba(239,68,68,0.15)', color: '#f87171' }}>
-                            <span className="flex-1">Delete <strong>{event.name}</strong> and all its data?</span>
-                            <button onClick={() => deleteEvent(event.id)}
-                              className="px-3 py-1 rounded-lg font-medium"
-                              style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
-                              Delete
-                            </button>
-                            <button onClick={() => setConfirmDeleteEvent(null)} style={{ color: 'var(--text-muted)' }}>Cancel</button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
 
                     {/* Event segments */}
                     <AnimatePresence>
@@ -560,6 +608,62 @@ export default function RecordsClient() {
           )}
         </main>
       </div>
+
+      {/* Delete confirm modal */}
+      <AnimatePresence>
+        {confirmDeleteEvent && (() => {
+          const target = records.find(r => r.event.id === confirmDeleteEvent)
+          if (!target) return null
+          return (
+            <motion.div
+              key="delete-modal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-6"
+              style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+              onClick={() => setConfirmDeleteEvent(null)}>
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                className="w-full max-w-sm rounded-2xl p-6 space-y-4"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                onClick={e => e.stopPropagation()}>
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Delete event?</p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                      <strong style={{ color: 'var(--text-secondary)' }}>{target.event.name}</strong> and all its recordings and scores will be permanently deleted.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={() => setConfirmDeleteEvent(null)}
+                    className="flex-1 py-2 rounded-xl text-sm font-medium transition-colors"
+                    style={{ background: 'var(--bg-card-hover)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => deleteEvent(confirmDeleteEvent)}
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold transition-colors"
+                    style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171' }}>
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
     </ThemeProvider>
   )
 }
