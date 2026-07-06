@@ -1,6 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
+export async function PATCH(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data: existing } = await supabase
+    .from('sessions').select('share_token').eq('id', id).single()
+  let token = existing?.share_token
+  if (!token) {
+    token = crypto.randomUUID().replace(/-/g, '').slice(0, 8)
+    await supabase.from('sessions').update({ share_token: token }).eq('id', id)
+  }
+  return NextResponse.json({ token })
+}
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

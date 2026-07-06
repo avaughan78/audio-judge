@@ -319,9 +319,9 @@ export default function RecordsClient() {
     setSharingId(event.id)
     let token = event.share_token ?? shareTokens[event.id]
     if (!token) {
-      token = crypto.randomUUID().replace(/-/g, '').slice(0, 8)
-      const supabase = createClient()
-      await supabase.from('sessions').update({ share_token: token }).eq('id', event.id)
+      const res = await fetch(`/api/sessions/${event.id}`, { method: 'PATCH' })
+      const data = await res.json()
+      token = data.token
       setShareTokens(prev => ({ ...prev, [event.id]: token! }))
     }
     const url = `${window.location.origin}/share/${token}`
