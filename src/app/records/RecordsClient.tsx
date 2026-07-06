@@ -325,7 +325,6 @@ export default function RecordsClient() {
       setShareTokens(prev => ({ ...prev, [event.id]: token! }))
     }
     const url = `${window.location.origin}/share/${token}`
-    window.open(url, '_blank', 'noopener,noreferrer')
     try { await navigator.clipboard.writeText(url) } catch {}
     setSharingId(null)
     setCopiedId(event.id)
